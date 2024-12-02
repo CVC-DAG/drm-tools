@@ -17,8 +17,8 @@ EMAIL = "{oriolrt, jchen, amolina}@cvc.uab.cat"
 
 LICENSE = "MIT License"
 
-SRC_DIR = "src"
-PACKAGES = [] # find_packages(exclude='src/')
+SRC_DIR = {"src"}
+PACKAGES = find_packages(exclude='src/')
 
 with codecs.open(os.path.join(  os.path.abspath(os.path.dirname(__file__)), "README.md"), encoding="utf-8") as fh:
   long_description = "\n" + fh.read()
@@ -36,7 +36,7 @@ setup(name=NAME,
     author=AUTHOR,
     url=URL,
     license=LICENSE,
-    package_dir=SRC_DIR,
+    package_dir={},
     packages=PACKAGES,
     install_requires=[line.strip() for line in open("requirements.txt").readlines()],
     keywords=['python', "documents", "classification", "knowledge representation","neo4j"],
