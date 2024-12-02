@@ -1,0 +1,10 @@
+name: dlm-env
+dependencies:
+  - python=3.9
+  - pip
+  - pip:
+    - traitlets
+    - networkx
+    - matplotlib
+    - neo4j
+    - tqdm
