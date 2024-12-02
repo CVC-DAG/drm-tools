@@ -46,7 +46,7 @@ def _setNodePK(value):
     return {"main_label": main_label, "pk": pk}
 
 
-# TODO: Cal modificar el codi per quan es posi src['pk'] retorni la pk en funció de la versió del Neo4j, on src és un node
+# TODO: Cal modificar el codi per quan es posi dlm['pk'] retorni la pk en funció de la versió del Neo4j, on dlm és un node
 class Node(object):
     def __init__(
         self,
@@ -240,7 +240,7 @@ class Relation(object):
 
         :param src: Dictionary composed of ´{ main_label : str , pk : Dictionary }, where pk is a dictionary of
                     { attr: values } that identifies the node within the main label
-        :param dst: Dictionary composed of the same strucure as in src.
+        :param dst: Dictionary composed of the same strucure as in dlm.
         :param type: name of relation
         :param kwargs: edge properties (dictionary).
         """
@@ -271,12 +271,12 @@ class Relation(object):
 
     def __repr__(self):
         mess = (
-            "src:" + str(self._src) + ", dst:" + str(self._dst) + " type:" + self._type
+            "dlm:" + str(self._src) + ", dst:" + str(self._dst) + " type:" + self._type
         )
         return mess
 
     def __getitem__(self, key):
-        if key == "src":
+        if key == "dlm":
             return {"main_label": self._src["main_label"], "pk": self._src["pk"]}
 
         if key == "dst":
@@ -303,7 +303,7 @@ class Relation(object):
             raise Exception(key + " is not a relation attribute")
 
     def __setitem__(self, key, value):
-        if key == "src":
+        if key == "dlm":
             self._src = _setNodePK(value)
             return
 

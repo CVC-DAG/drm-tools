@@ -1,5 +1,5 @@
 from traitlets import Bool
-from base import Node, Relation, WeakNode
+from .base import Node, Relation, WeakNode
 from typing import *
 
 

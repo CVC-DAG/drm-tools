@@ -17,8 +17,8 @@ EMAIL = "{oriolrt, jchen, amolina}@cvc.uab.cat"
 
 LICENSE = "MIT License"
 
-SRC_DIR = {"src"}
-PACKAGES = find_packages(exclude='src/')
+SRC_DIR = {"dlm"}
+PACKAGES = find_packages(exclude='dlm/')
 
 with codecs.open(os.path.join(  os.path.abspath(os.path.dirname(__file__)), "README.md"), encoding="utf-8") as fh:
   long_description = "\n" + fh.read()
