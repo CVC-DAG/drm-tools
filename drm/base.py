@@ -46,7 +46,7 @@ def _setNodePK(value):
     return {"main_label": main_label, "pk": pk}
 
 
-# TODO: Cal modificar el codi per quan es posi dlm['pk'] retorni la pk en funció de la versió del Neo4j, on dlm és un node
+# TODO: Cal modificar el codi per quan es posi src['pk'] retorni la pk en funció de la versió del Neo4j, on src és un node
 class Node(object):
     def __init__(
         self,
@@ -54,12 +54,12 @@ class Node(object):
         main_label: str = "",
         alternative_labels: Union[str, List[str]] = None,
         version: int = 5,
-        neo4j_id=None,
+        neo4j_id: int = None,
         **kwargs: Any
     ):
         # Definim les propietats
-        if neo4j_id is not None:
-            self._neo4j_id = neo4j_id
+        #if neo4j_id is not None:
+        self._neo4j_id = neo4j_id
         self._version = version
         if isinstance(pk, int):
             self._primary_key = {"id": pk}
@@ -240,7 +240,7 @@ class Relation(object):
 
         :param src: Dictionary composed of ´{ main_label : str , pk : Dictionary }, where pk is a dictionary of
                     { attr: values } that identifies the node within the main label
-        :param dst: Dictionary composed of the same strucure as in dlm.
+        :param dst: Dictionary composed of the same structure as in src.
         :param type: name of relation
         :param kwargs: edge properties (dictionary).
         """
@@ -271,12 +271,12 @@ class Relation(object):
 
     def __repr__(self):
         mess = (
-            "dlm:" + str(self._src) + ", dst:" + str(self._dst) + " type:" + self._type
+            "src:" + str(self._src) + ", dst:" + str(self._dst) + " type:" + self._type
         )
         return mess
 
     def __getitem__(self, key):
-        if key == "dlm":
+        if key == "src":
             return {"main_label": self._src["main_label"], "pk": self._src["pk"]}
 
         if key == "dst":
@@ -303,7 +303,7 @@ class Relation(object):
             raise Exception(key + " is not a relation attribute")
 
     def __setitem__(self, key, value):
-        if key == "dlm":
+        if key == "src":
             self._src = _setNodePK(value)
             return
 

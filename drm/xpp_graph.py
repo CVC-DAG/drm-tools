@@ -187,7 +187,7 @@ class XPPGraph(object):
                 deps = node["dependencies"]
                 for k in deps.keys():
                     v = deps[k]
-                    # id_v = self._insertNode(v,update=True, replace=False)
+                    id_v = self._insertNode(v,update=True, replace=False)
                     rel = Relation(node, deps[k], k.upper())
                     self.insertRelation(rel, update=True)
                     # print(k,deps[k])
@@ -236,7 +236,7 @@ class XPPGraph(object):
         """
         Inserts a new (directed) connection between two nodes
 
-        :param rel: relation having the dlm, dst nodes.
+        :param rel: relation having the src, dst nodes.
         :param update: set to True if new attributes must be added to an existing relation (default False)
         :param replace:  set to True if an existing relation must  be replaced by 'rel'.
 
@@ -253,8 +253,8 @@ class XPPGraph(object):
                 # return self._session.write_transaction(self._update_relation,rel )
                 id = self._update_relation(self._tx, rel)
             else:
-                # id = self._session.read_transaction(self._check_relation, rel['dlm'],rel['dst'],rel['type'])
-                id = self._check_relation(self._tx, rel["dlm"], rel["dst"], rel["type"])
+                # id = self._session.read_transaction(self._check_relation, rel['src'],rel['dst'],rel['type'])
+                id = self._check_relation(self._tx, rel["src"], rel["dst"], rel["type"])
                 if isinstance(id, int) and not isinstance(id, bool):
                     if replace:
                         # self._session.write_transaction(self._delete_relation,rel)
@@ -340,7 +340,7 @@ class XPPGraph(object):
 
     @staticmethod
     def _delete_relation(tx, rel: Relation):
-        src, dst, type = rel["dlm"], rel["dst"], rel["type"]
+        src, dst, type = rel["src"], rel["dst"], rel["type"]
 
         query = (
             "Match (a:"
@@ -411,13 +411,13 @@ class XPPGraph(object):
 
     @staticmethod
     def _update_relation(tx, rel: Relation):
-        src, dst, type = rel["dlm"], rel["dst"], rel["type"]
+        src, dst, type = rel["src"], rel["dst"], rel["type"]
         attributes = rel["attributes"]
 
         query = (
             "Match (a:"
             + src["main_label"]
-            + " {"
+            + ""
             + _generate_where_cond("a", src["pk"], type="merge")
             + " }) "
             + "Merge (b:"
@@ -535,7 +535,7 @@ class XPPGraph(object):
     @staticmethod
     def _create_relation(tx, rel: Relation):
         rel_type = rel["type"]
-        src = rel["dlm"]
+        src = rel["src"]
         dst = rel["dst"]
 
         attributes = rel["attributes"]
