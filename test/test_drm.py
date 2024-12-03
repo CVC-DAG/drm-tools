@@ -1,8 +1,8 @@
 import unittest
 
-from dlm.xpp_graph import XPPGraph
-from dlm.entities import *
-from dlm.base import *
+from drm.xpp_graph import XPPGraph
+from drm.entities import *
+from drm.base import *
 import json
 
 
@@ -33,7 +33,7 @@ class XPPGraphTest(unittest.TestCase):
         Connection.close()
         self.assertEqual([up_a_1 >= 0, up_b_1 >= 0], [True, True])
 
-    def test_update_node_Municipi(self, file="config.json"):
+    def test_update_node_LlocPadro(self, file="config.json"):
         "Test per validar la creacio de nodes"
         # Primer creo node
         a = LlocPadro(pk={"nom": "Caldes dEstrac", "any": 1905}, alternative_labels=["TEST"],estat="inserit")
@@ -54,7 +54,7 @@ class XPPGraphTest(unittest.TestCase):
         Connection.close()
         self.assertEqual([up_a_1 >= 0, up_b_1 >= 0], [True, True])
 
-    def test_insert_individu(self, file="config.json"):
+    def test_insert_IndividuPadro(self, file="config.json"):
         "Test per validar la creacio de nodes"
         # Primer creo node
 

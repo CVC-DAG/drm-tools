@@ -3,10 +3,10 @@ from distutils.extension import Extension
 import os
 import codecs
 
-NAME = "dlm"
+NAME = "drm"
 VERSION = "1.0"
-DESCR = "Package for document language model representation"
-URL = "https://github.com/CVC-DAG/dlm"
+DESCR = "Package for document representation model"
+URL = "https://github.com/CVC-DAG/drm-tools"
 #REQUIRES = ['numpy','cython','Image','matplotlib','IPython']
 
 AUTHOR = """Oriol Ramos Terrades
@@ -17,8 +17,8 @@ EMAIL = "{oriolrt, jchen, amolina}@cvc.uab.cat"
 
 LICENSE = "MIT License"
 
-SRC_DIR = {"dlm"}
-PACKAGES = find_packages(exclude='dlm/')
+SRC_DIR = {"drm"}
+PACKAGES = find_packages(exclude='drm/')
 
 with codecs.open(os.path.join(  os.path.abspath(os.path.dirname(__file__)), "README.md"), encoding="utf-8") as fh:
   long_description = "\n" + fh.read()
