@@ -1,6 +1,6 @@
-# Document Language Model (dlm)
+# Document Representation Model (drm)
 
-This repository focuses on document language representation models (dlm) that utilize graph-based representations to capture and analyze document contents. These models leverage the inherent structure and relationships within and across documents to enhance information extraction, retrieval, and understanding. By representing documents as graphs, where nodes correspond to text segments (such as words, sentences, or paragraphs) and edges denote the relationships between these segments, these models can effectively capture the contextual and semantic nuances of the text. This approach allows for a more comprehensive and interconnected understanding of documents, facilitating advanced tasks such as semantic search, entity recognition, and document classification.
+This repository focuses on document representation models (drm) that utilize graph-based representations to capture and analyze document contents. These models leverage the inherent structure and relationships within and across documents to enhance information extraction, retrieval, and understanding. By representing documents as graphs, where nodes correspond to document objects (such as text regions, figures or images) and edges denote the relationships between them, these models can effectively capture the contextual and semantic relations of document objects. This approach allows for a more comprehensive and interconnected understanding of documents, facilitating advanced tasks such as semantic search, entity recognition, and document classification.
 
 ## Document Language Model Representation
 
