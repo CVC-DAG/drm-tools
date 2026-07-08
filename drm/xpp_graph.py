@@ -303,17 +303,17 @@ class XPPGraph(object):
             main_label = "" if node.main_label == "" else ":" + node.main_label
 
             query = (
-                "match (a"
+                "MATCH (a"
                 + main_label
-                + ") where "
+                + ") WHERE "
                 + _generate_where_cond("a", pk)
                 + " "
                 + detach_text
-                + " delete a "
+                + "DELETE a"
             )
         else:
             query = (
-                "match (a) where id(a) =" + str(neo4j_id) + detach_text + " delete a"
+                "MATCH (a) WHERE id(a) = " + str(neo4j_id) + detach_text + "DELETE a"
             )
 
         result = tx.run(query).values()
@@ -327,9 +327,8 @@ class XPPGraph(object):
         labels = "" if node.labels == "" else ":" + ":".join(node.labels)
 
         try:
-            result = tx.run("create (a" + labels + " )"
-                " SET  a = $prop_dict "
-                "RETURN id(a) as id",
+            result = tx.run(
+                "CREATE (a" + labels + ") SET a = $prop_dict RETURN id(a) AS id",
                 prop_dict=props,
             ).value("id")[0]
             return result
@@ -343,7 +342,7 @@ class XPPGraph(object):
         src, dst, type = rel["src"], rel["dst"], rel["type"]
 
         query = (
-            "Match (a:"
+            "MATCH (a:"
             + src["main_label"]
             + " {"
             + _generate_where_cond("a", src["pk"], type="merge")
@@ -356,7 +355,7 @@ class XPPGraph(object):
             + " {"
             + _generate_where_cond("b", dst["pk"], type="merge")
             + " })"
-            + "delete r"
+            + "DELETE r"
         )
 
         result = tx.run(query).single()
@@ -376,7 +375,7 @@ class XPPGraph(object):
 
         try:
             query = (
-                "merge (a"
+                "MERGE (a"
                 + main_label
                 + " { "
                 + _generate_where_cond("a", pk, type="merge")
@@ -396,8 +395,8 @@ class XPPGraph(object):
             + ", a = $prop_dict"
             + " ON MATCH SET a"
             + labels
-            + ", a += $prop_dict "
-            + " RETURN id(a) as id"
+            + ", a += $prop_dict"
+            + " RETURN id(a) AS id"
         )
         # print("(_update_node) query:", query, "a:", a)
         try:
@@ -415,24 +414,25 @@ class XPPGraph(object):
         attributes = rel["attributes"]
 
         query = (
-            "Match (a:"
+            "MATCH (a:"
             + src["main_label"]
             + " {"
             + _generate_where_cond("a", src["pk"], type="merge")
             + " }) "
-            + "Merge (b:"
+            + "MERGE (b:"
             + dst["main_label"]
             + " {"
             + _generate_where_cond("b", dst["pk"], type="merge")
             + " }) "
-            "Merge (a)-[r:" + type + "]-> (b)"
+            "MERGE (a)-[r:" + type + "]-> (b)"
         )
         if attributes:
             try:
                 result = tx.run(
-                    query + " ON CREATE SET  r += $prop_dict"
-                    " ON MATCH SET r += $prop_dict "
-                    " RETURN id(r) as id",
+                    query
+                    + " ON CREATE SET r += $prop_dict"
+                    + " ON MATCH SET r += $prop_dict"
+                    + " RETURN id(r) AS id",
                     prop_dict=attributes,
                 ).value("id")[0]
             except Exception as err:
@@ -445,7 +445,7 @@ class XPPGraph(object):
                 raise
         else:
             try:
-                result = tx.run(query + " RETURN id(r) as id ").value("id")[0]
+                result = tx.run(query + " RETURN id(r) AS id").value("id")[0]
             except Exception as err:
                 print(err)
                 print(query)
@@ -461,13 +461,13 @@ class XPPGraph(object):
         # Check whether an index (unique) exists for each node label. If not, it creates one to ensure unicity
         try:
             query = (
-                "create constraint "
+                "CREATE CONSTRAINT "
                 + main_label
-                + "_PK if not exists on (c:"
+                + "_PK IF NOT EXISTS ON (c:"
                 + main_label
-                + ") assert "
+                + ") ASSERT "
                 + _generate_tuple("c", id)
-                + " is node key ;"
+                + " IS NODE KEY ;"
             )
 
             result = tx.run(query)
@@ -481,17 +481,17 @@ class XPPGraph(object):
         if neo4j_id is None:
             main_label = "" if node.main_label == "" else ":" + node.main_label
             query = (
-                "match (a"
+                "MATCH (a"
                 + main_label
-                + ")-[r]->(b) where r._propagate=TRUE AND "
+                + ")-[r]->(b) WHERE r._propagate=TRUE AND "
                 + _generate_where_cond("a", node["pk_attributes"])
-                + " return b"
+                + " RETURN b"
             )
         else:
             query = (
-                "MATCH (n)-[r]->(b) where id(n)="
+                "MATCH (n)-[r]->(b) WHERE id(n)="
                 + str(neo4j_id)
-                + " and r._propagate=TRUE return b"
+                + " AND r._propagate=TRUE RETURN b"
             )
         return tx.run(query).values()
 
@@ -499,10 +499,9 @@ class XPPGraph(object):
     def _check_node_by_id(tx, main_label: str, id:  int ):
         try:
             idnode = tx.run(
-                "match (a:"
+                "MATCH (a:"
                 + main_label
-                + ") where  id(a) = $id "
-                + "  return id(a)",
+                + ") WHERE id(a) = $id RETURN id(a)",
                 id
             ).single()
         except:
@@ -518,11 +517,11 @@ class XPPGraph(object):
 
         try:
             idnode = tx.run(
-                "match (a:"
+                "MATCH (a:"
                 + main_label
-                + ") where "
+                + ") WHERE "
                 + _generate_where_cond("a", id)
-                + "  return id(a)"
+                + " RETURN id(a)"
             ).single()
         except:
             return False
@@ -541,27 +540,27 @@ class XPPGraph(object):
         attributes = rel["attributes"]
 
         query = (
-            "Match (a:"
+            "MATCH (a:"
             + src["main_label"]
             + ") WHERE "
             + _generate_where_cond("a", src["pk"])
-            + "Match (b:"
+            + "MATCH (b:"
             + dst["main_label"]
             + ") WHERE  "
             + _generate_where_cond("b", dst["pk"])
-            + "create (a)-[r:"
+            + "CREATE (a)-[r:"
             + rel_type
-            + "]->(b) "
+            + "]->(b)"
         )
 
         if attributes is not None:
             result = tx.run(
-                query + " SET r = $prop_dict " "RETURN id(r) as id",
+                query + " SET r = $prop_dict RETURN id(r) AS id",
                 prop_dict=attributes,
             ).value("id")[0]
         else:
             try:
-                result = tx.run(query + " RETURN id(r) as id").value("id")[0]
+                result = tx.run(query + " RETURN id(r) AS id").value("id")[0]
             except Exception as err:
                 a = tx.run("PROFILE " + query + " return id(r) as id")
                 print(a.consume().profile["args"]["string-representation"])
@@ -590,22 +589,22 @@ class XPPGraph(object):
 
         # TODO: Cal revisar que passa quan pk es ne4jid
         query = (
-            "Match (a:"
+            "MATCH (a:"
             + src["main_label"]
             + ")-[r:"
             + type
             + "]->(b:"
             + dst["main_label"]
             + ") "
-            + "Match (a:"
+            + "MATCH (a:"
             + src["main_label"]
             + ") WHERE "
             + _generate_where_cond("a", src["pk"])
-            + "Match (b:"
+            + "MATCH (b:"
             + dst["main_label"]
             + ") WHERE  "
             + _generate_where_cond("b", dst["pk"])
-            + "return id(r) as id "
+            + "RETURN id(r) AS id"
         )
 
         idnode = tx.run(query).single()
@@ -630,22 +629,22 @@ class XPPGraph(object):
 
         #TODO: Cal revisar que passa quan pk es ne4jid
         query = (
-            "Match (a:"
+            "MATCH (a:"
             + src["main_label"]
             + ")-[r:"
             + type
             + "]->(b:"
             + dst["main_label"]
             + ") "
-            + "Match (a:"
+            + "MATCH (a:"
             + src["main_label"]
             + ") WHERE "
             + _generate_where_cond("a", src["pk"])
-            + "Match (b:"
+            + "MATCH (b:"
             + dst["main_label"]
             + ") WHERE  "
             + _generate_where_cond("b", dst["pk"])
-            + "return id(r) as id "
+            + "RETURN id(r) AS id"
         )
 
         idnode = tx.run(query).single()
