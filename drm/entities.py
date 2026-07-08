@@ -45,7 +45,7 @@ def assert_on_properties(
 class IndividuPadro(Node):
     existing_relations = ("nom",)
     be_value_properties = ("nom", "cognom1", "cognom2")
-    mandatory_properties = existing_relations
+    mandatory_properties = ("pk", *existing_relations)
 
     def __init__(self, ignore_assertion=False, **kwargs: Any) -> None:
         precondition, message = assert_on_properties(

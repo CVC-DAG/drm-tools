@@ -206,7 +206,7 @@ class XPPGraph(object):
 
     def checkNode(self, node: Node, **kwargs):
         inici = False
-        if Node is not None:
+        if node is not None:
             if self._tx is None:
                 self._tx = self._session.begin_transaction()
                 inici = True
@@ -417,7 +417,7 @@ class XPPGraph(object):
         query = (
             "Match (a:"
             + src["main_label"]
-            + ""
+            + " {"
             + _generate_where_cond("a", src["pk"], type="merge")
             + " }) "
             + "Merge (b:"

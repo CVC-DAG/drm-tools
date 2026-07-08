@@ -54,7 +54,7 @@ class Node(object):
         main_label: str = "",
         alternative_labels: Union[str, List[str]] = None,
         version: int = 5,
-        neo4j_id: int = None,
+        neo4j_id: int | None = None,
         **kwargs: Any
     ):
         # Definim les propietats
