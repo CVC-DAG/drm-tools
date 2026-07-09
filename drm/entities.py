@@ -21,13 +21,12 @@ def assert_on_properties(
         bool,
     ),
 ) -> Tuple[Bool, str]:
-    """
-    Precondition on node insertion: Asserts if a specified property isn't instance.
+    """Precondition on node insertion: asserts if a specified property isn't an instance.
 
-    Input:
-        args: dict of arguments for a certain entity
-        properties: iterable with properties to be asserted
-        entity: Entity we are checking out
+    Args:
+        args: dict of arguments for a certain entity.
+        properties: iterable with properties to be asserted.
+        entity: entity we are checking out.
         accepted_types: Tuple of accepted types* as property of object type Node or Relation.
                         * Makes no sense to accept non-hashable types.
 

@@ -163,4 +163,4 @@ cython_debug/
 
 
 # Connection configuration
-config.json
+config.jsontest/output/
