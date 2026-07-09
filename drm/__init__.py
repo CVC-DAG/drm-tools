@@ -1,3 +1,3 @@
 from .base import *
-from .xpp_graph import XPPGraph
+from .neo4j_graph import Neo4jGraph
 from .entities import *

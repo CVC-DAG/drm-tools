@@ -2,78 +2,29 @@ from typing import Any, Dict, List, Optional, Tuple, Union
 
 import sys
 import unittest
-from unittest import mock
 
 # Mock external dependencies before importing drm modules that depend on them
-mock_neo4j = mock.MagicMock()
+mock_neo4j = __import__('unittest.mock').mock.MagicMock()
 sys.modules["neo4j"] = mock_neo4j
 sys.modules["neo4j.exceptions"] = mock_neo4j.exceptions
-sys.modules["tqdm"] = mock.MagicMock()
-sys.modules["traitlets"] = mock.MagicMock()
+sys.modules["tqdm"] = __import__('unittest.mock').mock.MagicMock()
+sys.modules["traitlets"] = __import__('unittest.mock').mock.MagicMock()
 
-from drm.xpp_graph import XPPGraph
+from drm.neo4j_graph import Neo4jGraph
+from drm.mock_graph import MockGraph
 from drm.entities import *
 from drm.base import *
 
 
 # ---------------------------------------------------------------------------
-# Mock XPPGraph — intercepts all public methods without requiring Neo4j
+# Tests for Neo4jGraph (uses MockGraph in tests — no real database needed)
 # ---------------------------------------------------------------------------
 
-class MockXPPGraph:
-    """Mock XPPGraph that tracks operations without requiring a real Neo4j database."""
+class Neo4jGraphTest(unittest.TestCase):
+    """Tests for Neo4jGraph using MockGraph as the underlying store."""
 
-    def __init__(self, *args: Any, **kwargs: Any) -> None:
-        self._nodes: List[Dict[str, Any]] = []
-        self._relations: List[Dict[str, Any]] = []
-        self._node_counter: int = 0
-
-    def insertNode(
-        self,
-        node: Any,
-        insert_parent: bool = True,
-        update: bool = False,
-        replace: bool = False,
-        **kwargs: Any,
-    ) -> int:
-        self._node_counter += 1
-        self._nodes.append({
-            "node": node,
-            "insert_parent": insert_parent,
-            "update": update,
-            "replace": replace,
-        })
-        return self._node_counter
-
-    def insertRelation(
-        self,
-        rel: Any,
-        update: bool = False,
-        replace: bool = False,
-        **kwargs: Any,
-    ) -> int:
-        self._relations.append({
-            "src": rel["src"],
-            "dst": rel["dst"],
-            "type": rel["type"],
-            "update": update,
-            "replace": replace,
-        })
-        return 1
-
-    def close(self) -> None:
-        pass
-
-
-# ---------------------------------------------------------------------------
-# Tests for XPPGraph
-# ---------------------------------------------------------------------------
-
-class XPPGraphTest(unittest.TestCase):
-    """Tests for XPPGraph using a mock that tracks operations."""
-
-    def _make_graph(self) -> MockXPPGraph:
-        return MockXPPGraph()
+    def _make_graph(self) -> MockGraph:
+        return MockGraph()
 
     def test_update_node_pk_compost(self) -> None:
         """Test per validar la creacio de nodes amb pk compost."""
@@ -93,13 +44,15 @@ class XPPGraphTest(unittest.TestCase):
         graph = self._make_graph()
         up_a_1 = graph.insertNode(a, replace=True)
         up_b_1 = graph.insertNode(b, replace=False, update=True)
-        graph.close()
 
         self.assertIsInstance(up_a_1, int)
         self.assertGreaterEqual(up_a_1, 0)
         self.assertIsInstance(up_b_1, int)
         self.assertGreaterEqual(up_b_1, 0)
-        self.assertEqual(len(graph._nodes), 2)
+        # b has the same pk as a and replace=False, so it updates a in-place
+        self.assertEqual(len(graph.get_nodes()), 1)
+        self.assertEqual(graph.get_node_attrs(1).get("estat"), "actualitzat")
+        graph.close()
 
     def test_update_node_lloc_padro(self) -> None:
         """Test per validar la creacio de nodes LlocPadro."""
@@ -118,13 +71,15 @@ class XPPGraphTest(unittest.TestCase):
         graph = self._make_graph()
         up_a_1 = graph.insertNode(a, replace=True)
         up_b_1 = graph.insertNode(b, replace=False, update=True)
-        graph.close()
 
         self.assertIsInstance(up_a_1, int)
         self.assertGreaterEqual(up_a_1, 0)
         self.assertIsInstance(up_b_1, int)
         self.assertGreaterEqual(up_b_1, 0)
-        self.assertEqual(len(graph._nodes), 2)
+        # b has the same pk as a and replace=False, so it updates a in-place
+        self.assertEqual(len(graph.get_nodes()), 1)
+        self.assertEqual(graph.get_node_attrs(1).get("estat"), "actualitzat")
+        graph.close()
 
     def test_insert_individu_padro(self) -> None:
         """Test per validar la creacio de nodes IndividuPadro."""
@@ -139,7 +94,6 @@ class XPPGraphTest(unittest.TestCase):
         up_a = graph.insertNode(a, replace=True)
         up_b = graph.insertNode(b, replace=False, update=True)
         up_c = graph.insertNode(c, replace=False, update=False)
-        graph.close()
 
         self.assertIsInstance(up_a, int)
         self.assertIsInstance(up_b, int)
@@ -147,7 +101,8 @@ class XPPGraphTest(unittest.TestCase):
         self.assertGreaterEqual(up_a, 0)
         self.assertGreaterEqual(up_b, 0)
         self.assertGreaterEqual(up_c, 0)
-        self.assertEqual(len(graph._nodes), 3)
+        self.assertEqual(len(graph.get_nodes()), 3)
+        graph.close()
 
     def test_relation_creation(self) -> None:
         """Test per validar la creacio de relacions entre nodes."""
@@ -156,15 +111,14 @@ class XPPGraphTest(unittest.TestCase):
         rel = Relation(src, dst, "CONNECTS")
 
         graph = self._make_graph()
+        graph.insertNode(src, replace=True)
+        graph.insertNode(dst, replace=True)
         result = graph.insertRelation(rel)
-        graph.close()
 
-        self.assertIsInstance(result, int)
-        self.assertGreater(result, 0)
-        self.assertEqual(len(graph._relations), 1)
-        self.assertEqual(graph._relations[0]["type"], "CONNECTS")
-        self.assertEqual(graph._relations[0]["src"]["main_label"], "LlocPadro")
-        self.assertEqual(graph._relations[0]["dst"]["main_label"], "LlocPadro")
+        self.assertIsInstance(result, tuple)
+        self.assertEqual(len(graph.get_edges()), 1)
+        self.assertEqual(graph.get_edges()[0][2], "CONNECTS")
+        graph.close()
 
     def test_relation_src_dst_access(self) -> None:
         """Test que rel["src"] i rel["dst"] retornen el format esperat."""
@@ -218,6 +172,113 @@ class XPPGraphTest(unittest.TestCase):
         self.assertIn("value", attrs)
         self.assertEqual(attrs["name"], "test")
         self.assertEqual(attrs["value"], 42)
+
+    def test_mock_graph_get_node(self) -> None:
+        """Test que MockGraph pot recuperar nodes per id."""
+        node = Node(pk={"id": 1}, main_label="TestNode", name="test")
+        graph = self._make_graph()
+        node_id = graph.insertNode(node, replace=True)
+        retrieved = graph.get_node(node_id)
+        graph.close()
+
+        self.assertIsNotNone(retrieved)
+        self.assertEqual(retrieved.main_label, "TestNode")
+        self.assertEqual(retrieved.neo4j_id, node_id)
+
+    def test_mock_graph_get_edges(self) -> None:
+        """Test que MockGraph retorna les arestes correctament."""
+        src = Node(pk={"id": 1}, main_label="SrcNode")
+        dst = Node(pk={"id": 2}, main_label="DstNode")
+        rel = Relation(src, dst, "CONNECTS")
+
+        graph = self._make_graph()
+        graph.insertNode(src, replace=True)
+        graph.insertNode(dst, replace=True)
+        graph.insertRelation(rel)
+        edges = graph.get_edges()
+        graph.close()
+
+        self.assertEqual(len(edges), 1)
+        self.assertEqual(edges[0][2], "CONNECTS")
+
+    def test_mock_graph_delete_node(self) -> None:
+        """Test que MockGraph pot esborrar nodes."""
+        node = Node(pk={"id": 1}, main_label="TestNode")
+        graph = self._make_graph()
+        node_id = graph.insertNode(node, replace=True)
+        self.assertIn(node_id, graph.get_nodes())
+        result = graph.deleteNode(node, detach=True)
+        graph.close()
+
+        self.assertTrue(result)
+        self.assertNotIn(node_id, graph.get_nodes())
+
+    def test_mock_graph_check_node(self) -> None:
+        """Test que MockGraph pot verificar existencia de nodes."""
+        node = Node(pk={"id": 1}, main_label="TestNode")
+        graph = self._make_graph()
+        graph.insertNode(node, replace=True)
+        result = graph.checkNode(node)
+        graph.close()
+
+        self.assertIsNotNone(result)
+
+    def test_mock_graph_check_missing_node(self) -> None:
+        """Test que checkNode retorna None per a nodes inexistents."""
+        node = Node(pk={"id": 999}, main_label="NonExistent")
+        graph = self._make_graph()
+        result = graph.checkNode(node)
+        graph.close()
+
+        self.assertIsNone(result)
+
+    def test_mock_graph_bulk_create(self) -> None:
+        """Test que el mètode create importa nodes i relacions."""
+        nodes = [
+            Node(pk={"id": 1}, main_label="TestNode", name="a"),
+            Node(pk={"id": 2}, main_label="TestNode", name="b"),
+        ]
+        src = nodes[0]
+        dst = nodes[1]
+        rel = Relation(src, dst, "LINKS")
+        migration: Tuple[List, List] = ([nodes[0], nodes[1]], [rel])
+
+        graph = self._make_graph()
+        graph.create(migration)
+        edges = graph.get_edges()
+
+        self.assertEqual(len(graph.get_nodes()), 2)
+        self.assertEqual(len(edges), 1)
+        graph.close()
+
+    def test_mock_graph_node_attrs(self) -> None:
+        """Test que MockGraph guarda els atributs dels nodes."""
+        node = Node(pk={"id": 1}, main_label="TestNode", custom="value", count=42)
+        graph = self._make_graph()
+        node_id = graph.insertNode(node, replace=True)
+        attrs = graph.get_node_attrs(node_id)
+        graph.close()
+
+        self.assertIsNotNone(attrs)
+        self.assertEqual(attrs["custom"], "value")
+        self.assertEqual(attrs["count"], 42)
+
+    def test_mock_graph_edge_attrs(self) -> None:
+        """Test que MockGraph guarda els atributs de les arestes."""
+        src = Node(pk={"id": 1}, main_label="SrcNode")
+        dst = Node(pk={"id": 2}, main_label="DstNode")
+        rel = Relation(src, dst, "CONNECTS")
+        rel["weight"] = 10
+
+        graph = self._make_graph()
+        graph.insertNode(src, replace=True)
+        graph.insertNode(dst, replace=True)
+        graph.insertRelation(rel)
+        edge_attrs = graph.get_edge_attrs(1, 2, "CONNECTS")
+        graph.close()
+
+        self.assertIsNotNone(edge_attrs)
+        self.assertEqual(edge_attrs["weight"], 10)
 
 
 # ---------------------------------------------------------------------------

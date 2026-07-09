@@ -8,7 +8,7 @@ import warnings
 # TODO: Typing, qué retorna cada funció
 
 
-class XPPGraph(object):
+class Neo4jGraph(object):
     def __init__(
         self, url: str, user: str, password: str, database: str = None
     ) -> None:
