@@ -392,17 +392,28 @@ class WeakNode(Node):
         AssertionError: If ``parent`` is not a ``Node`` instance.
     """
 
-    def __init__(self, parent: Node, **kwargs: Any):
+    def __init__(self, **kwargs: Any):
         """Initialize a WeakNode tied to a parent node.
 
         Args:
-            parent: The parent ``Node``.
+            parent: The parent ``Node``. Required — must be passed as a
+                kwarg.
             **kwargs: Passed to :class:`Node.__init__` (``pk``,
                 ``main_label``, ``alternative_labels``,
                 ``parent_relation``, ``_propagate``, etc.).
+
+        Raises:
+            AssertionError: If ``parent`` is not provided or is not a
+                ``Node`` instance.
         """
+        parent = kwargs.pop("parent", None)
+        if parent is None:
+            raise ValueError(
+                "WeakNode requires a 'parent' argument. "
+                "Pass parent=<Node> to establish the parent-child relationship."
+            )
+        assert isinstance(parent, Node), "parent must be a Node"
         kwargs.pop("is_weak", None)
-        kwargs.pop("parent", None)
         super().__init__(is_weak=True, parent=parent, **kwargs)
 
 

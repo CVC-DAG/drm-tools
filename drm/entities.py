@@ -552,12 +552,7 @@ class Padro(WeakNode):
             al = ["DocumentCultural"]
 
         if precondition or ignore_assertion:
-            # Call Node.__init__ directly because the parent is provided
-            # via kwargs (as required by WeakNode.__init__), but we need
-            # to set main_label and alternative_labels before the parent
-            # relationship is established.
-            Node.__init__(
-                self,
+            super().__init__(
                 main_label="Padro",
                 pk=pk,
                 alternative_labels=al,
@@ -598,8 +593,7 @@ class Fotografia(WeakNode):
         al = kwargs.pop("alternative_labels", None)
 
         if precondition:
-            Node.__init__(
-                self,
+            super().__init__(
                 main_label="Fotografia",
                 pk=pk,
                 alternative_labels=al,
@@ -663,8 +657,7 @@ class RegioFisica(WeakNode):
             else:
                 al = ["layout"]
 
-            Node.__init__(
-                self,
+            super().__init__(
                 main_label=main_label,
                 pk=pk,
                 alternative_labels=al,
@@ -704,8 +697,7 @@ class OCRTranscript(WeakNode):
         else:
             al = ["semantic"]
 
-        Node.__init__(
-            self,
+        super().__init__(
             main_label=main_label,
             pk=pk,
             alternative_labels=al,
@@ -771,8 +763,7 @@ class BOE(WeakNode):
         pk = kwargs.pop("pk", None)
 
         if precondition:
-            Node.__init__(
-                self,
+            super().__init__(
                 main_label="BOE",
                 pk=pk,
                 alternative_labels="document",
@@ -781,8 +772,7 @@ class BOE(WeakNode):
         elif ignore_assertion:
             if "ruta" not in kwargs:
                 kwargs["ruta"] = "Camp obligatori sense dades"
-            Node.__init__(
-                self,
+            super().__init__(
                 main_label="BOE",
                 pk=pk,
                 alternative_labels="document",
