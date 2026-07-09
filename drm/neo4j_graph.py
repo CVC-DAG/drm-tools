@@ -22,10 +22,25 @@ class Neo4jGraph(object):
         #    0
         # ].PROTOCOL_VERSION[0]
         self._version = self._driver.get_server_info().protocol_version[0]
+        # FK index: neo4j_id → set of (other_id, rel_type, direction)
+        # direction: "out" = edge starts here, "in" = edge ends here
+        self._fk_index: Dict[int, Set[Tuple[int, str, str]]] = {}
 
     def deleteNode(
-        self, node: Node, propagation: bool = False, detach: bool = False
+        self,
+        node: Node,
+        propagation: bool = False,
+        detach: bool = False,
+        on_delete: str = "cascade",
     ) -> bool:
+        """Delete a node from the database.
+
+        ``on_delete`` controls FK behavior:
+
+        - ``"cascade"`` (default): ON DELETE CASCADE — delete connected edges
+        - ``"restrict"``: ON DELETE RESTRICT — refuse if edges exist
+        - ``"set_null"``: ON DELETE SET NULL — delete node, keep neighbors
+        """
         node.version = self._version
         propagation = True if detach else propagation
 
@@ -52,8 +67,29 @@ class Neo4jGraph(object):
                         detach=True,
                     )
 
-            res = self._delete_node(self._tx, node, detach=detach)
-            # return res
+            if on_delete == "set_null":
+                # ON DELETE SET NULL: delete node, remove edges, keep neighbors
+                if node.neo4j_id is not None:
+                    self._remove_from_fk_index(node.neo4j_id)
+                res = self._delete_node(self._tx, node, detach=False)
+            elif detach:
+                # ON DELETE CASCADE: recursively delete connected nodes first
+                if node.neo4j_id is not None:
+                    self._cascade_delete(self._tx, node)
+                    self._remove_from_fk_index(node.neo4j_id)
+                res = self._delete_node(self._tx, node, detach=detach)
+            else:
+                # ON DELETE RESTRICT: check if node has edges before deleting
+                if not self._has_no_edges(self._tx, node):
+                    raise RuntimeError(
+                        f"ON DELETE RESTRICT: node with pk={node.get('pk')} "
+                        f"label={node.get('main_label')} has connected edges. "
+                        f"Use detach=True or remove edges first."
+                    )
+                # Clean FK index before regular delete
+                if node.neo4j_id is not None:
+                    self._remove_from_fk_index(node.neo4j_id)
+                res = self._delete_node(self._tx, node, detach=False)
         except ConstraintError as err:
             print(f"[XPP Message]: {err.message}")
             return False
@@ -105,6 +141,11 @@ class Neo4jGraph(object):
                 id = self.checkNode(node)
                 if isinstance(id, int) and not isinstance(id, bool):
                     if replace:
+                        # ON UPDATE CASCADE: in Neo4j, edges reference nodes
+                        # by internal ID which never changes.  replace=True
+                        # deletes the node (with detach, cascading edges) and
+                        # creates a fresh one — the caller must recreate
+                        # relations if needed.
                         self.deleteNode(node, detach=True, propagation=True)
                         _trasa += "(1) esborra el node "
                 # id = self._session.write_transaction(self._create_node, node)
@@ -230,6 +271,103 @@ class Neo4jGraph(object):
         else:
             return False
 
+    def _resolve_neo4j_id(self, tx, node_data: Dict[str, Any]) -> Optional[int]:
+        """Look up the Neo4j internal id for a node by its label and primary key."""
+        pk = node_data.get("pk")
+        label = node_data.get("main_label")
+        if pk is None or label is None:
+            return None
+        result = tx.run(
+            "MATCH (n:"
+            + label
+            + ") WHERE "
+            + _generate_where_cond("n", pk)
+            + " RETURN id(n) AS nid"
+        ).single()
+        return result["nid"] if result else None
+
+    def _add_to_fk_index(self, src_id: int, dst_id: int, rel_type: str) -> None:
+        """Add a relation to the FK index."""
+        self._fk_index.setdefault(src_id, set()).add((dst_id, rel_type, "out"))
+        self._fk_index.setdefault(dst_id, set()).add((src_id, rel_type, "in"))
+
+    def _remove_from_fk_index(self, node_id: int) -> None:
+        """Remove all FK index entries for a given node."""
+        self._fk_index.pop(node_id, None)
+        for other_id in list(self._fk_index):
+            self._fk_index[other_id] = {
+                entry for entry in self._fk_index[other_id] if entry[0] != node_id
+            }
+            if not self._fk_index[other_id]:
+                del self._fk_index[other_id]
+
+    def _cascade_delete(self, tx, node: Node) -> None:
+        """ON DELETE CASCADE: delete all edges connected to the node.
+
+        Uses the FK index to find all edges connected to the node and removes them.
+        Neighbor nodes are left as standalone entities.
+        """
+        node_id = node.neo4j_id
+        if node_id is None:
+            return
+
+        # Find all connected nodes via the FK index
+        entries = self._fk_index.get(node_id, set()).copy()
+        for neighbor_id, rel_type, direction in entries:
+            # Delete the edge
+            if direction == "out":
+                edge_query = (
+                    "MATCH (a)-[r:" + rel_type + "]->(b) "
+                    "WHERE id(a) = " + str(node_id) + " AND id(b) = " + str(neighbor_id)
+                    + " DELETE r"
+                )
+            else:
+                edge_query = (
+                    "MATCH (a)-[r:" + rel_type + "]->(b) "
+                    "WHERE id(b) = " + str(node_id) + " AND id(a) = " + str(neighbor_id)
+                    + " DELETE r"
+                )
+            tx.run(edge_query)
+
+            # Clean FK index for neighbor
+            if neighbor_id in self._fk_index:
+                self._fk_index[neighbor_id] = {
+                    e for e in self._fk_index[neighbor_id]
+                    if e != (node_id, rel_type, "in" if direction == "out" else "out")
+                }
+                if not self._fk_index[neighbor_id]:
+                    del self._fk_index[neighbor_id]
+        self._fk_index.pop(node_id, None)
+
+    def _remove_from_fk_index_for_relation(self, tx, rel: Relation) -> None:
+        """Remove FK index entries for a specific relation."""
+        src_id = self._resolve_neo4j_id(tx, rel["src"])
+        dst_id = self._resolve_neo4j_id(tx, rel["dst"])
+        rel_type = rel["type"]
+        if src_id is not None:
+            self._fk_index[src_id] = {
+                entry for entry in self._fk_index.get(src_id, set())
+                if entry != (dst_id, rel_type, "out")
+            }
+            if not self._fk_index[src_id]:
+                del self._fk_index[src_id]
+        if dst_id is not None:
+            self._fk_index[dst_id] = {
+                entry for entry in self._fk_index.get(dst_id, set())
+                if entry != (src_id, rel_type, "in")
+            }
+            if not self._fk_index[dst_id]:
+                del self._fk_index[dst_id]
+
+    def _update_fk_index_for_relation(self, tx, rel: Relation) -> None:
+        """Look up node IDs and add the relation to the FK index."""
+        src_id = self._resolve_neo4j_id(tx, rel["src"])
+        dst_id = self._resolve_neo4j_id(tx, rel["dst"])
+        if src_id is not None:
+            self._add_to_fk_index(src_id, dst_id or 0, rel["type"])
+        if dst_id is not None:
+            self._add_to_fk_index(src_id or 0, dst_id, rel["type"])
+
     @staticmethod
     def _validate_fk(tx, node_data: Dict[str, Any], label: str) -> bool:
         """Verify that a node referenced by a relation exists in the database.
@@ -290,15 +428,21 @@ class Neo4jGraph(object):
             if update:
                 # return self._session.write_transaction(self._update_relation,rel )
                 id = self._update_relation(self._tx, rel)
+                # Update FK index after upsert
+                self._update_fk_index_for_relation(self._tx, rel)
             else:
                 # id = self._session.read_transaction(self._check_relation, rel['src'],rel['dst'],rel['type'])
                 id = self._check_relation(self._tx, rel["src"], rel["dst"], rel["type"])
                 if isinstance(id, int) and not isinstance(id, bool):
                     if replace:
+                        # Remove old FK index entries before deleting
+                        self._remove_from_fk_index_for_relation(self._tx, rel)
                         # self._session.write_transaction(self._delete_relation,rel)
                         self._delete_relation(self._tx, rel)
                 # return self._session.write_transaction(self._create_relation,rel )
                 id = self._create_relation(self._tx, rel)
+                # Add FK index entries after create
+                self._update_fk_index_for_relation(self._tx, rel)
         except ConstraintError as err:
             print("[XPP Message]: " + err.message)
             raise
@@ -330,6 +474,7 @@ class Neo4jGraph(object):
             if not self._tx.closed():
                 self._tx.close()
                 self._tx = None
+        self._fk_index.clear()
         self._driver.close()
 
     @staticmethod
@@ -512,6 +657,27 @@ class Neo4jGraph(object):
         except ConstraintError as err:
             print("[ADGT Message]: " + err.message)
             pass
+
+    @staticmethod
+    def _has_no_edges(tx, node: Node) -> bool:
+        """Check if a node has no connected edges (for ON DELETE RESTRICT)."""
+        neo4j_id = node.neo4j_id
+        if neo4j_id is not None:
+            query = (
+                "MATCH (n) WHERE id(n) = "
+                + str(neo4j_id)
+                + " RETURN count{(n)-[]-()} = 0 AS has_no_edges"
+            )
+        else:
+            main_label = "" if node.main_label == "" else ":" + node.main_label
+            query = (
+                "MATCH (a"
+                + main_label
+                + ") WHERE "
+                + _generate_where_cond("a", node["pk"])
+                + " RETURN count{(a)-[]-()} = 0 AS has_no_edges"
+            )
+        return tx.run(query).single()["has_no_edges"]
 
     @staticmethod
     def _get_propagated_nodes(tx, node: Node):

@@ -3,3 +3,4 @@ networkx
 matplotlib
 neo4j
 tqdm
+graphviz
