@@ -71,6 +71,16 @@ class MockGraph:
     ) -> int:
         """Insert a relation (directed edge) between two nodes.
 
+        Mirrors Neo4jGraph.insertRelation semantics:
+
+        - ``update=True``: MERGE + SET — adds/updates attributes without
+          deleting the relation.
+        - ``update=False`` + ``replace=True``: deletes the existing
+          relation and creates a fresh one.
+        - ``update=False`` + ``replace=False``: creates a new relation.
+          If one with the same src/dst/type already exists, raises
+          ``RuntimeError`` (duplicate key).
+
         Returns the internal edge identifier (u, v, key).
         """
         # Resolve src/dst ids: prefer neo4j_id, fall back to pk lookup
@@ -84,6 +94,28 @@ class MockGraph:
             )
 
         edge_key = rel["type"]
+        exists = self._graph.has_edge(src_id, dst_id, key=edge_key)
+
+        if exists:
+            if replace:
+                # Delete existing relation and create fresh
+                self._graph.remove_edge(src_id, dst_id, key=edge_key)
+                if (src_id, dst_id, edge_key) in self._edge_attrs:
+                    del self._edge_attrs[(src_id, dst_id, edge_key)]
+            elif update:
+                # MERGE + SET: update attributes of existing relation
+                attrs = rel["attributes"] if rel["attributes"] is not None else {}
+                self._edge_attrs[(src_id, dst_id, edge_key)].update(attrs)
+                return (src_id, dst_id, edge_key)
+            else:
+                # Duplicate key — same as Neo4j ConstraintError
+                raise RuntimeError(
+                    f"Duplicate relation: ({src_id})-[{edge_key}]->({dst_id}) "
+                    f"already exists. Use replace=True to overwrite or "
+                    f"update=True to merge attributes."
+                )
+
+        # Create new relation
         self._graph.add_edge(src_id, dst_id, key=edge_key, rel_type=rel["type"])
         attrs = rel["attributes"] if rel["attributes"] is not None else {}
         self._edge_attrs[(src_id, dst_id, edge_key)] = attrs
