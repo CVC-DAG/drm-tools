@@ -129,9 +129,9 @@ class Neo4jRealTest(unittest.TestCase):
 
     def test_insert_individu_padro(self) -> None:
         """Test per validar la creacio de nodes IndividuPadro."""
-        ind_1: dict = {"nom": "Oriol", "cognom1": "Ramos", "edat": 18}
-        ind_2: dict = {"nom": "Sergio", "cognom1": "Ramos", "ofici": "fuster"}
-        ind_3: dict = {"nom": "Pere", "cognom1": "Fuster", "edat": "50"}
+        ind_1: dict = {"pk": 1, "nom": "Oriol", "cognom1": "Ramos", "edat": 18}
+        ind_2: dict = {"pk": 2, "nom": "Sergio", "cognom1": "Ramos", "ofici": "fuster"}
+        ind_3: dict = {"pk": 3, "nom": "Pere", "cognom1": "Fuster", "edat": "50"}
         a = IndividuPadro(**ind_1, alternative_labels="TEST")
         b = IndividuPadro(**ind_2, alternative_labels="TEST")
         c = IndividuPadro(**ind_3, alternative_labels="TEST")

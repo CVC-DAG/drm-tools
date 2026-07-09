@@ -56,15 +56,21 @@ class Neo4jGraph(object):
                 nodeList = self._get_propagated_nodes(self._tx, node)
                 # if nodeList is []:
                 #    self._session.write_transaction(self._delete_node, node,detach=detach)
-                for a in nodeList:
+                for child in nodeList:
                     self.deleteNode(
                         Node(
-                            neo4j_id=a[0]._id,
-                            alternative_labels=list(a[0]._labels),
-                            **a[0]._properties,
+                            neo4j_id=child[0]._id,
+                            alternative_labels=list(child[0]._labels),
+                            **child[0]._properties,
                         ),
                         propagation=propagation,
                         detach=True,
+                    )
+                # After deleting children, remove any remaining outgoing edges
+                if node.neo4j_id is not None:
+                    self._tx.run(
+                        "MATCH (a)-[r]->(b) WHERE id(a)="
+                        + str(node.neo4j_id) + " DELETE r"
                     )
 
             if on_delete == "set_null":
@@ -79,13 +85,15 @@ class Neo4jGraph(object):
                     self._remove_from_fk_index(node.neo4j_id)
                 res = self._delete_node(self._tx, node, detach=detach)
             else:
-                # ON DELETE RESTRICT: check if node has edges before deleting
+                # ON DELETE RESTRICT: check if node has children (WeakNode) before deleting
+                # propagation=False means we refuse to delete if the node has children
+                if propagation is False and node.neo4j_id is not None:
+                    children = self._get_propagated_nodes(self._tx, node)
+                    if children:
+                        return False
+                # Also check for any edges (FK violations) — refuse to delete
                 if not self._has_no_edges(self._tx, node):
-                    raise RuntimeError(
-                        f"ON DELETE RESTRICT: node with pk={node.get('pk')} "
-                        f"label={node.get('main_label')} has connected edges. "
-                        f"Use detach=True or remove edges first."
-                    )
+                    return False
                 # Clean FK index before regular delete
                 if node.neo4j_id is not None:
                     self._remove_from_fk_index(node.neo4j_id)
@@ -169,7 +177,7 @@ class Neo4jGraph(object):
                         node["parent"],
                         node,
                         node["parent_relation"],
-                        propagate=node["propagate"],
+                        propagate=True,
                     ),
                     update=True,
                     replace=False,
@@ -496,7 +504,7 @@ class Neo4jGraph(object):
             )
         else:
             query = (
-                "MATCH (a) WHERE id(a) = " + str(neo4j_id) + detach_text + "DELETE a"
+                "MATCH (a) WHERE id(a) = " + str(neo4j_id) + " " + detach_text + "DELETE a"
             )
 
         result = tx.run(query).values()
@@ -681,6 +689,10 @@ class Neo4jGraph(object):
 
     @staticmethod
     def _get_propagated_nodes(tx, node: Node):
+        """Get child nodes that should be deleted when this node is deleted.
+
+        Matches edges where r._propagate=TRUE (set on WeakNode relations).
+        """
         neo4j_id = node.neo4j_id
         if neo4j_id is None:
             main_label = "" if node.main_label == "" else ":" + node.main_label
