@@ -66,6 +66,9 @@ class Node(object):
     key is merged with the parent's key to form a composite key, and a typed
     edge is created when the node is inserted into a graph store.
 
+    A node **must** have either a ``pk`` or a ``neo4j_id`` (or both).
+    Creating a node without either raises ``ValueError``.
+
     Args:
         pk: Primary key — an int is converted to ``{"id": pk}``, a dict is used
             as-is.  Must be provided unless ``neo4j_id`` is given.
@@ -77,6 +80,10 @@ class Node(object):
         **kwargs: Arbitrary additional attributes stored on the node.
             Special kwargs: ``parent`` (Node), ``parent_relation`` (str),
             ``is_weak`` (bool), ``_propagate`` (bool), ``dependencies``.
+
+    Raises:
+        ValueError: If neither ``pk`` nor ``neo4j_id`` is provided.
+        TypeError: If ``pk`` is neither an ``int`` nor a ``dict``.
     """
 
     def __init__(
