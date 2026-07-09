@@ -369,15 +369,73 @@ class Relation(object):
 
 
 class WeakNode(Node):
+    """A node whose identity is tied to its parent node.
+
+    WeakNodes form a parent-child hierarchy where the child's primary
+    key is **merged** with the parent's key to produce a composite key.
+    This models document structures such as *Document → Section → Page*
+    where a child cannot exist without its parent.
+
+    When a WeakNode is inserted into a graph store, a typed edge
+    (``WeakRelation``) is automatically created linking the parent to
+    the child.  This edge carries the ``_propagate=TRUE`` flag, which
+    triggers cascade delete: deleting the parent automatically deletes
+    all descendants in the hierarchy.
+
+    Args:
+        parent: The parent ``Node``. Must not be None.
+        **kwargs: Forwarded to :class:`Node.__init__`.  Common kwargs
+            include ``pk`` (child's primary key), ``main_label``,
+            ``alternative_labels``, ``parent_relation`` (default
+            ``"HAS"``), and ``_propagate``.
+
+    Raises:
+        AssertionError: If ``parent`` is not a ``Node`` instance.
+    """
+
     def __init__(self, parent: Node, **kwargs: Any):
+        """Initialize a WeakNode tied to a parent node.
+
+        Args:
+            parent: The parent ``Node``.
+            **kwargs: Passed to :class:`Node.__init__` (``pk``,
+                ``main_label``, ``alternative_labels``,
+                ``parent_relation``, ``_propagate``, etc.).
+        """
         kwargs.pop("is_weak", None)
         kwargs.pop("parent", None)
         super().__init__(is_weak=True, parent=parent, **kwargs)
 
 
 class WeakRelation(Relation):
+    """A typed edge connecting a parent node to its child (WeakNode).
+
+    WeakRelations are automatically created when a WeakNode is inserted.
+    They carry the ``_propagate=TRUE`` flag, which signals to the graph
+    store that deleting the parent should cascade to the child node.
+
+    Args:
+        src: Source (parent) node.
+        dst: Destination (child / WeakNode).
+        type: Relation type (e.g. ``"HAS_PAGE"``, ``"CONTAINS"``).
+        **kwargs: Edge properties.  The ``propagate`` kwarg controls
+            whether the ``_propagate`` flag is set (default ``True``).
+
+    Attributes:
+        _propagate: Always ``True`` by default.  Indicates that deleting
+            the source node should cascade delete to the destination node.
+    """
+
     def __init__(self, src: Node, dst: Node, type: str, **kwargs: Any):
-        # kwargs.pop('propagate', True)
+        """Initialize a WeakRelation with cascade propagation.
+
+        Args:
+            src: Source (parent) node.
+            dst: Destination (child) node.
+            type: Relation type.
+            propagate: If True (default), the edge carries the
+                ``_propagate=TRUE`` flag for cascade delete.
+        """
         super().__init__(
             src, dst, type, _propagate=kwargs.pop("propagate", True), **kwargs
         )
