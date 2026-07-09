@@ -88,9 +88,18 @@ class MockGraph:
         dst_id = self._resolve_node_id(rel["dst"])
 
         if src_id is None or dst_id is None:
+            missing = []
+            if src_id is None:
+                src_pk = rel["src"].get("pk", "?")
+                src_label = rel["src"].get("main_label", "?")
+                missing.append(f"src(pk={src_pk}, label={src_label})")
+            if dst_id is None:
+                dst_pk = rel["dst"].get("pk", "?")
+                dst_label = rel["dst"].get("main_label", "?")
+                missing.append(f"dst(pk={dst_pk}, label={dst_label})")
             raise RuntimeError(
-                f"Cannot resolve node ids: src={src_id}, dst={dst_id}. "
-                f"Ensure src and dst nodes have been inserted first."
+                f"FK violation: node(s) not found: {', '.join(missing)}. "
+                f"Insert them before creating the relation."
             )
 
         edge_key = rel["type"]

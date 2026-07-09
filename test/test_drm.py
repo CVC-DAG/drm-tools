@@ -120,6 +120,52 @@ class Neo4jGraphTest(unittest.TestCase):
         self.assertEqual(graph.get_edges()[0][2], "CONNECTS")
         graph.close()
 
+    def test_relation_fk_violation_src_missing(self) -> None:
+        """Test que crear una relació amb src no inserit llança RuntimeError."""
+        src = Node(pk={"nom": "Missing"}, main_label="LlocPadro")
+        dst = Node(pk={"nom": "NodeB"}, main_label="LlocPadro")
+        rel = Relation(src, dst, "CONNECTS")
+
+        graph = self._make_graph()
+        graph.insertNode(dst, replace=True)
+        # No inserim src
+
+        with self.assertRaises(RuntimeError) as ctx:
+            graph.insertRelation(rel)
+        self.assertIn("FK violation", str(ctx.exception))
+        self.assertIn("src", str(ctx.exception))
+        graph.close()
+
+    def test_relation_fk_violation_dst_missing(self) -> None:
+        """Test que crear una relació amb dst no inserit llança RuntimeError."""
+        src = Node(pk={"nom": "NodeA"}, main_label="LlocPadro")
+        dst = Node(pk={"nom": "Missing"}, main_label="LlocPadro")
+        rel = Relation(src, dst, "CONNECTS")
+
+        graph = self._make_graph()
+        graph.insertNode(src, replace=True)
+        # No inserim dst
+
+        with self.assertRaises(RuntimeError) as ctx:
+            graph.insertRelation(rel)
+        self.assertIn("FK violation", str(ctx.exception))
+        self.assertIn("dst", str(ctx.exception))
+        graph.close()
+
+    def test_relation_fk_violation_both_missing(self) -> None:
+        """Test que crear una relació amb ambdós nodes no inserits llança RuntimeError."""
+        src = Node(pk={"nom": "MissingA"}, main_label="LlocPadro")
+        dst = Node(pk={"nom": "MissingB"}, main_label="LlocPadro")
+        rel = Relation(src, dst, "CONNECTS")
+
+        graph = self._make_graph()
+
+        with self.assertRaises(RuntimeError) as ctx:
+            graph.insertRelation(rel)
+        self.assertIn("FK violation", str(ctx.exception))
+        self.assertIn("src", str(ctx.exception))
+        graph.close()
+
     def test_relation_src_dst_access(self) -> None:
         """Test que rel["src"] i rel["dst"] retornen el format esperat."""
         src = Node(pk={"id": 1}, main_label="TestNode")

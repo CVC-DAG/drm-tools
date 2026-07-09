@@ -230,6 +230,28 @@ class Neo4jGraph(object):
         else:
             return False
 
+    @staticmethod
+    def _validate_fk(tx, node_data: Dict[str, Any], label: str) -> bool:
+        """Verify that a node referenced by a relation exists in the database.
+
+        This enforces foreign-key consistency: a relation can only connect
+        nodes that already exist.  Mirrors the relational constraint
+        ``ON DELETE RESTRICT`` / ``ON UPDATE CASCADE`` for graph edges.
+
+        Returns True if the node exists, False otherwise.
+        """
+        if node_data.get("pk") is None:
+            return False
+        if node_data.get("main_label") is None:
+            return False
+        return tx.run(
+            "MATCH (n:"
+            + node_data["main_label"]
+            + ") WHERE "
+            + _generate_where_cond("n", node_data["pk"])
+            + " RETURN count(n) > 0 AS found"
+        ).single()["found"]
+
     def insertRelation(
         self, rel: Relation, update: bool = False, replace: bool = False, **kwargs
     ) -> str:
@@ -241,12 +263,28 @@ class Neo4jGraph(object):
         :param replace:  set to True if an existing relation must  be replaced by 'rel'.
 
         :return: the Neo4j id of the inserted relation
+
+        :raises RuntimeError: if src or dst nodes do not exist (FK violation).
         """
         inici = False
 
         if self._tx is None:
             self._tx = self._session.begin_transaction()
             inici = True
+
+        # FK validation: both endpoints must exist before creating the edge
+        src_exists = self._validate_fk(self._tx, rel["src"], "src")
+        dst_exists = self._validate_fk(self._tx, rel["dst"], "dst")
+        if not src_exists:
+            raise RuntimeError(
+                f"FK violation: src node with pk={rel['src'].get('pk')} "
+                f"and main_label={rel['src'].get('main_label')} does not exist."
+            )
+        if not dst_exists:
+            raise RuntimeError(
+                f"FK violation: dst node with pk={rel['dst'].get('pk')} "
+                f"and main_label={rel['dst'].get('main_label')} does not exist."
+            )
 
         try:
             if update:
