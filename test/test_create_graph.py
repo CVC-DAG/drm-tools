@@ -32,6 +32,23 @@ def _get_config() -> dict:
     return {"url": url, "user": user, "password": password, "database": database}
 
 
+def _cleanup_graph(graph: Neo4jGraph) -> None:
+    """Delete all test-created nodes before running a test.
+
+    Removes every node in the graph (by neo4j_id) with DETACH DELETE
+    so that each test starts from a clean slate.
+    """
+    # Delete all nodes regardless of label
+    graph._tx = graph._session.begin_transaction()
+    try:
+        graph._tx.run("MATCH (n) DETACH DELETE n")
+        graph._tx.commit()
+    except Exception:
+        graph._tx.rollback()
+    finally:
+        graph._tx = None
+
+
 class ADGTTest(unittest.TestCase):
     """Tests d'integració amb Neo4j per a creació de nodes i relacions."""
 
@@ -47,6 +64,8 @@ class ADGTTest(unittest.TestCase):
             password=config["password"],
             database=config.get("database"),
         )
+
+        _cleanup_graph(Connection)
 
         r = Node(pk=0, main_label='test', type='text',
                  boundingbox=[0, 0, 1, 0, 1, 0, 1, 1, 1, 0])
@@ -67,6 +86,8 @@ class ADGTTest(unittest.TestCase):
             database=config.get("database"),
         )
 
+        _cleanup_graph(Connection)
+
         r = Node(pk=1, main_label='test', alternative_labels=['prova'], type='text',
                  boundingbox=[0, 0, 1, 0, 1, 1, 1, 0])
         Connection.insertNode(r, replace=True)
@@ -85,6 +106,8 @@ class ADGTTest(unittest.TestCase):
             password=config["password"],
             database=config.get("database"),
         )
+
+        _cleanup_graph(Connection)
 
         r = [
             Node({'name': 'hello', 'id': 0}, main_label='test_2',
@@ -114,10 +137,16 @@ class ADGTTest(unittest.TestCase):
             database=config.get("database"),
         )
 
+        _cleanup_graph(Connection)
+
         a = Node(pk=0, main_label='test', type='text',
                  boundingbox=[0, 0, 1, 0, 1, 1, 1, 0])
         b = Node(pk=1, main_label='test', type='text',
                  boundingbox=[0, 0, 1, 0, 1, 1, 1, 0])
+
+        # Insert nodes before creating the relation
+        Connection.insertNode(a, replace=True)
+        Connection.insertNode(b, replace=True)
 
         r = Relation(a, b, 'test')
         Connection.insertRelation(r, replace=True)
@@ -137,13 +166,12 @@ class ADGTTest(unittest.TestCase):
             database=config.get("database"),
         )
 
+        _cleanup_graph(Connection)
+
         a = Node(pk=0, main_label='strong', alternative_labels='prova',
                  type='text', boundingbox=[0, 0, 1, 0, 1, 1, 1, 0])
         b = WeakNode(a, pk=0, main_label='weak_1', alternative_labels='prova',
                      type='text')
-
-        # Delete any existing node first
-        Connection.deleteNode(a, detach=True)
 
         # Try to insert weak node without inserting parent first
         ins_b_1 = False
@@ -168,6 +196,8 @@ class ADGTTest(unittest.TestCase):
             database=config.get("database"),
         )
 
+        _cleanup_graph(Connection)
+
         a = Node(pk=0, main_label='strong', alternative_labels='prova',
                  type='text', boundingbox=[0, 0, 1, 0, 1, 1, 1, 0])
         b = WeakNode(a, pk=0, main_label='weak_1', alternative_labels='prova',
@@ -176,9 +206,6 @@ class ADGTTest(unittest.TestCase):
                      type='text', parent_relation='IS')
         d = WeakNode(c, pk=0, main_label='weak_3', alternative_labels='prova',
                      type='text', parent_relation='CONTAINS')
-
-        # Delete any existing nodes first
-        Connection.deleteNode(a, detach=True)
 
         # Try to insert deep weak node without parents (should fail)
         ins_c_1 = False
@@ -209,6 +236,8 @@ class ADGTTest(unittest.TestCase):
             password=config["password"],
             database=config.get("database"),
         )
+
+        _cleanup_graph(Connection)
 
         a = Node(pk=0, main_label='strong', alternative_labels='prova',
                  type='text', boundingbox=[0, 0, 1, 0, 1, 1, 1, 0])
@@ -255,6 +284,8 @@ class ADGTTest(unittest.TestCase):
             database=config.get("database"),
         )
 
+        _cleanup_graph(Connection)
+
         # First insert the weak node chain (as original test did)
         a_chain = Node(pk=0, main_label='strong', alternative_labels='prova',
                        type='text', boundingbox=[0, 0, 1, 0, 1, 1, 1, 0])
@@ -287,6 +318,8 @@ class ADGTTest(unittest.TestCase):
             password=config["password"],
             database=config.get("database"),
         )
+
+        _cleanup_graph(Connection)
 
         # Primer creo node
         a = Node(pk={'nom': 'Caldes dEstrac', 'any': 1905}, main_label='Municipi',
