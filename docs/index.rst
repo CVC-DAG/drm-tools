@@ -6,9 +6,12 @@ document representation using Neo4j or an in-memory NetworkX backend.
 
 .. toctree::
    :maxdepth: 2
-   :caption: Modules:
+   :caption: Contents:
 
-   modules
+   api/base
+   api/entities
+   api/neo4j_graph
+   api/mock_graph
 
 Features
 --------
@@ -25,7 +28,16 @@ Features
   dangling references.
 - **ON DELETE strategies**: CASCADE, RESTRICT, SET NULL.
 
-Quick start
+Installation
+------------
+
+Install the package in development mode:
+
+.. code-block:: bash
+
+    pip install -e .
+
+Quick Start
 -----------
 
 .. code-block:: python
@@ -64,30 +76,39 @@ For the in-memory backend:
     print(graph.get_nodes())  # {1}
     graph.close()
 
-API Reference
+Configuration
 -------------
 
-.. automodule:: drm
-   :members:
-   :member-order: bysource
-   :show-inheritance:
+Create a ``.env`` file with your Neo4j credentials:
 
-.. automodule:: drm.base
-   :members:
-   :member-order: bysource
-   :show-inheritance:
+.. code-block:: ini
 
-.. automodule:: drm.entities
-   :members:
-   :member-order: bysource
-   :show-inheritance:
+    NEO4J_URL=bolt://localhost:7687
+    NEO4J_USER=neo4j
+    NEO4J_PASSWORD=your_password
+    NEO4J_DATABASE=mydb
 
-.. automodule:: drm.neo4j_graph
-   :members:
-   :member-order: bysource
-   :show-inheritance:
+Running Tests
+-------------
 
-.. automodule:: drm.mock_graph
-   :members:
-   :member-order: bysource
-   :show-inheritance:
+Run the test suite with pytest:
+
+.. code-block:: bash
+
+    python -m pytest test/ -v
+
+Building Documentation
+----------------------
+
+Generate the HTML documentation with Sphinx:
+
+.. code-block:: bash
+
+    cd docs
+    sphinx-build -b html . _build/html
+
+Or use the virtual environment:
+
+.. code-block:: bash
+
+    .venv/bin/sphinx-build -b html docs/ docs/_build/html/
