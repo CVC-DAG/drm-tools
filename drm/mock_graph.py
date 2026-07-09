@@ -237,16 +237,30 @@ class MockGraph:
         update: bool = False,
         replace: bool = False,
     ) -> int:
-        """Ensure the node exists, returning its id."""
+        """Ensure the node exists, returning its id.
+
+        Mirrors Neo4jGraph._insertNode semantics:
+
+        - ``update=True``: MERGE + SET — adds/updates attributes without
+          deleting the node.  The node keeps its existing id.
+        - ``update=False`` + ``replace=True``: deletes the existing node
+          (detach) and creates a fresh one with a new id.
+        - ``update=False`` + ``replace=False``: tries to CREATE a new
+          node.  If a node with the same PK already exists this is a
+          duplicate-key error (raises ``RuntimeError``).
+        """
         existing = self.checkNode(node)
+
         if existing is not None:
+            # Node already exists
             if replace:
+                # Delete and create a fresh node (new id)
                 self._graph.remove_node(existing)
                 del self._node_attrs[existing]
                 self._node_counter += 1
                 node_id = self._node_counter
             elif update:
-                # Update attributes in-place
+                # MERGE + SET: merge attributes into existing node
                 node_id = existing
                 pk, attributes = node.attributes
                 props = attributes if pk is None else {**pk, **attributes}
@@ -255,8 +269,14 @@ class MockGraph:
                 node.neo4j_id = node_id
                 return node_id
             else:
-                return existing
+                # Duplicate key — same as Neo4j ConstraintError
+                raise RuntimeError(
+                    f"Duplicate key: node with pk={node._primary_key} "
+                    f"and main_label={node.main_label} already exists (id={existing}). "
+                    f"Use replace=True to overwrite or update=True to merge attributes."
+                )
         else:
+            # Node does not exist — create fresh
             self._node_counter += 1
             node_id = self._node_counter
 

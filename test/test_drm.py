@@ -280,6 +280,52 @@ class Neo4jGraphTest(unittest.TestCase):
         self.assertIsNotNone(edge_attrs)
         self.assertEqual(edge_attrs["weight"], 10)
 
+    def test_mock_graph_update_merges_attributes(self) -> None:
+        """Test que update=True fusiona atributs sense esborrar el node."""
+        node_a = Node(pk={"id": 1}, main_label="TestNode", name="original", count=1)
+        node_b = Node(pk={"id": 1}, main_label="TestNode", name="updated", extra="data")
+
+        graph = self._make_graph()
+        id_a = graph.insertNode(node_a, replace=True)
+        id_b = graph.insertNode(node_b, update=True)
+
+        self.assertEqual(id_a, id_b)
+        self.assertEqual(len(graph.get_nodes()), 1)
+        attrs = graph.get_node_attrs(id_a)
+        self.assertEqual(attrs["name"], "updated")
+        self.assertEqual(attrs["extra"], "data")
+        self.assertEqual(attrs["count"], 1)
+        graph.close()
+
+    def test_mock_graph_replace_creates_new_node(self) -> None:
+        """Test que replace=True esborra i crea un node nou amb id diferent."""
+        node_a = Node(pk={"id": 1}, main_label="TestNode", name="old", count=1)
+        node_b = Node(pk={"id": 1}, main_label="TestNode", name="new", count=99)
+
+        graph = self._make_graph()
+        id_a = graph.insertNode(node_a, replace=True)
+        id_b = graph.insertNode(node_b, replace=True)
+
+        self.assertNotEqual(id_a, id_b)
+        self.assertEqual(len(graph.get_nodes()), 1)
+        attrs = graph.get_node_attrs(id_b)
+        self.assertEqual(attrs["name"], "new")
+        self.assertEqual(attrs["count"], 99)
+        graph.close()
+
+    def test_mock_graph_duplicate_key_raises(self) -> None:
+        """Test que update=False + replace=False amb pk existent llança RuntimeError."""
+        node_a = Node(pk={"id": 1}, main_label="TestNode", name="first")
+        node_b = Node(pk={"id": 1}, main_label="TestNode", name="second")
+
+        graph = self._make_graph()
+        graph.insertNode(node_a, replace=True)
+
+        with self.assertRaises(RuntimeError) as ctx:
+            graph.insertNode(node_b, update=False, replace=False)
+        self.assertIn("Duplicate key", str(ctx.exception))
+        graph.close()
+
 
 # ---------------------------------------------------------------------------
 # Tests for base.py classes
