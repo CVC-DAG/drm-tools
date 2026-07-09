@@ -1,3 +1,9 @@
+"""Neo4jGraph — Full Neo4j driver integration layer for the DRM graph model.
+
+Provides graph operations (insert, update, delete nodes and relations)
+with FK validation, cascade delete, and WeakNode parent propagation.
+"""
+
 from neo4j import GraphDatabase
 from neo4j.exceptions import ConstraintError, TransactionError
 from . import Node, Relation, WeakRelation
@@ -9,6 +15,31 @@ import warnings
 
 
 class Neo4jGraph(object):
+    """Neo4j-backed graph store for the DRM document representation model.
+
+    This class wraps the Neo4j Python driver and provides high-level
+    operations for managing graph nodes and relations with foreign key
+    validation, cascade delete strategies (CASCADE, RESTRICT, SET NULL),
+    and WeakNode parent-child propagation.
+
+    Example:
+        >>> graph = Neo4jGraph(
+        ...     url="bolt://localhost:7687",
+        ...     user="neo4j",
+        ...     password="secret",
+        ...     database="mydb",
+        ... )
+        >>> doc = Node(pk={"doc": "DOC-001"}, main_label="Document")
+        >>> graph.insertNode(doc, replace=True)
+        >>> graph.close()
+
+    Args:
+        url: Neo4j connection URL (e.g. ``bolt://localhost:7687``).
+        user: Authentication username.
+        password: Authentication password.
+        database: Target database name. Defaults to the Neo4j default.
+    """
+
     def __init__(
         self, url: str, user: str, password: str, database: str = None
     ) -> None:

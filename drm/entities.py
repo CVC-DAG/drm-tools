@@ -1,3 +1,10 @@
+"""Semantic entity definitions for the DRM graph model.
+
+This module defines domain-specific node types (IndividuPadro, LlocPadro,
+Fotografia, etc.) that extend the base Node class with validation,
+default labels, and relationship configuration.
+"""
+
 from traitlets import Bool
 from .base import Node, Relation, WeakNode
 from typing import *

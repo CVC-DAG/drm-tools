@@ -1,3 +1,11 @@
+"""Core data structures: Node, Relation, WeakNode, WeakRelation.
+
+These classes represent the graph primitives used by both Neo4jGraph
+and MockGraph.  Nodes carry a primary key (``pk``), a main label,
+optional alternative labels, and optional parent relationships for
+WeakNode hierarchies.  Relations connect two nodes with a typed edge.
+"""
+
 from typing import *
 
 # TODO: Typing, qué retorna cada funció
@@ -48,6 +56,29 @@ def _setNodePK(value):
 
 # TODO: Cal modificar el codi per quan es posi src['pk'] retorni la pk en funció de la versió del Neo4j, on src és un node
 class Node(object):
+    """A graph node with a primary key, labels, and optional parent.
+
+    Nodes are the fundamental building blocks of the DRM graph.  Each node
+    has a ``main_label`` (the primary Cypher label), optional ``alternative_labels``,
+    and a ``pk`` (primary key) that uniquely identifies it within its label.
+
+    When a ``parent`` is provided the node becomes a **WeakNode**: its primary
+    key is merged with the parent's key to form a composite key, and a typed
+    edge is created when the node is inserted into a graph store.
+
+    Args:
+        pk: Primary key — an int is converted to ``{"id": pk}``, a dict is used
+            as-is.  Must be provided unless ``neo4j_id`` is given.
+        main_label: The primary label used in Cypher queries.
+        alternative_labels: Additional labels attached to the node.
+        version: Neo4j protocol version (default 5).
+        neo4j_id: Internal Neo4j node ID (used when reconstructing a node
+            from a database result).
+        **kwargs: Arbitrary additional attributes stored on the node.
+            Special kwargs: ``parent`` (Node), ``parent_relation`` (str),
+            ``is_weak`` (bool), ``_propagate`` (bool), ``dependencies``.
+    """
+
     def __init__(
         self,
         pk: Dict[str, Union[int, str]] = None,
@@ -235,15 +266,20 @@ class Node(object):
 
 # Class Relation denotes the relation of two nodes in the graph database
 class Relation(object):
-    def __init__(self, src: Node, dst: Node, type: str, **kwargs: Any):
-        """
+    """A typed edge connecting two nodes in the graph.
 
-        :param src: Dictionary composed of ´{ main_label : str , pk : Dictionary }, where pk is a dictionary of
-                    { attr: values } that identifies the node within the main label
-        :param dst: Dictionary composed of the same structure as in src.
-        :param type: name of relation
-        :param kwargs: edge properties (dictionary).
-        """
+    Relations store the primary keys of their source and destination nodes
+    and can carry arbitrary edge properties.
+
+    Args:
+        src: Source node. Its ``pk`` is extracted and stored.
+        dst: Destination node. Its ``pk`` is extracted and stored.
+        type: Relation type (e.g. "HAS_NOM", "CONNECTS"). Stored uppercase.
+        **kwargs: Edge properties stored as attributes.
+    """
+
+    def __init__(self, src: Node, dst: Node, type: str, **kwargs: Any):
+        """Initialize a Relation between two nodes."""
         # Definim les propietats
         self._type = type.upper()
         self._src = src["pk"]

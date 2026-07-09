@@ -1,0 +1,93 @@
+DRM Tools Documentation
+=======================
+
+Document Representation Model (DRM) — Python library for graph-based
+document representation using Neo4j or an in-memory NetworkX backend.
+
+.. toctree::
+   :maxdepth: 2
+   :caption: Modules:
+
+   modules
+
+Features
+--------
+
+- **Graph-based document representation**: Model documents as nodes and
+  relations (Document → Section → Page hierarchy).
+- **Two backends**: Full Neo4j integration via ``Neo4jGraph`` or an
+  in-memory ``MockGraph`` (NetworkX) for testing.
+- **WeakNode support**: Parent-child node relationships with composite
+  primary keys and cascade delete propagation.
+- **Dependency auto-insertion**: String properties (e.g. names) are
+  automatically materialised as ``Valor`` nodes.
+- **FK validation**: Foreign key constraints on relations prevent
+  dangling references.
+- **ON DELETE strategies**: CASCADE, RESTRICT, SET NULL.
+
+Quick start
+-----------
+
+.. code-block:: python
+
+    from drm import Neo4jGraph, Node, WeakNode
+
+    # Connect to Neo4j
+    graph = Neo4jGraph(
+        url="bolt://localhost:7687",
+        user="neo4j",
+        password="secret",
+        database="mydb",
+    )
+
+    # Create a document hierarchy
+    doc = Node(pk={"doc": "DOC-001"}, main_label="Document")
+    graph.insertNode(doc, replace=True)
+
+    section = WeakNode(doc, pk={"section": 1}, main_label="Section")
+    graph.insertNode(section, insert_parent=True)
+
+    page = WeakNode(section, pk={"page": 1}, main_label="Page")
+    graph.insertNode(page, insert_parent=True)
+
+    graph.close()
+
+For the in-memory backend:
+
+.. code-block:: python
+
+    from drm import MockGraph, Node
+
+    graph = MockGraph()
+    doc = Node(pk={"doc": "DOC-001"}, main_label="Document")
+    graph.insertNode(doc, replace=True)
+    print(graph.get_nodes())  # {1}
+    graph.close()
+
+API Reference
+-------------
+
+.. automodule:: drm
+   :members:
+   :member-order: bysource
+   :show-inheritance:
+
+.. automodule:: drm.base
+   :members:
+   :member-order: bysource
+   :show-inheritance:
+
+.. automodule:: drm.entities
+   :members:
+   :member-order: bysource
+   :show-inheritance:
+
+.. automodule:: drm.neo4j_graph
+   :members:
+   :member-order: bysource
+   :show-inheritance:
+
+.. automodule:: drm.mock_graph
+   :members:
+   :member-order: bysource
+   :show-inheritance:
