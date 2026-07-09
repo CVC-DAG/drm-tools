@@ -107,9 +107,10 @@ latex_documents = [
 # Skip sphinx-autodoc-typehints processing for properties and descriptors
 # that cause "'getset_descriptor' object is not iterable" errors.
 def _autodoc_skip_member(app, what, name, obj, skip, options):
-    """Skip properties and built-in descriptors from autodoc."""
-    if name.startswith("_"):
-        return False
+    """Skip private members, properties and built-in descriptors from autodoc."""
+    # Keep __init__, skip everything else starting with _
+    if name.startswith("_") and name != "__init__":
+        return True
     # Skip property descriptors that crash sphinx-autodoc-typehints
     if isinstance(obj, property) or type(obj).__name__ in (
         "getset_descriptor", "member_descriptor",
