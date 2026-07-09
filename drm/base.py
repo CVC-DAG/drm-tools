@@ -89,19 +89,26 @@ class Node(object):
         **kwargs: Any
     ):
         # Definim les propietats
-        #if neo4j_id is not None:
         self._neo4j_id = neo4j_id
         self._version = version
-        if isinstance(pk, int):
-            self._primary_key = {"id": pk}
-        if isinstance(pk, Dict):
-            self._primary_key = _single_pk(pk, version)
+
         if pk is None:
-            if self._neo4j_id is not None:
-                #TODO: S'ha de gestionar bé els nodes sense pk
-#               self._primary_key = None # {"id": 0}
-#            else:
-                self._primary_key = {"id": self._neo4j_id}
+            if neo4j_id is not None:
+                # Node recuperat de la BD: PK sintètica basada en neo4j_id
+                self._primary_key = {"id": neo4j_id}
+            else:
+                raise ValueError(
+                    "Node must have either a primary key (pk) or a neo4j_id. "
+                    "A node without either cannot be inserted or referenced."
+                )
+        elif isinstance(pk, int):
+            self._primary_key = {"id": pk}
+        elif isinstance(pk, Dict):
+            self._primary_key = _single_pk(pk, version)
+        else:
+            raise TypeError(
+                f"pk must be an int or dict, got {type(pk).__name__}"
+            )
 
         self._main_label = main_label  # main_label.lower().capitalize()
 
