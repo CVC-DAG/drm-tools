@@ -5,9 +5,9 @@ Fotografia, etc.) that extend the base Node class with validation,
 default labels, and relationship configuration.
 """
 
-from traitlets import Bool
+from typing import Any, Dict, Iterable, Tuple
+
 from .base import Node, Relation, WeakNode
-from typing import *
 
 
 def assert_on_properties(
@@ -20,56 +20,92 @@ def assert_on_properties(
         dict,
         bool,
     ),
-) -> Tuple[Bool, str]:
+) -> Tuple[bool, str]:
     """Precondition on node insertion: asserts if a specified property isn't an instance.
 
     Args:
         args: dict of arguments for a certain entity.
         properties: iterable with properties to be asserted.
         entity: entity we are checking out.
-        accepted_types: Tuple of accepted types* as property of object type Node or Relation.
-                        * Makes no sense to accept non-hashable types.
+        accepted_types: tuple of accepted types as property of object
+            type Node or Relation. Non-hashable types are rejected.
 
-    Returns: Boolean and list of exceptions
+    Returns:
+        A tuple (success: bool, message: str). On success, message is "OKAY".
+        On failure, message describes the missing property.
     """
     for prop in properties:
-        if not isinstance(args.get(prop, None), accepted_types):
+        if prop not in args or not isinstance(args[prop], accepted_types):
             return (
                 False,
-                f"AssertionError: Node type {type(entity).__name__} must receive {prop}, therefore hasn't been added.",
-            )  # Node not constructed: TODO should it return an error?
-    # if a certain property 'prop' (stated as mandatory) is not on the constructor.
-    return (True, "OKAY")  # otherwise it's true
+                f"AssertionError: Node type {type(entity).__name__} must receive "
+                f"{prop}, therefore hasn't been added.",
+            )
+    return (True, "OKAY")
+
+
+def _build_alternative_labels(al, suffix: str):
+    """Append a suffix label to an alternative_labels value.
+
+    Args:
+        al: existing alternative labels (list, str, or None).
+        suffix: label to append (e.g. "Individu", "Lloc").
+
+    Returns:
+        A list of alternative labels with the suffix appended.
+    """
+    if al is not None:
+        if isinstance(al, list):
+            return [*al, suffix]
+        if isinstance(al, str):
+            return [al, suffix]
+    return [suffix]
 
 
 # =================== Nodes =======================
-# TODO: Check https://gitlab.cvc.uab.cat/dag/AdministrativeDocumentsGT/blob/master/core/entities.py
-#       as examples of proper entitie construction
 
 
 # ========= Semantic Nodes =============
 class IndividuPadro(Node):
-    existing_relations = ("nom",)
-    be_value_properties = ("nom", "cognom1", "cognom2")
-    mandatory_properties = ("pk", *existing_relations)
+    """A person entity with a name attribute.
 
-    def __init__(self, ignore_assertion=False, **kwargs: Any) -> None:
+    Extends Node with mandatory ``pk`` and ``nom`` properties.
+    The ``nom`` and ``cognom`` attributes are automatically
+    materialised as ``Valor`` nodes connected by typed edges.
+
+    Args:
+        pk: Primary key.
+        nom: Person's first name (creates a Valor node).
+        cognom1: First surname (creates a Valor node).
+        cognom2: Second surname (creates a Valor node).
+        alternative_labels: Additional labels (appends "Individu").
+        ignore_assertion: If True, skip mandatory property checks.
+        **kwargs: Additional node attributes.
+    """
+
+    mandatory_properties = ("pk", "nom")
+    be_value_properties = ("nom", "cognom1", "cognom2")
+
+    def __init__(self, ignore_assertion: bool = False, **kwargs: Any) -> None:
+        """Initialize an IndividuPadro node.
+
+        Args:
+            ignore_assertion: Skip mandatory property checks.
+            **kwargs: Passed to Node.__init__ (pk, nom, cognom1, cognom2,
+                alternative_labels, etc.).
+        """
         precondition, message = assert_on_properties(
             kwargs, self.mandatory_properties, self
         )
         pk = kwargs.pop("pk", None)
         al = kwargs.pop("alternative_labels", None)
         if al is not None:
-            if isinstance(al, list):
-                al = [*al, "Individu"]
-            if isinstance(al, str):
-                al = [al, "Individu"]
+            al = _build_alternative_labels(al, "Individu")
         else:
             al = ["Individu"]
 
         if precondition or ignore_assertion:
-            # comprovem si hi ha atributs amb algunes de les relacions predefinides
-            deps = dict()
+            deps = {}
             for r in self.be_value_properties:
                 valor = kwargs.pop(r, None)
                 if valor is not None:
@@ -86,31 +122,41 @@ class IndividuPadro(Node):
             print(message)
             exit()
 
-    # def __str__(self) -> str:
-    #    return f"Node type {self.name}"
-
 
 class IndividuFoto(Node):
-    be_value_properties = []  # ("nom", "cognom1", "cognom2")
+    """A person entity linked to a photograph.
+
+    Extends Node with mandatory ``pk`` property.
+    The ``alternative_labels`` automatically appends "Individu".
+
+    Args:
+        pk: Primary key.
+        alternative_labels: Additional labels (appends "Individu").
+        ignore_assertion: If True, skip mandatory property checks.
+        **kwargs: Additional node attributes.
+    """
+
     mandatory_properties = ("pk",)
 
-    def __init__(self, ignore_assertion=False, **kwargs: Any) -> None:
+    def __init__(self, ignore_assertion: bool = False, **kwargs: Any) -> None:
+        """Initialize an IndividuFoto node.
+
+        Args:
+            ignore_assertion: Skip mandatory property checks.
+            **kwargs: Passed to Node.__init__ (pk, alternative_labels, etc.).
+        """
         precondition, message = assert_on_properties(
             kwargs, self.mandatory_properties, self
         )
         pk = kwargs.pop("pk", None)
         al = kwargs.pop("alternative_labels", None)
         if al is not None:
-            if isinstance(al, list):
-                al = [*al, "Individu"]
-            if isinstance(al, str):
-                al = [al, "Individu"]
+            al = _build_alternative_labels(al, "Individu")
         else:
             al = ["Individu"]
 
         if precondition or ignore_assertion:
-            # comprovem si hi ha atributs amb algunes de les relacions predefinides
-            deps = dict()
+            deps = {}
             for r in self.be_value_properties:
                 valor = kwargs.pop(r, None)
                 if valor is not None:
@@ -129,9 +175,27 @@ class IndividuFoto(Node):
 
 
 class EntitatAmbNom(Node):
+    """A named entity with a ``nom`` property.
+
+    Extends Node with mandatory ``pk`` and ``nom`` properties.
+
+    Args:
+        pk: Primary key.
+        nom: Entity name.
+        alternative_labels: Additional labels.
+        ignore_assertion: If True, skip mandatory property checks.
+        **kwargs: Additional node attributes.
+    """
+
     mandatory_properties = ("pk", "nom")
 
-    def __init__(self, ignore_assertion=False, **kwargs: Any) -> None:
+    def __init__(self, ignore_assertion: bool = False, **kwargs: Any) -> None:
+        """Initialize an EntitatAmbNom node.
+
+        Args:
+            ignore_assertion: Skip mandatory property checks.
+            **kwargs: Passed to Node.__init__ (pk, nom, alternative_labels, etc.).
+        """
         precondition, message = assert_on_properties(
             kwargs, self.mandatory_properties, self
         )
@@ -152,71 +216,107 @@ class EntitatAmbNom(Node):
 
 
 class IndividuAgregat(Node):
-    name = "individu_agregat_node"
-    pk = ""
-    if isinstance(pk, (tuple, list)):
-        mandatory_properties = (
-            *pk,
-        )  # TODO: Define mandatory_properties on class "individu"
-    else:
-        mandatory_properties = ("main_label", pk)
+    """An aggregated person entity with configurable mandatory properties.
 
-    def __init__(self, ignore_assertion=False, **kwargs: Any) -> None:
+    Extends Node with a configurable set of mandatory properties
+    derived from a tuple or list of property names.
+
+    Args:
+        pk: Primary key (defaults to empty string).
+        main_label: Primary Cypher label (defaults to "PersonaAgregat").
+        alternative_labels: Additional labels (appends "Individu").
+        ignore_assertion: If True, skip mandatory property checks.
+        **kwargs: Additional node attributes.
+    """
+
+    mandatory_properties: Tuple[str, ...] = ("pk",)
+
+    def __init__(
+        self,
+        pk: str = "",
+        main_label: str = "PersonaAgregat",
+        ignore_assertion: bool = False,
+        **kwargs: Any,
+    ) -> None:
+        """Initialize an IndividuAgregat node.
+
+        Args:
+            pk: Primary key.
+            main_label: Primary Cypher label.
+            ignore_assertion: Skip mandatory property checks.
+            **kwargs: Passed to Node.__init__ (alternative_labels, etc.).
+        """
         precondition, message = assert_on_properties(
             kwargs, self.mandatory_properties, self
         )
         al = kwargs.pop("alternative_labels", None)
         if al is not None:
-            if isinstance(al, list):
-                al = [*al, "Individu"]
-            if isinstance(al, str):
-                al = [al, "Individu"]
+            al = _build_alternative_labels(al, "Individu")
         else:
             al = ["Individu"]
 
         if precondition or ignore_assertion:
             Node.__init__(
                 self,
-                main_label="PersonaAgregat",
-                pk=self.pk,
+                main_label=main_label,
+                pk=pk,
                 alternative_labels=al,
                 **kwargs,
-            )  # TODO: Primary key is left
+            )
         else:
             print(message)
             exit()
 
 
 class Atribut(Node):
-    name = "atribut_node"
-    pk = None
-    if isinstance(pk, (tuple, list)):
-        mandatory_properties = (
-            *pk,
-        )  # TODO: Define mandatory_properties on class "individu"
-    else:
-        mandatory_properties = ("main_label", pk)
+    """A value node wrapping a string attribute.
+
+    Extends Node to represent a string value as a graph node with
+    label "Valor" and a ``name`` primary key derived from the value.
+
+    Args:
+        value: The string value to wrap.
+        **kwargs: Additional node attributes passed to Node.__init__.
+    """
 
     def __init__(self, value: str, **kwargs: Any) -> None:
-        # precondition, message = assert_on_properties(
-        #    kwargs, self.mandatory_properties, self
-        # )
+        """Initialize an Atribut value node.
 
-        # if precondition:
+        Args:
+            value: The string value. Stored as ``{"name": value.lower()}`` pk.
+            **kwargs: Passed to Node.__init__ (alternative_labels, etc.).
+        """
         Node.__init__(
             self,
             pk={"name": value.lower()},
             main_label="Valor",
             **kwargs,
-        )  # TODO: Primary key is left
-        # else:
-        #    print(message)
+        )
 
 
 class Esdeventiment(Node):
+    """An event entity.
+
+    Extends Node with mandatory ``pk`` property and label "Esdeveniment".
+
+    Args:
+        pk: Primary key.
+        alternative_labels: Additional labels (appends "Semantic").
+        ignore_assertion: If True, skip mandatory property checks.
+        **kwargs: Additional node attributes.
+    """
+
     mandatory_properties = ("pk",)
 
-    def __init__(self, ignore_assertion=False, **kwargs: Any) -> None:
+    def __init__(
+        self, ignore_assertion: bool = False, **kwargs: Any
+    ) -> None:
+        """Initialize an Esdeventiment node.
+
+        Args:
+            ignore_assertion: Skip mandatory property checks.
+            **kwargs: Passed to Node.__init__ (pk, alternative_labels, etc.).
+        """
         precondition, message = assert_on_properties(
             kwargs, self.mandatory_properties, self
         )
@@ -225,31 +325,48 @@ class Esdeventiment(Node):
             Node.__init__(
                 self,
                 main_label="Esdeveniment",
-                pk=self.pk,
+                pk=kwargs.get("pk"),
                 alternative_labels="Semantic",
                 **kwargs,
-            )  # TODO: Primary key is left
+            )
         else:
             print(message)
             exit()
 
 
 class LlocPadro(Node):
+    """A location entity with a custom label.
+
+    Extends Node with mandatory ``pk`` property.
+    The ``alternative_labels`` automatically appends "Lloc".
+
+    Args:
+        main_label: Primary Cypher label (default "LlocPadro").
+        pk: Primary key.
+        alternative_labels: Additional labels (appends "Lloc").
+        ignore_assertion: If True, skip mandatory property checks.
+        **kwargs: Additional node attributes.
+    """
+
     mandatory_properties = ("pk",)
 
     def __init__(
-        self, main_label="LlocPadro", ignore_assertion=False, **kwargs: Any
+        self, main_label: str = "LlocPadro", ignore_assertion: bool = False, **kwargs: Any
     ) -> None:
+        """Initialize a LlocPadro node.
+
+        Args:
+            main_label: Primary Cypher label.
+            ignore_assertion: Skip mandatory property checks.
+            **kwargs: Passed to Node.__init__ (pk, alternative_labels, etc.).
+        """
         precondition, message = assert_on_properties(
             kwargs, self.mandatory_properties, self
         )
         pk = kwargs.pop("pk", None)
         al = kwargs.pop("alternative_labels", None)
         if al is not None:
-            if isinstance(al, list):
-                al = [*al, "Lloc"]
-            if isinstance(al, str):
-                al = [al, "Lloc"]
+            al = _build_alternative_labels(al, "Lloc")
         else:
             al = ["Lloc"]
 
@@ -267,21 +384,38 @@ class LlocPadro(Node):
 
 
 class LlocFoto(Node):
+    """A location entity linked to a photograph.
+
+    Extends Node with mandatory ``pk`` property.
+    The ``alternative_labels`` automatically appends "Lloc".
+
+    Args:
+        main_label: Primary Cypher label (default "LlocFoto").
+        pk: Primary key.
+        alternative_labels: Additional labels (appends "Lloc").
+        ignore_assertion: If True, skip mandatory property checks.
+        **kwargs: Additional node attributes.
+    """
+
     mandatory_properties = ("pk",)
 
     def __init__(
-        self, main_label="LlocFoto", ignore_assertion=False, **kwargs: Any
+        self, main_label: str = "LlocFoto", ignore_assertion: bool = False, **kwargs: Any
     ) -> None:
+        """Initialize a LlocFoto node.
+
+        Args:
+            main_label: Primary Cypher label.
+            ignore_assertion: Skip mandatory property checks.
+            **kwargs: Passed to Node.__init__ (pk, alternative_labels, etc.).
+        """
         precondition, message = assert_on_properties(
             kwargs, self.mandatory_properties, self
         )
         pk = kwargs.pop("pk", None)
         al = kwargs.pop("alternative_labels", None)
         if al is not None:
-            if isinstance(al, list):
-                al = [*al, "Lloc"]
-            if isinstance(al, str):
-                al = [al, "Lloc"]
+            al = _build_alternative_labels(al, "Lloc")
         else:
             al = ["Lloc"]
 
@@ -299,9 +433,26 @@ class LlocFoto(Node):
 
 
 class ActaTemporal(Node):
+    """A temporary act/document entity.
+
+    Extends Node with mandatory ``pk`` property and label "ActaTemporal".
+
+    Args:
+        pk: Primary key.
+        alternative_labels: Additional labels (appends "Semantic").
+        ignore_assertion: If True, skip mandatory property checks.
+        **kwargs: Additional node attributes.
+    """
+
     mandatory_properties = ("pk",)
 
-    def __init__(self, ignore_assertion=False, **kwargs: Any) -> None:
+    def __init__(self, ignore_assertion: bool = False, **kwargs: Any) -> None:
+        """Initialize an ActaTemporal node.
+
+        Args:
+            ignore_assertion: Skip mandatory property checks.
+            **kwargs: Passed to Node.__init__ (pk, alternative_labels, etc.).
+        """
         precondition, message = assert_on_properties(
             kwargs, self.mandatory_properties, self
         )
@@ -321,19 +472,34 @@ class ActaTemporal(Node):
 
 
 class Fons(Node):
+    """A document collection (fonds) entity.
+
+    Extends Node with mandatory ``pk`` property.
+    The ``alternative_labels`` automatically appends "DocumentCultural".
+
+    Args:
+        pk: Primary key.
+        alternative_labels: Additional labels (appends "DocumentCultural").
+        ignore_assertion: If True, skip mandatory property checks.
+        **kwargs: Additional node attributes.
+    """
+
     mandatory_properties = ("pk",)
 
-    def __init__(self, ignore_assertion=False, **kwargs: Any) -> None:
+    def __init__(self, ignore_assertion: bool = False, **kwargs: Any) -> None:
+        """Initialize a Fons node.
+
+        Args:
+            ignore_assertion: Skip mandatory property checks.
+            **kwargs: Passed to Node.__init__ (pk, alternative_labels, etc.).
+        """
         precondition, message = assert_on_properties(
             kwargs, self.mandatory_properties, self
         )
         pk = kwargs.pop("pk", None)
         al = kwargs.pop("alternative_labels", None)
         if al is not None:
-            if isinstance(al, list):
-                al = [*al, "DocumentCultural"]
-            if isinstance(al, str):
-                al = [al, "DocumentCultural"]
+            al = _build_alternative_labels(al, "DocumentCultural")
         else:
             al = ["DocumentCultural"]
 
@@ -351,23 +517,45 @@ class Fons(Node):
 
 
 class Padro(WeakNode):
+    """A padro document entity with a path property.
+
+    Extends WeakNode with mandatory ``pk`` and ``ruta`` properties.
+    The ``alternative_labels`` automatically appends "DocumentCultural".
+
+    Args:
+        parent: The parent ``Node``.
+        pk: Primary key.
+        ruta: Path property.
+        alternative_labels: Additional labels (appends "DocumentCultural").
+        ignore_assertion: If True, skip mandatory property checks.
+        **kwargs: Additional node attributes passed to WeakNode.__init__.
+    """
+
     mandatory_properties = ("pk", "ruta")
 
-    def __init__(self, ignore_assertion=False, **kwargs: Any) -> None:
+    def __init__(self, ignore_assertion: bool = False, **kwargs: Any) -> None:
+        """Initialize a Padro weak node.
+
+        Args:
+            ignore_assertion: Skip mandatory property checks.
+            **kwargs: Passed to WeakNode.__init__ (pk, ruta, alternative_labels,
+                parent, parent_relation, etc.).
+        """
         precondition, message = assert_on_properties(
             kwargs, self.mandatory_properties, self
         )
         pk = kwargs.pop("pk", None)
         al = kwargs.pop("alternative_labels", None)
         if al is not None:
-            if isinstance(al, list):
-                al = [*al, "DocumentCultural"]
-            if isinstance(al, str):
-                al = [al, "DocumentCultural"]
+            al = _build_alternative_labels(al, "DocumentCultural")
         else:
             al = ["DocumentCultural"]
 
         if precondition or ignore_assertion:
+            # Call Node.__init__ directly because the parent is provided
+            # via kwargs (as required by WeakNode.__init__), but we need
+            # to set main_label and alternative_labels before the parent
+            # relationship is established.
             Node.__init__(
                 self,
                 main_label="Padro",
@@ -381,9 +569,28 @@ class Padro(WeakNode):
 
 
 class Fotografia(WeakNode):
+    """A photograph entity.
+
+    Extends WeakNode with mandatory ``pk`` property.
+
+    Args:
+        parent: The parent ``Node``.
+        pk: Primary key.
+        alternative_labels: Additional labels.
+        ignore_assertion: If True, skip mandatory property checks.
+        **kwargs: Additional node attributes passed to WeakNode.__init__.
+    """
+
     mandatory_properties = ("pk",)
 
-    def __init__(self, ignore_assertion=False, **kwargs: Any) -> None:
+    def __init__(self, ignore_assertion: bool = False, **kwargs: Any) -> None:
+        """Initialize a Fotografia weak node.
+
+        Args:
+            ignore_assertion: Skip mandatory property checks.
+            **kwargs: Passed to WeakNode.__init__ (pk, alternative_labels,
+                parent, parent_relation, etc.).
+        """
         precondition, message = assert_on_properties(
             kwargs, self.mandatory_properties, self
         )
@@ -420,79 +627,144 @@ NODES = [
 
 # ======= Layout Nodes ===============
 class RegioFisica(WeakNode):
-    # TODO: Define betach and cascade for weak node connecting semantic (detach) and cascade (from document)
-    name = "regio_fisica_node"
-    pk = ""
-    mandatory_properties = ("main_label", pk, "contours")
+    """A physical region entity with contours.
+
+    Extends WeakNode with mandatory ``main_label``, ``pk``, and ``contours``
+    properties. The ``alternative_labels`` automatically appends "layout".
+
+    Args:
+        parent: The parent ``Node``.
+        main_label: Primary Cypher label.
+        pk: Primary key.
+        contours: Region contour data.
+        alternative_labels: Additional labels (appends "layout").
+        **kwargs: Additional node attributes passed to WeakNode.__init__.
+    """
+
+    mandatory_properties = ("main_label", "pk", "contours")
 
     def __init__(self, **kwargs: Any) -> None:
+        """Initialize a RegioFisica weak node.
+
+        Args:
+            **kwargs: Passed to WeakNode.__init__ (main_label, pk, contours,
+                parent, parent_relation, alternative_labels, etc.).
+        """
         precondition, message = assert_on_properties(
             kwargs, self.mandatory_properties, self
         )
-        main_label = kwargs.pop("main_label", None)
 
         if precondition:
+            main_label = kwargs.pop("main_label", None)
+            pk = kwargs.pop("pk", None)
+            al = kwargs.pop("alternative_labels", None)
+            if al is not None:
+                al = _build_alternative_labels(al, "layout")
+            else:
+                al = ["layout"]
+
             Node.__init__(
                 self,
                 main_label=main_label,
-                pk=kwargs[self.pk],
-                alternative_labels="layout",
-                kwargs={**kwargs},
-            )  # TODO: Primary key is left
+                pk=pk,
+                alternative_labels=al,
+                **kwargs,
+            )
         else:
             print(message)
             exit()
 
 
 class OCRTranscript(WeakNode):
+    """An OCR transcript entity.
+
+    Extends WeakNode with a ``main_label`` and optional ``pk``.
+    The ``alternative_labels`` automatically appends "semantic".
+
+    Args:
+        parent: The parent ``Node``.
+        main_label: Primary Cypher label.
+        pk: Primary key.
+        alternative_labels: Additional labels (appends "semantic").
+        **kwargs: Additional node attributes passed to WeakNode.__init__.
+    """
 
     def __init__(self, **kwargs: Any) -> None:
+        """Initialize an OCRTranscript weak node.
 
+        Args:
+            **kwargs: Passed to WeakNode.__init__ (main_label, pk,
+                parent, parent_relation, alternative_labels, etc.).
+        """
+        main_label = kwargs.pop("main_label")
         pk = kwargs.pop("pk", None)
+        al = kwargs.pop("alternative_labels", None)
+        if al is not None:
+            al = _build_alternative_labels(al, "semantic")
+        else:
+            al = ["semantic"]
 
         Node.__init__(
             self,
-            main_label=kwargs.pop("main_label"),
+            main_label=main_label,
             pk=pk,
-            alternative_labels="semantic",
+            alternative_labels=al,
             **kwargs,
         )
 
 
 # ======= Document Nodes =============
 class DocumentCultural(Node):
+    """An abstract base class for cultural documents.
+
+    This class should not be instantiated directly. Subclasses
+    override ``document_class`` to set the appropriate label.
+
+    Attributes:
+        document_class: The Cypher label for this document type.
+            Defaults to "abstract_class".
+    """
+
     document_class = "abstract_class"
 
-    mandatory_properties = "path_to_document"
-
     def __init__(self, **kwargs: Any) -> None:
+        """Initialize a DocumentCultural node.
+
+        Args:
+            **kwargs: Passed to Node.__init__ (alternative_labels, etc.).
         """
-        Init for abstract class "document cultural"
-        Will set a document class depending the name of the children class we are constructing.
-
-        main_label = self.document_class takes the value of the child, therefore you can define the methods for documents here.
-        Init should be done by child.
-
-        """
-
-        precondition, message = assert_on_properties(
-            kwargs, self.mandatory_properties, self
+        Node.__init__(
+            self,
+            alternative_labels="document",
+            main_label=self.document_class,
+            **kwargs,
         )
-        if precondition:
-            Node.__init__(
-                alternative_labels="document",
-                main_label=self.document_class,
-                kwargs={**kwargs},
-            )  # TODO: Primmary key
-        else:
-            print(message)
-            exit()
 
 
 class BOE(WeakNode):
+    """A Boletín Oficial del Estado (Spanish government gazette) entity.
+
+    Extends WeakNode with mandatory ``pk`` and ``ruta`` properties.
+
+    Args:
+        parent: The parent ``Node``.
+        pk: Primary key.
+        ruta: Path to the document.
+        alternative_labels: Additional labels (appends "document").
+        ignore_assertion: If True, skip mandatory property checks.
+        **kwargs: Additional node attributes passed to WeakNode.__init__.
+    """
+
     mandatory_properties = ("pk", "ruta")
 
-    def __init__(self, ignore_assertion=False, **kwargs: Any) -> None:
+    def __init__(self, ignore_assertion: bool = False, **kwargs: Any) -> None:
+        """Initialize a BOE weak node.
+
+        Args:
+            ignore_assertion: Skip mandatory property checks.
+            **kwargs: Passed to WeakNode.__init__ (pk, ruta, alternative_labels,
+                parent, parent_relation, etc.).
+        """
         precondition, message = assert_on_properties(
             kwargs, self.mandatory_properties, self
         )

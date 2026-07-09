@@ -38,19 +38,18 @@ def _mergePK(pk_a, pk_b, version=5):
     return _single_pk(pk, version)
 
 
-def _setNodePK(value):
-    try:
-        main_label = value.pop("main_label", None)
-        pk = value.pop("pk", None)
+def _setNodePK(value: Dict) -> Dict:
+    """Extract main_label and pk from a dict without mutating the original.
 
-        if main_label is None:
-            raise Exception("Error")
+    Args:
+        value: dict containing 'main_label' and 'pk' keys.
 
-        if pk is None:
-            raise Exception("Error")
-    except Exception:
-        print("error")
-
+    Returns:
+        A new dict with 'main_label' and 'pk'. Returns empty values
+        if the keys are missing.
+    """
+    main_label = value.get("main_label")
+    pk = value.get("pk")
     return {"main_label": main_label, "pk": pk}
 
 
