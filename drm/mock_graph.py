@@ -263,7 +263,14 @@ class MockGraph:
     def checkNode(self, node: Node, **kwargs: Any) -> Optional[int]:
         """Check if a node exists in the graph.
 
-        Returns the node id if found, None otherwise.
+        Looks up the node by its ``neo4j_id`` if set, otherwise searches
+        by ``main_label`` and primary key.
+
+        Args:
+            node: The node to look up.
+
+        Returns:
+            The internal node id if found, None otherwise.
         """
         # Try by neo4j_id first
         if node.neo4j_id is not None:
@@ -289,7 +296,16 @@ class MockGraph:
         update: bool = False,
         replace: bool = False,
     ) -> None:
-        """Bulk import nodes and relations."""
+        """Bulk import nodes and relations.
+
+        Iterates over the node and relation lists, inserting each with
+        the given ``update`` and ``replace`` flags.
+
+        Args:
+            migration: A tuple ``(node_list, relation_list)``.
+            update: Passed to ``insertNode`` / ``insertRelation``.
+            replace: Passed to ``insertNode`` / ``insertRelation``.
+        """
         node_info, rel_info = migration
         for node in node_info:
             self.insertNode(node, update=update, replace=replace)
@@ -297,7 +313,11 @@ class MockGraph:
             self.insertRelation(rel, update=update, replace=replace)
 
     def close(self) -> None:
-        """Release resources (no-op for in-memory graph)."""
+        """Release resources and clear the graph.
+
+        Clears all nodes, edges, and internal indexes. Equivalent to
+        resetting the graph to its initial empty state.
+        """
         self._graph.clear()
         self._node_attrs.clear()
         self._edge_attrs.clear()
@@ -308,7 +328,15 @@ class MockGraph:
     # ------------------------------------------------------------------
 
     def get_node(self, node_id: int) -> Optional[Node]:
-        """Retrieve a node by its internal id."""
+        """Retrieve a node by its internal id.
+
+        Args:
+            node_id: The internal node id.
+
+        Returns:
+            A ``Node`` instance with the stored attributes, or None
+            if no node with that id exists.
+        """
         if self._graph.has_node(node_id):
             attrs = self._node_attrs.get(node_id, {})
             labels = attrs.get("labels", [])
@@ -318,22 +346,38 @@ class MockGraph:
         return None
 
     def get_nodes(self) -> List[int]:
-        """Return all node ids."""
+        """Return all node ids in the graph."""
         return list(self._graph.nodes())
 
     def get_edges(self) -> List[Tuple[int, int, str]]:
-        """Return all edges as (src_id, dst_id, rel_type) tuples."""
+        """Return all edges as ``(src_id, dst_id, rel_type)`` tuples."""
         result = []
         for u, v, key, data in self._graph.edges(data=True, keys=True):
             result.append((u, v, data.get("rel_type", key)))
         return result
 
     def get_node_attrs(self, node_id: int) -> Optional[Dict[str, Any]]:
-        """Return attributes stored for a node."""
+        """Return attributes stored for a node.
+
+        Args:
+            node_id: The internal node id.
+
+        Returns:
+            A dict of node attributes, or None if the node does not exist.
+        """
         return self._node_attrs.get(node_id)
 
     def get_edge_attrs(self, u: int, v: int, key: str) -> Optional[Dict[str, Any]]:
-        """Return attributes stored for an edge."""
+        """Return attributes stored for an edge.
+
+        Args:
+            u: Source node id.
+            v: Destination node id.
+            key: Edge type / key.
+
+        Returns:
+            A dict of edge attributes, or None if the edge does not exist.
+        """
         return self._edge_attrs.get((u, v, key))
 
     def debug(self) -> Dict[str, Any]:
@@ -359,7 +403,7 @@ class MockGraph:
         }
 
     def print_debug(self) -> None:
-        """Print a formatted snapshot of the graph state."""
+        """Print a formatted snapshot of the graph state to stdout."""
         state = self.debug()
         print("\n=== MockGraph State ===")
         print(f"Nodes ({len(state['nodes'])}):")

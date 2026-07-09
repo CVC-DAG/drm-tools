@@ -64,13 +64,23 @@ class Neo4jGraph(object):
         detach: bool = False,
         on_delete: str = "cascade",
     ) -> bool:
-        """Delete a node from the database.
+        """Delete a node and optionally its connected subgraph.
 
-        ``on_delete`` controls FK behavior:
+        Handles ON DELETE strategies, WeakNode cascade propagation,
+        and FK index cleanup.
 
-        - ``"cascade"`` (default): ON DELETE CASCADE — delete connected edges
-        - ``"restrict"``: ON DELETE RESTRICT — refuse if edges exist
-        - ``"set_null"``: ON DELETE SET NULL — delete node, keep neighbors
+        Args:
+            node: The node to delete.
+            propagation: If True, recursively delete child nodes linked
+                via edges with ``_propagate=TRUE`` (used by WeakNode).
+            detach: If True, use Neo4j ``DETACH DELETE`` to remove
+                the node and all connected edges.
+            on_delete: Deletion strategy — ``"cascade"`` (default),
+                ``"restrict"``, or ``"set_null"``.
+
+        Returns:
+            True if the node was deleted, False if deletion was refused
+            (e.g. RESTRICT with existing edges) or the node was not found.
         """
         node.version = self._version
         propagation = True if detach else propagation
@@ -226,19 +236,30 @@ class Neo4jGraph(object):
         self,
         node: Node,
         insert_parent: bool = True,
-        update=False,
-        replace=False,
+        update: bool = False,
+        replace: bool = False,
         **kwargs,
     ) -> str:
-        """
+        """Insert a node into the Neo4j database.
 
-        Inserts a new node in the Neo4j Database
+        For WeakNode instances, the parent node is inserted first if
+        ``insert_parent=True``.  String dependencies (``dependencies``
+        attribute) are automatically materialised as ``Valor`` nodes
+        connected by typed edges.
 
-        :param node: Node to be inserted
-        :param insert_parent: For weak Nodes insert before the "parent" node
-        :param update: set to True if new attributes must be added to an existing node (default False)
-        :param replace:  set to True if an existing node must  be replaced by node.
-        :return: the Neo4j id of the inserted node
+        Args:
+            node: The node to insert.
+            insert_parent: If the node is a WeakNode, insert its parent
+                first. Defaults to True.
+            update: If True, MERGE the node and update attributes without
+                deleting it. Use when adding new attributes to an existing
+                node. Defaults to False.
+            replace: If True and the node already exists, delete it
+                (with detach) and create a fresh one. The caller must
+                recreate relations. Defaults to False.
+
+        Returns:
+            The Neo4j internal node id of the inserted node.
         """
 
         has_parent = insert_parent if node["is_weak"] else False
@@ -284,7 +305,18 @@ class Neo4jGraph(object):
                 self._tx = None
             return id
 
-    def checkNode(self, node: Node, **kwargs):
+    def checkNode(self, node: Node, **kwargs: Any) -> Optional[int]:
+        """Check if a node exists in the database.
+
+        Looks up the node by its ``neo4j_id`` if set, otherwise searches
+        by ``main_label`` and primary key.
+
+        Args:
+            node: The node to look up.
+
+        Returns:
+            The Neo4j internal node id if found, None otherwise.
+        """
         inici = False
         if node is not None:
             if self._tx is None:
@@ -432,16 +464,25 @@ class Neo4jGraph(object):
     def insertRelation(
         self, rel: Relation, update: bool = False, replace: bool = False, **kwargs
     ) -> str:
-        """
-        Inserts a new (directed) connection between two nodes
+        """Insert a directed relation (edge) between two nodes.
 
-        :param rel: relation having the src, dst nodes.
-        :param update: set to True if new attributes must be added to an existing relation (default False)
-        :param replace:  set to True if an existing relation must  be replaced by 'rel'.
+        Validates that both source and destination nodes exist before
+        creating the edge (FK constraint).
 
-        :return: the Neo4j id of the inserted relation
+        Args:
+            rel: The relation to insert, containing source node,
+                destination node, and relation type.
+            update: If True, MERGE the relation and update attributes
+                without deleting it. Defaults to False.
+            replace: If True and the relation already exists, delete it
+                and create a fresh one. Defaults to False.
 
-        :raises RuntimeError: if src or dst nodes do not exist (FK violation).
+        Returns:
+            The Neo4j internal relation id of the inserted relation.
+
+        Raises:
+            RuntimeError: If the source or destination node does not exist
+                in the database (FK violation).
         """
         inici = False
 
@@ -498,7 +539,24 @@ class Neo4jGraph(object):
 
             return id
 
-    def create(self, migration: Tuple[List, List], update=False, replace=False) -> None:
+    def create(
+        self,
+        migration: Tuple[List, List],
+        update: bool = False,
+        replace: bool = False,
+    ) -> None:
+        """Bulk import nodes and relations from a migration plan.
+
+        Iterates over the node and relation lists, inserting each with
+        a progress bar.  Uses ``insertNode`` and ``insertRelation``
+        internally.
+
+        Args:
+            migration: A tuple ``(node_list, relation_list)`` where each
+                list contains ``Node`` or ``Relation`` instances.
+            update: Passed to ``insertNode`` / ``insertRelation``.
+            replace: Passed to ``insertNode`` / ``insertRelation``.
+        """
         NodeInformation, RelationInformation = migration
         if len(NodeInformation) > 0:
             for node in tqdm(NodeInformation, desc="Importing nodes"):
