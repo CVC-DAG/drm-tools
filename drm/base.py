@@ -1,7 +1,7 @@
 """Core data structures: Node, Relation, WeakNode, WeakRelation.
 
 These classes represent the graph primitives used by both Neo4jGraph
-and MockGraph.  Nodes carry a primary key (``pk``), a main label,
+and NetworkXGraph.  Nodes carry a primary key (``pk``), a main label,
 optional alternative labels, and optional parent relationships for
 WeakNode hierarchies.  Relations connect two nodes with a typed edge.
 """
@@ -53,6 +53,10 @@ def _setNodePK(value: Dict) -> Dict:
     return {"main_label": main_label, "pk": pk}
 
 
+# Sentinel per distingir "pk no proporcionat" de "pk=None explícit"
+_UNSET = object()
+
+
 # TODO: Cal modificar el codi per quan es posi src['pk'] retorni la pk en funció de la versió del Neo4j, on src és un node
 class Node(object):
     """A graph node with a primary key, labels, and optional parent.
@@ -65,12 +69,17 @@ class Node(object):
     key is merged with the parent's key to form a composite key, and a typed
     edge is created when the node is inserted into a graph store.
 
-    A node **must** have either a ``pk`` or a ``neo4j_id`` (or both).
-    Creating a node without either raises ``ValueError``.
+    By default a node **must** have a ``pk`` or a ``neo4j_id`` (or both).
+    If the caller passes ``pk=None`` explicitly, the node is created with
+    ``_primary_key = None`` and the backend is expected to assign a real
+    ID later (e.g. Neo4j generates an internal node ID, which is then
+    stored as ``_primary_key``).  If the backend never assigns one,
+    ``_primary_key`` remains ``None``.
 
     Args:
         pk: Primary key — an int is converted to ``{"id": pk}``, a dict is used
-            as-is.  Must be provided unless ``neo4j_id`` is given.
+            as-is.  Must be provided (or explicitly ``None``) unless
+            ``neo4j_id`` is given.
         main_label: The primary label used in Cypher queries.
         alternative_labels: Additional labels attached to the node.
         version: Neo4j protocol version (default 5).
@@ -81,13 +90,15 @@ class Node(object):
             ``is_weak`` (bool), ``_propagate`` (bool), ``dependencies``.
 
     Raises:
-        ValueError: If neither ``pk`` nor ``neo4j_id`` is provided.
-        TypeError: If ``pk`` is neither an ``int`` nor a ``dict``.
+        ValueError: If ``pk`` is not provided at all (not even as ``None``)
+            and ``neo4j_id`` is also absent.
+        TypeError: If ``pk`` is neither an ``int`` nor a ``dict`` (when
+            ``pk`` is provided but not ``None``).
     """
 
     def __init__(
         self,
-        pk: Dict[str, Union[int, str]] = None,
+        pk: Union[Dict[str, Union[int, str]], None, object] = _UNSET,
         main_label: str = "",
         alternative_labels: Union[str, List[str]] = None,
         version: int = 5,
@@ -98,22 +109,29 @@ class Node(object):
         self._neo4j_id = neo4j_id
         self._version = version
 
-        if pk is None:
+        # Distingim entre "pk no passat" i "pk=None explícit"
+        if pk is _UNSET:
             if neo4j_id is not None:
-                # Node recuperat de la BD: PK sintètica basada en neo4j_id
                 self._primary_key = {"id": neo4j_id}
             else:
                 raise ValueError(
                     "Node must have either a primary key (pk) or a neo4j_id. "
                     "A node without either cannot be inserted or referenced."
                 )
+        elif pk is None:
+            # pk=None explícit: si hi ha neo4j_id, el fem servir com a PK;
+            # si no, el backend generarà un ID després (pk queda None).
+            if neo4j_id is not None:
+                self._primary_key = {"id": neo4j_id}
+            else:
+                self._primary_key = None
         elif isinstance(pk, int):
             self._primary_key = {"id": pk}
         elif isinstance(pk, Dict):
             self._primary_key = _single_pk(pk, version)
         else:
             raise TypeError(
-                f"pk must be an int or dict, got {type(pk).__name__}"
+                f"pk must be an int, dict, or None, got {type(pk).__name__}"
             )
 
         self._main_label = main_label  # main_label.lower().capitalize()
@@ -136,6 +154,11 @@ class Node(object):
         if self._parent is not None:
             assert isinstance(self._parent, Node), "parent must be a Node"
             self._is_weak = True
+            if self._parent._primary_key is None:
+                raise ValueError(
+                    "WeakNode parent must have a primary key. "
+                    "Transient nodes (no pk) cannot be parents."
+                )
             self._primary_key = _mergePK(self._parent._primary_key, self._primary_key)
             self._parent_relation = (
                 parent_relation if parent_relation is not None else "HAS"
@@ -158,7 +181,8 @@ class Node(object):
         main_label = ":" + self._main_label if len(self._main_label) > 0 else ""
         id = " <Id>: " + str(self._neo4j_id) if self._neo4j_id is not None else ""
         mess = "(a" + main_label + id + ")"
-        mess += """, pk:""" + self._primary_key.__repr__()
+        pk_repr = self._primary_key.__repr__() if self._primary_key is not None else "None"
+        mess += """, pk:""" + pk_repr
         mess += (
             (", attributes:" + self.attributes[1].__repr__())
             if len(self.attributes[1]) > 0
@@ -173,7 +197,7 @@ class Node(object):
     @version.setter
     def version(self, value):
         self._version = value
-        if value == 3:
+        if value == 3 and self._primary_key is not None:
             self._primary_key = _single_pk(self._primary_key, value)
 
     @property
@@ -243,7 +267,7 @@ class Node(object):
             attr.pop("_label", None)
             attr.pop("_main_label")
             attr.pop("_neo4j_id", None)
-            pk = attr.pop("_primary_key")
+            pk = attr.pop("_primary_key", None)
 
             return pk, attr
 

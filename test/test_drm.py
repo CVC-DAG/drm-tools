@@ -32,24 +32,24 @@ sys.modules["tqdm"] = _unittest_mock.MagicMock()
 sys.modules["traitlets"] = _unittest_mock.MagicMock()
 
 from drm.neo4j_graph import Neo4jGraph
-from drm.mock_graph import MockGraph
-from drm.entities import *
+from drm.networkx_graph import NetworkXGraph
+from drm.drm_entities import *
 from drm.base import *
 
 
 # ---------------------------------------------------------------------------
-# Tests for MockGraph — pure in-memory NetworkX store
+# Tests for NetworkXGraph — pure in-memory NetworkX store
 # ---------------------------------------------------------------------------
 
-class MockGraphTest(unittest.TestCase):
-    """Tests for MockGraph — verifies the in-memory graph implementation."""
+class NetworkXGraphTest(unittest.TestCase):
+    """Tests for NetworkXGraph — verifies the in-memory graph implementation."""
 
-    def _make_graph(self) -> MockGraph:
-        return MockGraph()
+    def _make_graph(self) -> NetworkXGraph:
+        return NetworkXGraph()
 
     # -- Node CRUD --
 
-    def test_mock_graph_insert_node(self) -> None:
+    def test_nx_graph_insert_node(self) -> None:
         """Test que insertNode afegeix un node al graf."""
         node = Node(pk={"id": 1}, main_label="TestNode", name="test")
         graph = self._make_graph()
@@ -60,8 +60,8 @@ class MockGraphTest(unittest.TestCase):
         self.assertIn(node_id, graph.get_nodes())
         graph.close()
 
-    def test_mock_graph_get_node(self) -> None:
-        """Test que MockGraph pot recuperar nodes per id."""
+    def test_nx_graph_get_node(self) -> None:
+        """Test que NetworkXGraph pot recuperar nodes per id."""
         node = Node(pk={"id": 1}, main_label="TestNode", name="test")
         graph = self._make_graph()
         node_id = graph.insertNode(node, replace=True)
@@ -72,8 +72,8 @@ class MockGraphTest(unittest.TestCase):
         self.assertEqual(retrieved.neo4j_id, node_id)
         graph.close()
 
-    def test_mock_graph_node_attrs(self) -> None:
-        """Test que MockGraph guarda els atributs dels nodes."""
+    def test_nx_graph_node_attrs(self) -> None:
+        """Test que NetworkXGraph guarda els atributs dels nodes."""
         node = Node(pk={"id": 1}, main_label="TestNode", custom="value", count=42)
         graph = self._make_graph()
         node_id = graph.insertNode(node, replace=True)
@@ -84,8 +84,8 @@ class MockGraphTest(unittest.TestCase):
         self.assertEqual(attrs["count"], 42)
         graph.close()
 
-    def test_mock_graph_check_node(self) -> None:
-        """Test que MockGraph pot verificar existencia de nodes."""
+    def test_nx_graph_check_node(self) -> None:
+        """Test que NetworkXGraph pot verificar existencia de nodes."""
         node = Node(pk={"id": 1}, main_label="TestNode")
         graph = self._make_graph()
         graph.insertNode(node, replace=True)
@@ -94,7 +94,7 @@ class MockGraphTest(unittest.TestCase):
         self.assertIsNotNone(result)
         graph.close()
 
-    def test_mock_graph_check_missing_node(self) -> None:
+    def test_nx_graph_check_missing_node(self) -> None:
         """Test que checkNode retorna None per a nodes inexistents."""
         node = Node(pk={"id": 999}, main_label="NonExistent")
         graph = self._make_graph()
@@ -103,7 +103,7 @@ class MockGraphTest(unittest.TestCase):
         self.assertIsNone(result)
         graph.close()
 
-    def test_mock_graph_duplicate_key_raises(self) -> None:
+    def test_nx_graph_duplicate_key_raises(self) -> None:
         """Test que update=False + replace=False amb pk existent llança RuntimeError."""
         node_a = Node(pk={"id": 1}, main_label="TestNode", name="first")
         node_b = Node(pk={"id": 1}, main_label="TestNode", name="second")
@@ -116,7 +116,7 @@ class MockGraphTest(unittest.TestCase):
         self.assertIn("Duplicate key", str(ctx.exception))
         graph.close()
 
-    def test_mock_graph_replace_creates_new_node(self) -> None:
+    def test_nx_graph_replace_creates_new_node(self) -> None:
         """Test que replace=True esborra i crea un node nou amb id diferent."""
         node_a = Node(pk={"id": 1}, main_label="TestNode", name="old", count=1)
         node_b = Node(pk={"id": 1}, main_label="TestNode", name="new", count=99)
@@ -132,7 +132,7 @@ class MockGraphTest(unittest.TestCase):
         self.assertEqual(attrs["count"], 99)
         graph.close()
 
-    def test_mock_graph_update_merges_attributes(self) -> None:
+    def test_nx_graph_update_merges_attributes(self) -> None:
         """Test que update=True fusiona atributs sense esborrar el node."""
         node_a = Node(pk={"id": 1}, main_label="TestNode", name="original", count=1)
         node_b = Node(pk={"id": 1}, main_label="TestNode", name="updated", extra="data")
@@ -151,8 +151,8 @@ class MockGraphTest(unittest.TestCase):
 
     # -- Relations --
 
-    def test_mock_graph_get_edges(self) -> None:
-        """Test que MockGraph retorna les arestes correctament."""
+    def test_nx_graph_get_edges(self) -> None:
+        """Test que NetworkXGraph retorna les arestes correctament."""
         src = Node(pk={"id": 1}, main_label="SrcNode")
         dst = Node(pk={"id": 2}, main_label="DstNode")
         rel = Relation(src, dst, "CONNECTS")
@@ -167,8 +167,8 @@ class MockGraphTest(unittest.TestCase):
         self.assertEqual(len(edges), 1)
         self.assertEqual(edges[0][2], "CONNECTS")
 
-    def test_mock_graph_edge_attrs(self) -> None:
-        """Test que MockGraph guarda els atributs de les arestes."""
+    def test_nx_graph_edge_attrs(self) -> None:
+        """Test que NetworkXGraph guarda els atributs de les arestes."""
         src = Node(pk={"id": 1}, main_label="SrcNode")
         dst = Node(pk={"id": 2}, main_label="DstNode")
         rel = Relation(src, dst, "CONNECTS")
@@ -184,7 +184,7 @@ class MockGraphTest(unittest.TestCase):
         self.assertIsNotNone(edge_attrs)
         self.assertEqual(edge_attrs["weight"], 10)
 
-    def test_mock_graph_bulk_create(self) -> None:
+    def test_nx_graph_bulk_create(self) -> None:
         """Test que el mètode create importa nodes i relacions."""
         nodes = [
             Node(pk={"id": 1}, main_label="TestNode", name="a"),
@@ -205,7 +205,7 @@ class MockGraphTest(unittest.TestCase):
 
     # -- FK Validation --
 
-    def test_mock_graph_fk_violation_src_missing(self) -> None:
+    def test_nx_graph_fk_violation_src_missing(self) -> None:
         """Test que crear una relació amb src no inserit llança RuntimeError."""
         src = Node(pk={"nom": "Missing"}, main_label="LlocPadro")
         dst = Node(pk={"nom": "NodeB"}, main_label="LlocPadro")
@@ -220,7 +220,7 @@ class MockGraphTest(unittest.TestCase):
         self.assertIn("src", str(ctx.exception))
         graph.close()
 
-    def test_mock_graph_fk_violation_dst_missing(self) -> None:
+    def test_nx_graph_fk_violation_dst_missing(self) -> None:
         """Test que crear una relació amb dst no inserit llança RuntimeError."""
         src = Node(pk={"nom": "NodeA"}, main_label="LlocPadro")
         dst = Node(pk={"nom": "Missing"}, main_label="LlocPadro")
@@ -235,7 +235,7 @@ class MockGraphTest(unittest.TestCase):
         self.assertIn("dst", str(ctx.exception))
         graph.close()
 
-    def test_mock_graph_fk_violation_both_missing(self) -> None:
+    def test_nx_graph_fk_violation_both_missing(self) -> None:
         """Test que crear una relació amb ambdós nodes no inserits llança RuntimeError."""
         src = Node(pk={"nom": "MissingA"}, main_label="LlocPadro")
         dst = Node(pk={"nom": "MissingB"}, main_label="LlocPadro")
@@ -251,8 +251,8 @@ class MockGraphTest(unittest.TestCase):
 
     # -- Delete: ON DELETE RESTRICT --
 
-    def test_mock_graph_delete_node(self) -> None:
-        """Test que MockGraph pot esborrar nodes."""
+    def test_nx_graph_delete_node(self) -> None:
+        """Test que NetworkXGraph pot esborrar nodes."""
         node = Node(pk={"id": 1}, main_label="TestNode")
         graph = self._make_graph()
         node_id = graph.insertNode(node, replace=True)
@@ -263,7 +263,7 @@ class MockGraphTest(unittest.TestCase):
         self.assertTrue(result)
         self.assertNotIn(node_id, graph.get_nodes())
 
-    def test_mock_graph_delete_on_restrict(self) -> None:
+    def test_nx_graph_delete_on_restrict(self) -> None:
         """Test ON DELETE RESTRICT: no es pot esborrar un node amb arestes sense detach."""
         node_a = Node(pk={"id": 1}, main_label="TestNode")
         node_b = Node(pk={"id": 2}, main_label="TestNode")
@@ -279,7 +279,7 @@ class MockGraphTest(unittest.TestCase):
         self.assertIn("ON DELETE RESTRICT", str(ctx.exception))
         graph.close()
 
-    def test_mock_graph_delete_restrict_no_edges(self) -> None:
+    def test_nx_graph_delete_restrict_no_edges(self) -> None:
         """Test ON DELETE RESTRICT: es pot esborrar un node sense arestes."""
         node = Node(pk={"id": 1}, main_label="TestNode")
         graph = self._make_graph()
@@ -291,7 +291,7 @@ class MockGraphTest(unittest.TestCase):
 
     # -- Delete: ON DELETE CASCADE --
 
-    def test_mock_graph_delete_cascade_removes_edges(self) -> None:
+    def test_nx_graph_delete_cascade_removes_edges(self) -> None:
         """Test ON DELETE CASCADE: esborra un node amb arestes i les elimina."""
         node_a = Node(pk={"id": 1}, main_label="TestNode")
         node_b = Node(pk={"id": 2}, main_label="TestNode")
@@ -308,7 +308,7 @@ class MockGraphTest(unittest.TestCase):
         self.assertEqual(len(graph.get_edges()), 0)
         graph.close()
 
-    def test_mock_graph_delete_cascade_chain(self) -> None:
+    def test_nx_graph_delete_cascade_chain(self) -> None:
         """Test ON DELETE CASCADE en cadena: A→B→C, esborrar A esborra només les arestes de A."""
         node_a = Node(pk={"id": 1}, main_label="TestNode")
         node_b = Node(pk={"id": 2}, main_label="TestNode")
@@ -329,7 +329,7 @@ class MockGraphTest(unittest.TestCase):
         self.assertEqual(len(graph.get_edges()), 1)
         graph.close()
 
-    def test_mock_graph_delete_cascade_multiple_edges(self) -> None:
+    def test_nx_graph_delete_cascade_multiple_edges(self) -> None:
         """Test ON DELETE CASCADE: node amb múltiples arestes, totes s'esborren."""
         node_a = Node(pk={"id": 1}, main_label="TestNode")
         node_b = Node(pk={"id": 2}, main_label="TestNode")
@@ -352,7 +352,7 @@ class MockGraphTest(unittest.TestCase):
 
     # -- Delete: ON DELETE SET NULL --
 
-    def test_mock_graph_delete_set_null(self) -> None:
+    def test_nx_graph_delete_set_null(self) -> None:
         """Test ON DELETE SET NULL: esborra node però manté veïns (sense cascada)."""
         node_a = Node(pk={"id": 1}, main_label="TestNode")
         node_b = Node(pk={"id": 2}, main_label="TestNode")
@@ -376,7 +376,7 @@ class MockGraphTest(unittest.TestCase):
         self.assertEqual(len(graph.get_edges()), 0)
         graph.close()
 
-    def test_mock_graph_delete_set_null_no_cascade(self) -> None:
+    def test_nx_graph_delete_set_null_no_cascade(self) -> None:
         """Test ON DELETE SET NULL: no cascada en nodes connectats."""
         node_a = Node(pk={"id": 1}, main_label="TestNode")
         node_b = Node(pk={"id": 2}, main_label="TestNode")
@@ -400,7 +400,7 @@ class MockGraphTest(unittest.TestCase):
 
     # -- Update/Replace CASCADE --
 
-    def test_mock_graph_update_cascade_preserves_edges(self) -> None:
+    def test_nx_graph_update_cascade_preserves_edges(self) -> None:
         """Test ON UPDATE CASCADE: actualitzar un node no trenca les arestes."""
         node_a = Node(pk={"id": 1}, main_label="TestNode", name="original", count=1)
         node_b = Node(pk={"id": 2}, main_label="TestNode", name="other")
@@ -418,7 +418,7 @@ class MockGraphTest(unittest.TestCase):
         self.assertEqual(len(graph.get_edges()), 1)
         graph.close()
 
-    def test_mock_graph_replace_cascade_removes_edges(self) -> None:
+    def test_nx_graph_replace_cascade_removes_edges(self) -> None:
         """Test ON UPDATE CASCADE amb replace: les arestes s'esborren amb el node."""
         node_a = Node(pk={"id": 1}, main_label="TestNode", name="old", count=1)
         node_b = Node(pk={"id": 2}, main_label="TestNode", name="other")
@@ -438,7 +438,7 @@ class MockGraphTest(unittest.TestCase):
 
     # -- Dependencies / Atribut propagation --
 
-    def test_mock_graph_individu_dependencies_create_atribut_nodes(self) -> None:
+    def test_nx_graph_individu_dependencies_create_atribut_nodes(self) -> None:
         """Test que IndividuPadro amb nom/cognoms genera nodes Atribut en dependencies."""
         ind = IndividuPadro(pk=1, nom="Oriol", cognom1="Ramos", cognom2="Perez")
 
@@ -459,10 +459,10 @@ class MockGraphTest(unittest.TestCase):
         self.assertEqual(ind._dependencies["cognom2"]._primary_key, {"name": "perez"})
         self.assertEqual(ind._dependencies["nom"]._main_label, "Valor")
 
-    def test_mock_graph_dependencies_inserted_separately(self) -> None:
+    def test_nx_graph_dependencies_inserted_separately(self) -> None:
         """Test que les dependencies d'un IndividuPadro són nodes independents al graf.
 
-        Ara MockGraph equival a Neo4jGraph: les dependencies s'insereixen
+        Ara NetworkXGraph equival a Neo4jGraph: les dependencies s'insereixen
         automàticament com a nodes Valor amb arestes HAS_*.
         """
         ind = IndividuPadro(pk=1, nom="Maria", cognom1="Garcia")
@@ -477,7 +477,7 @@ class MockGraphTest(unittest.TestCase):
         self.assertEqual(nom_attr._main_label, "Valor")
         self.assertEqual(nom_attr._primary_key, {"name": "maria"})
 
-        # Dependencies are auto-inserted by MockGraph (equivalent to Neo4jGraph)
+        # Dependencies are auto-inserted by NetworkXGraph (equivalent to Neo4jGraph)
         # 1 IndividuPadro + 2 Valor nodes (nom + cognom1)
         self.assertEqual(len(graph.get_nodes()), 3)
 
@@ -489,7 +489,7 @@ class MockGraphTest(unittest.TestCase):
 
         graph.close()
 
-    def test_mock_graph_dependencies_multiple_individus_share_atribut(self) -> None:
+    def test_nx_graph_dependencies_multiple_individus_share_atribut(self) -> None:
         """Test que dos IndividuPadro amb el mateix nom comparteixen el mateix Atribut PK."""
         ind1 = IndividuPadro(pk=1, nom="Maria", cognom1="Garcia")
         ind2 = IndividuPadro(pk=2, nom="Maria", cognom1="Lopez")
@@ -517,10 +517,10 @@ class MockGraphTest(unittest.TestCase):
 
     # -- Delete: propagation --
 
-    def test_mock_graph_delete_propagation(self) -> None:
-        """Test que MockGraph implementa propagation com Neo4jGraph.
+    def test_nx_graph_delete_propagation(self) -> None:
+        """Test que NetworkXGraph implementa propagation com Neo4jGraph.
 
-        MockGraph deleteNode amb propagation=True esborra nodes fill
+        NetworkXGraph deleteNode amb propagation=True esborra nodes fill
         quan l'aresta té _propagate=True. Equivalent a Neo4jGraph.
         """
         parent = Node(pk={"id": 1}, main_label="ParentNode", _propagate=True)
@@ -542,10 +542,10 @@ class MockGraphTest(unittest.TestCase):
 
     # -- WeakNode: parent-child insertion and composite PK --
 
-    def test_mock_graph_weak_node_insert(self) -> None:
+    def test_nx_graph_weak_node_insert(self) -> None:
         """Test que WeakNode amb parent es crea correctament al graf."""
         parent = Node(pk={"id": 1}, main_label="Document")
-        child = WeakNode(parent, pk={"sub_id": 1}, main_label="DocumentPart")
+        child = WeakNode(parent=parent, pk={"sub_id": 1}, main_label="DocumentPart")
 
         self.assertTrue(child._is_weak)
         self.assertEqual(child._parent, parent)
@@ -568,25 +568,25 @@ class MockGraphTest(unittest.TestCase):
 
         graph.close()
 
-    def test_mock_graph_weak_node_missing_parent_raises(self) -> None:
+    def test_nx_graph_weak_node_missing_parent_raises(self) -> None:
         """Test que WeakNode sense parent inserit llança error si insert_parent=True."""
         parent = Node(pk={"id": 999}, main_label="Document")
-        child = WeakNode(parent, pk={"sub_id": 1}, main_label="DocumentPart")
+        child = WeakNode(parent=parent, pk={"sub_id": 1}, main_label="DocumentPart")
 
         graph = self._make_graph()
         # No inserim el parent — insert_parent=True intenta inserir-lo
-        # però el parent ja té un neo4j_id=None que el MockGraph gestiona
+        # però el parent ja té un neo4j_id=None que el NetworkXGraph gestiona
         child_id = graph.insertNode(child, insert_parent=True)
         # El parent es crea automàticament amb un nou ID
         self.assertIsNotNone(child_id)
         self.assertEqual(len(graph.get_nodes()), 2)
         graph.close()
 
-    def test_mock_graph_weak_node_composite_pk_integrity(self) -> None:
+    def test_nx_graph_weak_node_composite_pk_integrity(self) -> None:
         """Test que les PK compostes de WeakNode mantenen integritat amb el parent."""
         parent = Node(pk={"doc_id": "DOC-001"}, main_label="Document")
-        child_a = WeakNode(parent, pk={"page": 1}, main_label="Page")
-        child_b = WeakNode(parent, pk={"page": 2}, main_label="Page")
+        child_a = WeakNode(parent=parent, pk={"page": 1}, main_label="Page")
+        child_b = WeakNode(parent=parent, pk={"page": 2}, main_label="Page")
 
         # Ambdós children comparteixen el mateix parent i tenen PK compostes úniques
         self.assertEqual(child_a._primary_key, {"doc_id": "DOC-001", "page": 1})
@@ -612,23 +612,23 @@ class MockGraphTest(unittest.TestCase):
 
         graph.close()
 
-    def test_mock_graph_weak_node_double_insert_same_pk(self) -> None:
+    def test_nx_graph_weak_node_double_insert_same_pk(self) -> None:
         """Test que inserir el mateix WeakNode dues vegades amb replace=True.
 
-        Nota: MockGraph amb insert_parent=True sempre insereix el parent
+        Nota: NetworkXGraph amb insert_parent=True sempre insereix el parent
         (no verifica si ja existeix). Per això el segon insert crea un
         pare nou. El comportament correcte és usar insert_parent=False
         en reinsertions.
         """
         parent = Node(pk={"id": 1}, main_label="Document")
-        child = WeakNode(parent, pk={"sub_id": 1}, main_label="Page")
+        child = WeakNode(parent=parent, pk={"sub_id": 1}, main_label="Page")
 
         graph = self._make_graph()
         first_id = graph.insertNode(child, insert_parent=True)
         self.assertEqual(len(graph.get_nodes()), 2)
 
         # Reinsereix amb insert_parent=False per no duplicar el parent
-        child_updated = WeakNode(parent, pk={"sub_id": 1}, main_label="PageUpdated")
+        child_updated = WeakNode(parent=parent, pk={"sub_id": 1}, main_label="PageUpdated")
         second_id = graph.insertNode(child_updated, insert_parent=False, replace=True)
 
         # replace=True esborra i crea un node nou per al child
@@ -640,11 +640,11 @@ class MockGraphTest(unittest.TestCase):
 
     # -- WeakNode nesting: weak of weak --
 
-    def test_mock_graph_weak_node_nested_chain(self) -> None:
+    def test_nx_graph_weak_node_nested_chain(self) -> None:
         """Test WeakNode nesting: grandparent → parent weak → child weak."""
         grandparent = Node(pk={"id": 1}, main_label="Document")
-        parent_weak = WeakNode(grandparent, pk={"section": 1}, main_label="Section")
-        child_weak = WeakNode(parent_weak, pk={"page": 1}, main_label="Page")
+        parent_weak = WeakNode(parent=grandparent, pk={"section": 1}, main_label="Section")
+        child_weak = WeakNode(parent=parent_weak, pk={"page": 1}, main_label="Page")
 
         # PK compostes en cadena
         self.assertEqual(parent_weak._primary_key, {"id": 1, "section": 1})
@@ -667,7 +667,7 @@ class MockGraphTest(unittest.TestCase):
 
         graph.close()
 
-    def test_mock_graph_weak_node_nested_delete_cascade(self) -> None:
+    def test_nx_graph_weak_node_nested_delete_cascade(self) -> None:
         """Test ON DELETE CASCADE en cadena de WeakNodes.
 
         Cascade elimina totes les arestes connectades al node esborrat
@@ -676,8 +676,8 @@ class MockGraphTest(unittest.TestCase):
         es manté perquè parent_weak encara existeix.
         """
         grandparent = Node(pk={"id": 1}, main_label="Document")
-        parent_weak = WeakNode(grandparent, pk={"section": 1}, main_label="Section")
-        child_weak = WeakNode(parent_weak, pk={"page": 1}, main_label="Page")
+        parent_weak = WeakNode(parent=grandparent, pk={"section": 1}, main_label="Section")
+        child_weak = WeakNode(parent=parent_weak, pk={"page": 1}, main_label="Page")
 
         graph = self._make_graph()
         graph.insertNode(grandparent, replace=True)
@@ -699,11 +699,11 @@ class MockGraphTest(unittest.TestCase):
 
         graph.close()
 
-    def test_mock_graph_weak_node_nested_set_null(self) -> None:
+    def test_nx_graph_weak_node_nested_set_null(self) -> None:
         """Test ON DELETE SET NULL en cadena de WeakNodes: esborrar el parent."""
         grandparent = Node(pk={"id": 1}, main_label="Document")
-        parent_weak = WeakNode(grandparent, pk={"section": 1}, main_label="Section")
-        child_weak = WeakNode(parent_weak, pk={"page": 1}, main_label="Page")
+        parent_weak = WeakNode(parent=grandparent, pk={"section": 1}, main_label="Section")
+        child_weak = WeakNode(parent=parent_weak, pk={"page": 1}, main_label="Page")
 
         graph = self._make_graph()
         graph.insertNode(grandparent, replace=True)
@@ -722,10 +722,10 @@ class MockGraphTest(unittest.TestCase):
 
         graph.close()
 
-    def test_mock_graph_weak_node_propagate_change(self) -> None:
+    def test_nx_graph_weak_node_propagate_change(self) -> None:
         """Test que canvis en parent es propaguen a WeakNode via PK fusionada."""
         parent = Node(pk={"id": 1}, main_label="Document")
-        child = WeakNode(parent, pk={"sub": 1}, main_label="SubDoc")
+        child = WeakNode(parent=parent, pk={"sub": 1}, main_label="SubDoc")
 
         # La PK del child ja inclou la del parent
         self.assertEqual(child._primary_key, {"id": 1, "sub": 1})
@@ -746,14 +746,14 @@ class MockGraphTest(unittest.TestCase):
 
         graph.close()
 
-    def test_mock_graph_weak_node_propagation_delete(self) -> None:
-        """Test que MockGraph implementa propagation com Neo4jGraph.
+    def test_nx_graph_weak_node_propagation_delete(self) -> None:
+        """Test que NetworkXGraph implementa propagation com Neo4jGraph.
 
         Esborrar el parent amb propagation=True esborra el fill WeakNode
         quan l'aresta parent-child té _propagate=True.
         """
         parent = Node(pk={"id": 1}, main_label="Document", _propagate=True)
-        child = WeakNode(parent, pk={"sub": 1}, main_label="SubDoc")
+        child = WeakNode(parent=parent, pk={"sub": 1}, main_label="SubDoc")
 
         graph = self._make_graph()
         graph.insertNode(parent, replace=True)
@@ -772,12 +772,12 @@ class MockGraphTest(unittest.TestCase):
 
         graph.close()
 
-    def test_mock_graph_weak_node_multiple_children(self) -> None:
+    def test_nx_graph_weak_node_multiple_children(self) -> None:
         """Test múltiples WeakNodes amb el mateix parent."""
         parent = Node(pk={"doc": "A"}, main_label="Document")
-        child1 = WeakNode(parent, pk={"page": 1}, main_label="Page")
-        child2 = WeakNode(parent, pk={"page": 2}, main_label="Page")
-        child3 = WeakNode(parent, pk={"page": 3}, main_label="Page")
+        child1 = WeakNode(parent=parent, pk={"page": 1}, main_label="Page")
+        child2 = WeakNode(parent=parent, pk={"page": 2}, main_label="Page")
+        child3 = WeakNode(parent=parent, pk={"page": 3}, main_label="Page")
 
         graph = self._make_graph()
         graph.insertNode(parent, replace=True)
@@ -800,7 +800,7 @@ class MockGraphTest(unittest.TestCase):
 # Tests for Neo4jGraph — wraps Neo4j driver (mocked in tests)
 # ---------------------------------------------------------------------------
 
-    def test_mock_graph_debug_output(self) -> None:
+    def test_nx_graph_debug_output(self) -> None:
         """Test que debug() retorna l'estat correcte del graf."""
         node_a = Node(pk={"id": 1}, main_label="TestNode")
         node_b = Node(pk={"id": 2}, main_label="TestNode")
@@ -821,7 +821,7 @@ class MockGraphTest(unittest.TestCase):
 
     # -- Node CRUD (equivalent to Neo4j real tests) --
 
-    def test_mock_graph_update_node_pk_compost(self) -> None:
+    def test_nx_graph_update_node_pk_compost(self) -> None:
         """Test per validar la creacio de nodes amb pk compost."""
         a = Node(
             pk={"nom": "Caldes dEstrac", "any": 1905},
@@ -846,7 +846,7 @@ class MockGraphTest(unittest.TestCase):
         self.assertEqual(up_a_1, up_b_1)
         graph.close()
 
-    def test_mock_graph_update_node_lloc_padro(self) -> None:
+    def test_nx_graph_update_node_lloc_padro(self) -> None:
         """Test per validar la creacio de nodes LlocPadro."""
         a = LlocPadro(
             pk={"nom": "Caldes dEstrac", "any": 1905},
@@ -870,7 +870,7 @@ class MockGraphTest(unittest.TestCase):
         self.assertEqual(up_a_1, up_b_1)
         graph.close()
 
-    def test_mock_graph_insert_individu_padro(self) -> None:
+    def test_nx_graph_insert_individu_padro(self) -> None:
         """Test per validar la creacio de nodes IndividuPadro."""
         a = IndividuPadro(pk=1, nom="Oriol", cognom1="Ramos", edat=18, alternative_labels="TEST")
         b = IndividuPadro(pk=2, nom="Sergio", cognom1="Ramos", ofici="fuster", alternative_labels="TEST")
@@ -1345,10 +1345,36 @@ class BaseTest(unittest.TestCase):
         self.assertIn("nom", node._primary_key)
         self.assertIn("any", node._primary_key)
 
-    def test_node_pk_none_without_neo4j_id(self) -> None:
-        """Test que un Node sense pk ni neo4j_id no tingui _primary_key."""
+    def test_node_explicit_pk_none_without_neo4j_id(self) -> None:
+        """Node amb pk=None explícit: _primary_key = None (backend assignarà ID)."""
         node = Node(pk=None, main_label="TestNode")
-        self.assertFalse(hasattr(node, "_primary_key"))
+        self.assertIsNone(node._primary_key)
+        self.assertEqual(node._main_label, "TestNode")
+
+    def test_node_explicit_pk_none_repr(self) -> None:
+        """Test que el repr d'un node amb pk=None no crasheja."""
+        node = Node(pk=None, main_label="TempNode")
+        r = repr(node)
+        self.assertIn("pk:None", r)
+
+    def test_explicit_pk_none_cannot_be_parent(self) -> None:
+        """Test que un node amb pk=None no pot ser parent de WeakNode."""
+        node = Node(pk=None, main_label="TempNode")
+        with self.assertRaises(ValueError) as ctx:
+            WeakNode(parent=node, pk={"sub": 1}, main_label="Child")
+        self.assertIn("parent must have a primary key", str(ctx.exception))
+
+    def test_explicit_pk_none_assigned_after_insert(self) -> None:
+        """Node amb pk=None explícit: el backend assigna un ID com a PK."""
+        node = Node(pk=None, main_label="AutoIdNode")
+        self.assertIsNone(node._primary_key)
+        from drm.networkx_graph import NetworkXGraph
+        graph = NetworkXGraph()
+        graph.insertNode(node, replace=True)
+        self.assertIsNotNone(node._primary_key)
+        self.assertIn("id", node._primary_key)
+        self.assertEqual(node._primary_key["id"], node.neo4j_id)
+        graph.close()
 
     def test_node_pk_none_with_neo4j_id(self) -> None:
         """Test que un Node sense pk pero amb neo4j_id tingui _primary_key."""
@@ -1411,7 +1437,7 @@ class BaseTest(unittest.TestCase):
         """Test que WeakNode tingui is_weak=True i parent correcte."""
         parent = Node(pk={"id": 1}, main_label="ParentNode")
         # WeakNode requires a pk to merge with parent
-        child = WeakNode(parent, pk={"sub_id": 1})
+        child = WeakNode(parent=parent, pk={"sub_id": 1})
         self.assertTrue(child._is_weak)
         self.assertEqual(child._parent, parent)
 
@@ -1545,7 +1571,7 @@ class EntitiesTest(unittest.TestCase):
 
     def test_individu_padro_ignore_assertion(self) -> None:
         """Test que ignore_assertion permeti saltar la validacio."""
-        ind = IndividuPadro(ignore_assertion=True, nom="Test")
+        ind = IndividuPadro(pk=1, ignore_assertion=True, nom="Test")
         self.assertEqual(ind._main_label, "IndividuPadro")
 
     def test_individu_padro_dependencies(self) -> None:
@@ -1587,13 +1613,10 @@ class EntitiesTest(unittest.TestCase):
 
     def test_padro_creation(self) -> None:
         """Test que Padro es pugui crear amb pk i ruta."""
-        # Padro is a WeakNode but without a parent, _is_weak stays False
-        # (the code only sets it True when parent is not None)
-        padro = Padro(pk=1, ruta="/path/to/doc")
+        parent = Node(pk={"id": 0}, main_label="Fons")
+        padro = Padro(parent=parent, pk=1, ruta="/path/to/doc")
         self.assertEqual(padro._main_label, "Padro")
-        # Note: _is_weak is False because no parent was provided
-        # This is a pre-existing bug in the codebase
-        self.assertFalse(padro._is_weak)
+        self.assertTrue(padro._is_weak)
 
     def test_padro_missing_ruta(self) -> None:
         """Test que Padro sense ruta cridi exit()."""
@@ -1602,10 +1625,10 @@ class EntitiesTest(unittest.TestCase):
 
     def test_fotografia_creation(self) -> None:
         """Test que Fotografia es pugui crear amb pk."""
-        foto = Fotografia(pk=1)
+        parent = Node(pk={"id": 0}, main_label="Padro")
+        foto = Fotografia(parent=parent, pk=1)
         self.assertEqual(foto._main_label, "Fotografia")
-        # Note: _is_weak is False because no parent was provided
-        self.assertFalse(foto._is_weak)
+        self.assertTrue(foto._is_weak)
 
     def test_fons_creation(self) -> None:
         """Test que Fons es pugui crear amb pk."""
@@ -1616,10 +1639,10 @@ class EntitiesTest(unittest.TestCase):
     def test_esdeventiment_creation(self) -> None:
         """Test que Esdeventiment es pugui crear amb pk.
 
-        Note: Esdeventiment referencia self.pk que no esta definit.
-        Aixo es un bug conegut — el test verifica l'error actual.
+        Note: Esdeventiment passa pk explícitament i via **kwargs,
+        això llança TypeError (duplicate kwarg). Bug conegut.
         """
-        with self.assertRaises(AttributeError):
+        with self.assertRaises(TypeError):
             Esdeventiment(pk=1, ignore_assertion=True)
 
     def test_acta_temporal_creation(self) -> None:
@@ -1629,14 +1652,15 @@ class EntitiesTest(unittest.TestCase):
 
     def test_boe_creation(self) -> None:
         """Test que BOE es pugui crear amb pk i ruta."""
-        boe = BOE(pk=1, ruta="/path/to/boe")
+        parent = Node(pk={"id": 0}, main_label="Fons")
+        boe = BOE(parent=parent, pk=1, ruta="/path/to/boe")
         self.assertEqual(boe._main_label, "BOE")
-        # Note: _is_weak is False because no parent was provided
-        self.assertFalse(boe._is_weak)
+        self.assertTrue(boe._is_weak)
 
     def test_boe_ignore_assertion(self) -> None:
         """Test que BOE amb ignore_assertion i sense ruta afegeix un valor per defecte."""
-        boe = BOE(pk=1, ignore_assertion=True)
+        parent = Node(pk={"id": 0}, main_label="Fons")
+        boe = BOE(parent=parent, pk=1, ignore_assertion=True)
         self.assertEqual(boe._main_label, "BOE")
 
 

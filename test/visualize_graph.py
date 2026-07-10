@@ -18,8 +18,8 @@ import math
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from PIL import Image, ImageDraw, ImageFont
-from drm.mock_graph import MockGraph
-from drm.entities import IndividuPadro, LlocPadro, Atribut
+from drm.networkx_graph import NetworkXGraph
+from drm.drm_entities import IndividuPadro, LlocPadro, Atribut
 from drm.base import Node, Relation, WeakNode
 
 
@@ -171,7 +171,7 @@ def _draw_text_block(
 # ── graph state reader ───────────────────────────────────────────────
 
 def _read_graph_state(
-    graph: MockGraph,
+    graph: NetworkXGraph,
     positions: dict[int, tuple[int, int]],
     highlight_new: set[int] | None = None,
     deleted_nodes: set[int] | None = None,
@@ -207,7 +207,7 @@ def _read_graph_state(
 def _render_frame(
     step_num: int,
     title: str,
-    graph: MockGraph,
+    graph: NetworkXGraph,
     positions: dict[int, tuple[int, int]],
     nodes: list[tuple[int, str, str]],
     edges: list[tuple[int, int, str]],
@@ -265,9 +265,9 @@ def _render_frame(
 
 # ── operation functions ──────────────────────────────────────────────
 # Pattern: PRE (build base state) → OP (execute operation) → RESULT
-# Each scenario gets a fresh MockGraph, so ops must build state from scratch.
+# Each scenario gets a fresh NetworkXGraph, so ops must build state from scratch.
 
-def _op_insert_lloc_padro(graph: MockGraph) -> dict:
+def _op_insert_lloc_padro(graph: NetworkXGraph) -> dict:
     """Step 1: Insert a LlocPadro node."""
     # PRE: insert node
     node = LlocPadro(pk={"nom": "Caldes dEstrac", "any": 1905})
@@ -275,7 +275,7 @@ def _op_insert_lloc_padro(graph: MockGraph) -> dict:
     return {"highlight_new": {node.neo4j_id}}
 
 
-def _op_update_lloc_padro(graph: MockGraph) -> dict:
+def _op_update_lloc_padro(graph: NetworkXGraph) -> dict:
     """Step 2: Update the LlocPadro node (replace)."""
     # PRE: insert node (same PK, triggers update)
     node = LlocPadro(pk={"nom": "Caldes dEstrac", "any": 1905})
@@ -283,7 +283,7 @@ def _op_update_lloc_padro(graph: MockGraph) -> dict:
     return {"highlight_new": set()}
 
 
-def _op_insert_individu(graph: MockGraph) -> dict:
+def _op_insert_individu(graph: NetworkXGraph) -> dict:
     """Step 3: Insert an IndividuPadro with dependencies."""
     # PRE: insert IndividuPadro (auto-creates Valor nodes + edges)
     ind = IndividuPadro(pk=1, nom="Oriol", cognom1="Ramos", cognom2="Perez")
@@ -291,7 +291,7 @@ def _op_insert_individu(graph: MockGraph) -> dict:
     return {"highlight_new": {1, 2, 3, 4}}
 
 
-def _op_delete_individu(graph: MockGraph) -> dict:
+def _op_delete_individu(graph: NetworkXGraph) -> dict:
     """Step 4: Delete the IndividuPadro (cascade)."""
     # PRE: insert full state
     ind = IndividuPadro(pk=1, nom="Oriol", cognom1="Ramos", cognom2="Perez")
@@ -301,7 +301,7 @@ def _op_delete_individu(graph: MockGraph) -> dict:
     return {"deleted_nodes": {1}, "deleted_edges": {(1, 2), (1, 3), (1, 4)}}
 
 
-def _op_delete_orphan_valors(graph: MockGraph) -> dict:
+def _op_delete_orphan_valors(graph: NetworkXGraph) -> dict:
     """Step 5: Delete orphan Valor nodes."""
     # PRE: insert full state, delete individu (cascade leaves orphan Valors)
     ind = IndividuPadro(pk=1, nom="Oriol", cognom1="Ramos", cognom2="Perez")
@@ -315,7 +315,7 @@ def _op_delete_orphan_valors(graph: MockGraph) -> dict:
     return {"deleted_nodes": {2, 3, 4}, "deleted_edges": set()}
 
 
-def _op_insert_individu_ramos(graph: MockGraph) -> dict:
+def _op_insert_individu_ramos(graph: NetworkXGraph) -> dict:
     """Step 6: Insert first IndividuPadro (Oriol Ramos)."""
     # PRE: insert IndividuPadro with Valor dependencies
     ind = IndividuPadro(pk=1, nom="Oriol", cognom1="Ramos")
@@ -323,7 +323,7 @@ def _op_insert_individu_ramos(graph: MockGraph) -> dict:
     return {"highlight_new": {1, 3, 4}}
 
 
-def _op_insert_individu_fuster(graph: MockGraph) -> dict:
+def _op_insert_individu_fuster(graph: NetworkXGraph) -> dict:
     """Step 7: Insert second IndividuPadro (Oriol Fuster), sharing 'Oriol' Valor."""
     # PRE: insert second IndividuPadro (shares Valor node 3)
     ind = IndividuPadro(pk=2, nom="Oriol", cognom1="Fuster")
@@ -331,7 +331,7 @@ def _op_insert_individu_fuster(graph: MockGraph) -> dict:
     return {"highlight_new": {2, 5}}
 
 
-def _op_insert_test_nodes(graph: MockGraph) -> dict:
+def _op_insert_test_nodes(graph: NetworkXGraph) -> dict:
     """Step 8: Insert two TestNodes."""
     # PRE: insert two nodes
     a = Node(pk={"nom": "NodeA"}, main_label="TestNode")
@@ -341,7 +341,7 @@ def _op_insert_test_nodes(graph: MockGraph) -> dict:
     return {"highlight_new": {1, 2}}
 
 
-def _op_insert_connects(graph: MockGraph) -> dict:
+def _op_insert_connects(graph: NetworkXGraph) -> dict:
     """Step 9: Create CONNECTS relation (insert nodes + relation)."""
     # PRE: insert nodes
     a = Node(pk={"nom": "NodeA"}, main_label="TestNode")
@@ -353,13 +353,13 @@ def _op_insert_connects(graph: MockGraph) -> dict:
     return {"highlight_new": set()}
 
 
-def _op_fk_violation(graph: MockGraph) -> dict:
+def _op_fk_violation(graph: NetworkXGraph) -> dict:
     """Step 10: Show FK violation scenario (graph unchanged from step 9)."""
     # No-op: graph already has state from step 9
     return {"highlight_new": set()}
 
 
-def _op_insert_link_a_b(graph: MockGraph) -> dict:
+def _op_insert_link_a_b(graph: NetworkXGraph) -> dict:
     """Step 11: Insert two nodes and a LINKS relation."""
     # PRE: insert nodes
     a = Node(pk={"id": 1}, main_label="TestNode")
@@ -371,7 +371,7 @@ def _op_insert_link_a_b(graph: MockGraph) -> dict:
     return {"highlight_new": {1, 2}}
 
 
-def _op_delete_a_restrict(graph: MockGraph) -> dict:
+def _op_delete_a_restrict(graph: NetworkXGraph) -> dict:
     """Step 12: Try to delete A without detach (RESTRICT)."""
     # PRE: insert full state
     a = Node(pk={"id": 1}, main_label="TestNode")
@@ -387,7 +387,7 @@ def _op_delete_a_restrict(graph: MockGraph) -> dict:
     return {"highlight_new": set()}
 
 
-def _op_delete_a_cascade(graph: MockGraph) -> dict:
+def _op_delete_a_cascade(graph: NetworkXGraph) -> dict:
     """Step 13: Delete A with cascade."""
     # PRE: insert full state
     a = Node(pk={"id": 1}, main_label="TestNode")
@@ -400,7 +400,7 @@ def _op_delete_a_cascade(graph: MockGraph) -> dict:
     return {"deleted_nodes": {1}, "deleted_edges": {(1, 2)}}
 
 
-def _op_insert_chain(graph: MockGraph) -> dict:
+def _op_insert_chain(graph: NetworkXGraph) -> dict:
     """Step 14: Insert A→B→C chain."""
     # PRE: insert nodes and relations
     a = Node(pk={"id": 1}, main_label="TestNode")
@@ -414,7 +414,7 @@ def _op_insert_chain(graph: MockGraph) -> dict:
     return {"highlight_new": {1, 2, 3}}
 
 
-def _op_delete_a_chain(graph: MockGraph) -> dict:
+def _op_delete_a_chain(graph: NetworkXGraph) -> dict:
     """Step 15: Delete A from the chain."""
     # PRE: insert full chain
     a = Node(pk={"id": 1}, main_label="TestNode")
@@ -430,7 +430,7 @@ def _op_delete_a_chain(graph: MockGraph) -> dict:
     return {"deleted_nodes": {1}, "deleted_edges": {(1, 2)}}
 
 
-def _op_insert_multi_edges(graph: MockGraph) -> dict:
+def _op_insert_multi_edges(graph: NetworkXGraph) -> dict:
     """Step 16: Insert A with two outgoing edges."""
     # PRE: insert nodes and relations
     a = Node(pk={"id": 1}, main_label="TestNode")
@@ -444,7 +444,7 @@ def _op_insert_multi_edges(graph: MockGraph) -> dict:
     return {"highlight_new": {1, 2, 3}}
 
 
-def _op_delete_a_multi(graph: MockGraph) -> dict:
+def _op_delete_a_multi(graph: NetworkXGraph) -> dict:
     """Step 17: Delete A with multiple outgoing edges."""
     # PRE: insert full state
     a = Node(pk={"id": 1}, main_label="TestNode")
@@ -460,7 +460,7 @@ def _op_delete_a_multi(graph: MockGraph) -> dict:
     return {"deleted_nodes": {1}, "deleted_edges": {(1, 2), (1, 3)}}
 
 
-def _op_insert_set_null(graph: MockGraph) -> dict:
+def _op_insert_set_null(graph: NetworkXGraph) -> dict:
     """Step 18: Insert nodes for SET NULL test."""
     # PRE: insert nodes and relations
     a = Node(pk={"id": 1}, main_label="TestNode")
@@ -474,7 +474,7 @@ def _op_insert_set_null(graph: MockGraph) -> dict:
     return {"highlight_new": {1, 2, 3}}
 
 
-def _op_delete_set_null(graph: MockGraph) -> dict:
+def _op_delete_set_null(graph: NetworkXGraph) -> dict:
     """Step 19: Delete A with SET NULL."""
     # PRE: insert full state
     a = Node(pk={"id": 1}, main_label="TestNode")
@@ -490,7 +490,7 @@ def _op_delete_set_null(graph: MockGraph) -> dict:
     return {"deleted_nodes": {1}, "deleted_edges": {(1, 2), (1, 3)}}
 
 
-def _op_insert_document(graph: MockGraph) -> dict:
+def _op_insert_document(graph: NetworkXGraph) -> dict:
     """Step 20: Insert a Document node."""
     # PRE: insert document
     doc = Node(pk={"id": 1}, main_label="Document")
@@ -498,7 +498,7 @@ def _op_insert_document(graph: MockGraph) -> dict:
     return {"highlight_new": {1}}
 
 
-def _op_insert_weak_child(graph: MockGraph) -> dict:
+def _op_insert_weak_child(graph: NetworkXGraph) -> dict:
     """Step 21: Insert first WeakNode child."""
     # PRE: insert parent
     doc = Node(pk={"id": 1}, main_label="Document")
@@ -509,7 +509,7 @@ def _op_insert_weak_child(graph: MockGraph) -> dict:
     return {"highlight_new": {2}}
 
 
-def _op_insert_weak_child2(graph: MockGraph) -> dict:
+def _op_insert_weak_child2(graph: NetworkXGraph) -> dict:
     """Step 22: Insert second WeakNode child."""
     # PRE: insert parent and first child
     doc = Node(pk={"id": 1}, main_label="Document")
@@ -521,7 +521,7 @@ def _op_insert_weak_child2(graph: MockGraph) -> dict:
     return {"highlight_new": {3}}
 
 
-def _op_insert_nesting_chain(graph: MockGraph) -> dict:
+def _op_insert_nesting_chain(graph: NetworkXGraph) -> dict:
     """Step 23: Insert Document for nesting."""
     # PRE: insert document
     doc = Node(pk={"id": 1}, main_label="Document")
@@ -529,7 +529,7 @@ def _op_insert_nesting_chain(graph: MockGraph) -> dict:
     return {"highlight_new": {1}}
 
 
-def _op_insert_nesting_section(graph: MockGraph) -> dict:
+def _op_insert_nesting_section(graph: NetworkXGraph) -> dict:
     """Step 24: Insert Section (WeakNode of Document)."""
     # PRE: insert parent
     doc = Node(pk={"id": 1}, main_label="Document")
@@ -540,7 +540,7 @@ def _op_insert_nesting_section(graph: MockGraph) -> dict:
     return {"highlight_new": {2}}
 
 
-def _op_insert_nesting_page(graph: MockGraph) -> dict:
+def _op_insert_nesting_page(graph: NetworkXGraph) -> dict:
     """Step 25: Insert Page (WeakNode of Section)."""
     # PRE: insert parent chain
     doc = Node(pk={"id": 1}, main_label="Document")
@@ -553,7 +553,7 @@ def _op_insert_nesting_page(graph: MockGraph) -> dict:
     return {"highlight_new": {3}}
 
 
-def _op_delete_nesting_document(graph: MockGraph) -> dict:
+def _op_delete_nesting_document(graph: NetworkXGraph) -> dict:
     """Step 26: Delete Document from nesting chain."""
     # PRE: insert full nesting chain
     doc = Node(pk={"id": 1}, main_label="Document")
@@ -567,7 +567,7 @@ def _op_delete_nesting_document(graph: MockGraph) -> dict:
     return {"deleted_nodes": {1}, "deleted_edges": {(1, 2)}}
 
 
-def _op_insert_update_test(graph: MockGraph) -> dict:
+def _op_insert_update_test(graph: NetworkXGraph) -> dict:
     """Step 27: Insert A→B for UPDATE/REPLACE test."""
     # PRE: insert nodes and relation
     a = Node(pk={"id": 1}, main_label="TestNode")
@@ -578,7 +578,7 @@ def _op_insert_update_test(graph: MockGraph) -> dict:
     return {"highlight_new": {1, 2}}
 
 
-def _op_update_a(graph: MockGraph) -> dict:
+def _op_update_a(graph: NetworkXGraph) -> dict:
     """Step 28: Update A (not replace)."""
     # PRE: insert full state
     a = Node(pk={"id": 1}, main_label="TestNode")
@@ -592,7 +592,7 @@ def _op_update_a(graph: MockGraph) -> dict:
     return {"highlight_new": set()}
 
 
-def _op_replace_a(graph: MockGraph) -> dict:
+def _op_replace_a(graph: NetworkXGraph) -> dict:
     """Step 29: Replace A (creates new ID, loses edge)."""
     # PRE: insert full state
     a = Node(pk={"id": 1}, main_label="TestNode")
@@ -606,7 +606,7 @@ def _op_replace_a(graph: MockGraph) -> dict:
     return {"deleted_nodes": {1}, "deleted_edges": {(1, 2)}}
 
 
-def _op_insert_doc_doc(graph: MockGraph) -> dict:
+def _op_insert_doc_doc(graph: NetworkXGraph) -> dict:
     """Step 30: Insert Document DOC-001."""
     # PRE: insert document
     doc = Node(pk={"doc": "DOC-001"}, main_label="Document")
@@ -614,7 +614,7 @@ def _op_insert_doc_doc(graph: MockGraph) -> dict:
     return {"highlight_new": {1}}
 
 
-def _op_insert_pages(graph: MockGraph) -> dict:
+def _op_insert_pages(graph: NetworkXGraph) -> dict:
     """Step 31: Insert Page 1 and Page 2."""
     # PRE: insert parent
     doc = Node(pk={"doc": "DOC-001"}, main_label="Document")
@@ -627,7 +627,7 @@ def _op_insert_pages(graph: MockGraph) -> dict:
     return {"highlight_new": {2, 3}}
 
 
-def _op_delete_page1(graph: MockGraph) -> dict:
+def _op_delete_page1(graph: NetworkXGraph) -> dict:
     """Step 32: Delete Page 1."""
     # PRE: insert full state
     doc = Node(pk={"doc": "DOC-001"}, main_label="Document")
@@ -686,7 +686,7 @@ SCENARIOS = [
         "op": _op_insert_individu,
         "explanation": "Codi:\n  ind = IndividuPadro(pk=1, nom='Oriol', cognom1='Ramos', cognom2='Perez')\n\n"
                        "IndividuPadro té be_value_properties = ('nom', 'cognom1', 'cognom2').\n"
-                       "MockGraph equival a Neo4jGraph: AUTOMÀTICAMENT es generen:\n"
+                       "NetworkXGraph equival a Neo4jGraph: AUTOMÀTICAMENT es generen:\n"
                        "  - 1 node Valor per cada propietat string\n"
                        "  - 1 aresta HAS_NOM / HAS_COGNOM1 / HAS_COGNOM2 per connectar-los\n"
                        "Tot es crea en un sol pas: node + Valor nodes + arestes.",
@@ -1176,7 +1176,7 @@ def main() -> None:
         separator(sc["title"])
 
         # Create a fresh graph for each scenario
-        graph = MockGraph()
+        graph = NetworkXGraph()
 
         # Execute the operation (PRE + OP)
         op_result = sc["op"](graph)

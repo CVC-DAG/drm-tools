@@ -1,0 +1,689 @@
+"""Contract tests for GraphStore propagation policies.
+
+These tests verify that **any** GraphStore implementation behaves
+identically with respect to the propagation / deletion / update
+policies.  Each concrete backend gets its own test class.
+
+Usage::
+
+    # For NetworkXGraph:
+    python -m unittest test.test_graph_store_contract.TestNetworkXGraph
+
+    # For Neo4jGraph (requires a real Neo4j database):
+    export NEO4J_URL=bolt://localhost:7687
+    export NEO4J_USER=neo4j
+    export NEO4J_PASSWORD=secret
+    python -m unittest test.test_graph_store_contract.TestNeo4jGraph
+"""
+
+from __future__ import annotations
+
+import os
+import unittest
+from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple
+
+from drm.base import Node, Relation, WeakNode
+from drm.graph_store import GraphStore
+
+if TYPE_CHECKING:
+    pass  # Avoid circular imports at runtime
+
+
+# ======================================================================
+# Test helpers — build graph state for any GraphStore
+# ======================================================================
+
+
+def _setup_parent_graph(graph: GraphStore) -> Tuple[Node, Node, Node]:
+    """Create a graph with three nodes and two edges: A→B, A→C."""
+    a = Node(pk={"id": 1}, main_label="TestNode")
+    b = Node(pk={"id": 2}, main_label="TestNode")
+    c = Node(pk={"id": 3}, main_label="TestNode")
+    graph.insertNode(a, replace=True)
+    graph.insertNode(b, replace=True)
+    graph.insertNode(c, replace=True)
+    graph.insertRelation(Relation(a, b, "LINKS"))
+    graph.insertRelation(Relation(a, c, "LINKS"))
+    return a, b, c
+
+
+def _setup_chain_graph(graph: GraphStore) -> Tuple[Node, Node, Node]:
+    """Create a graph with a chain: A→B→C."""
+    a = Node(pk={"id": 1}, main_label="TestNode")
+    b = Node(pk={"id": 2}, main_label="TestNode")
+    c = Node(pk={"id": 3}, main_label="TestNode")
+    graph.insertNode(a, replace=True)
+    graph.insertNode(b, replace=True)
+    graph.insertNode(c, replace=True)
+    graph.insertRelation(Relation(a, b, "LINKS"))
+    graph.insertRelation(Relation(b, c, "LINKS"))
+    return a, b, c
+
+
+# ======================================================================
+# Contract tests — run against any GraphStore implementation
+# ======================================================================
+
+
+class TestNetworkXGraph(unittest.TestCase):
+    """Run all GraphStore contract tests against NetworkXGraph."""
+
+    def _make_graph(self) -> GraphStore:
+        from drm.networkx_graph import NetworkXGraph
+        return NetworkXGraph()
+
+    # -- ON DELETE RESTRICT --
+
+    def test_contract_delete_restrict_refuses_with_edges(self) -> None:
+        """ON DELETE RESTRICT: no es pot esborrar un node amb arestes."""
+        graph = self._make_graph()
+        a, b, c = _setup_parent_graph(graph)
+        with self.assertRaises(RuntimeError) as ctx:
+            graph.deleteNode(a, detach=False)
+        self.assertIn("ON DELETE RESTRICT", str(ctx.exception))
+        graph.close()
+
+    def test_contract_delete_restrict_succeeds_without_edges(self) -> None:
+        """ON DELETE RESTRICT: es pot esborrar un node sense arestes."""
+        graph = self._make_graph()
+        a = Node(pk={"id": 1}, main_label="TestNode")
+        graph.insertNode(a, replace=True)
+        result = graph.deleteNode(a, detach=False)
+        self.assertTrue(result)
+        graph.close()
+
+    # -- ON DELETE CASCADE --
+
+    def test_contract_delete_cascade_removes_edges(self) -> None:
+        """ON DELETE CASCADE: esborra node + arestes."""
+        graph = self._make_graph()
+        a, b, c = _setup_parent_graph(graph)
+        result = graph.deleteNode(a, detach=True)
+        self.assertTrue(result)
+        self.assertEqual(len(graph.get_nodes()), 2)  # b, c queden
+        self.assertEqual(len(graph.get_edges()), 0)  # totes les arestes esborrades
+        graph.close()
+
+    def test_contract_delete_cascade_leaves_orphans(self) -> None:
+        """ON DELETE CASCADE: els veïns queden com a orfes (NO cascada).
+
+        Aquest és el punt més important: CASCADE esborra node + arestes,
+        però NO esborra els nodes veïns.
+        """
+        graph = self._make_graph()
+        a, b, c = _setup_parent_graph(graph)
+        graph.deleteNode(a, detach=True)
+        # b i c queden al graf com a nodes independents
+        self.assertIn(2, graph.get_nodes())
+        self.assertIn(3, graph.get_nodes())
+        graph.close()
+
+    def test_contract_delete_cascade_chain(self) -> None:
+        """ON DELETE CASCADE en cadena A→B→C: esborrar A no esborra B ni C."""
+        graph = self._make_graph()
+        a, b, c = _setup_chain_graph(graph)
+        graph.deleteNode(a, detach=True)
+        self.assertEqual(len(graph.get_nodes()), 2)  # b, c queden
+        self.assertEqual(len(graph.get_edges()), 1)  # B→C es manté
+        graph.close()
+
+    # -- ON DELETE SET NULL --
+
+    def test_contract_delete_set_null_keeps_neighbors(self) -> None:
+        """ON DELETE SET NULL: esborra node però manté veïns (sense cascada)."""
+        graph = self._make_graph()
+        a, b, c = _setup_parent_graph(graph)
+        graph.deleteNode(a, detach=True, on_delete="set_null")
+        self.assertEqual(len(graph.get_nodes()), 2)  # b, c queden
+        self.assertEqual(len(graph.get_edges()), 0)  # arestes esborrades
+        self.assertIn(2, graph.get_nodes())
+        self.assertIn(3, graph.get_nodes())
+        graph.close()
+
+    def test_contract_delete_set_null_no_cascade_to_neighbors(self) -> None:
+        """ON DELETE SET NULL: esborrar node del mig no cascada als veïns."""
+        graph = self._make_graph()
+        a, b, c = _setup_chain_graph(graph)
+        graph.deleteNode(b, detach=True, on_delete="set_null")
+        # a i c queden (no cascada)
+        self.assertEqual(len(graph.get_nodes()), 2)
+        self.assertIn(1, graph.get_nodes())
+        self.assertIn(3, graph.get_nodes())
+        graph.close()
+
+    # -- ON UPDATE CASCADE --
+
+    def test_contract_update_preserves_edges(self) -> None:
+        """ON UPDATE CASCADE: actualitzar un node no trenca les arestes."""
+        graph = self._make_graph()
+        a, b, c = _setup_parent_graph(graph)
+        a_updated = Node(pk={"id": 1}, main_label="TestNode", updated="yes")
+        graph.insertNode(a_updated, update=True)
+        self.assertEqual(len(graph.get_nodes()), 3)
+        self.assertEqual(len(graph.get_edges()), 2)  # les arestes es mantenen
+        graph.close()
+
+    # -- REPLACE --
+
+    def test_contract_replace_removes_edges(self) -> None:
+        """Replace: esborra node amb detach, les arestes s'esborren."""
+        graph = self._make_graph()
+        a, b, c = _setup_parent_graph(graph)
+        a_new = Node(pk={"id": 1}, main_label="TestNode", replaced="yes")
+        graph.insertNode(a_new, replace=True)
+        self.assertEqual(len(graph.get_nodes()), 3)  # a nou + b + c
+        self.assertEqual(len(graph.get_edges()), 0)  # les arestes antigues s'esborren
+        graph.close()
+
+    # -- FK VIOLATION --
+
+    def test_contract_fk_violation_src_missing(self) -> None:
+        """FK violation: crear relació amb src no inserit llança RuntimeError."""
+        graph = self._make_graph()
+        src = Node(pk={"id": 999}, main_label="MissingNode")
+        dst = Node(pk={"id": 1}, main_label="TestNode")
+        graph.insertNode(dst, replace=True)
+        rel = Relation(src, dst, "CONNECTS")
+        with self.assertRaises(RuntimeError) as ctx:
+            graph.insertRelation(rel)
+        self.assertIn("FK violation", str(ctx.exception))
+        self.assertIn("src", str(ctx.exception))
+        graph.close()
+
+    def test_contract_fk_violation_dst_missing(self) -> None:
+        """FK violation: crear relació amb dst no inserit llança RuntimeError."""
+        graph = self._make_graph()
+        src = Node(pk={"id": 1}, main_label="TestNode")
+        dst = Node(pk={"id": 999}, main_label="MissingNode")
+        graph.insertNode(src, replace=True)
+        rel = Relation(src, dst, "CONNECTS")
+        with self.assertRaises(RuntimeError) as ctx:
+            graph.insertRelation(rel)
+        self.assertIn("FK violation", str(ctx.exception))
+        self.assertIn("dst", str(ctx.exception))
+        graph.close()
+
+    # -- WEAK NODE --
+
+    def test_contract_weak_node_creates_parent(self) -> None:
+        """WeakNode amb insert_parent=True insereix el parent automàticament."""
+        graph = self._make_graph()
+        parent = Node(pk={"id": 1}, main_label="ParentNode")
+        child = WeakNode(parent=parent, pk={"sub": 1}, main_label="ChildNode")
+        graph.insertNode(parent, replace=True)
+        graph.insertNode(child, insert_parent=True)
+        self.assertEqual(len(graph.get_nodes()), 2)  # parent + child
+        self.assertEqual(len(graph.get_edges()), 1)  # parent → child
+        graph.close()
+
+    def test_contract_weak_node_composite_pk(self) -> None:
+        """WeakNode té PK composta fusionada amb el parent."""
+        graph = self._make_graph()
+        parent = Node(pk={"id": 1}, main_label="ParentNode")
+        child = WeakNode(parent=parent, pk={"sub": 1}, main_label="ChildNode")
+        graph.insertNode(parent, replace=True)
+        graph.insertNode(child, insert_parent=True)
+        # La PK del child ha de contenir la del parent
+        self.assertIn("id", child._primary_key)
+        self.assertIn("sub", child._primary_key)
+        graph.close()
+
+    def test_contract_weak_node_propagation_delete(self) -> None:
+        """Esborrar parent amb propagation=True esborra el fill WeakNode.
+
+        La propagació es basa en l'aresta parent-child amb
+        _propagate=TRUE.  Cal assegurar-se que l'aresta té aquest flag.
+        """
+        graph = self._make_graph()
+        parent = Node(pk={"id": 1}, main_label="ParentNode")
+        child = WeakNode(parent=parent, pk={"sub": 1}, main_label="ChildNode")
+        graph.insertNode(parent, replace=True)
+        graph.insertNode(child, insert_parent=True)
+        # Assegurar que l'aresta té _propagate=True
+        edges = graph.get_edges()
+        if edges:
+            src_id, dst_id, rel_type = edges[0]
+            attrs = graph.get_edge_attrs(src_id, dst_id, rel_type)
+            if attrs is not None:
+                attrs["_propagate"] = True
+        result = graph.deleteNode(parent, propagation=True, detach=True)
+        self.assertTrue(result)
+        self.assertEqual(len(graph.get_nodes()), 0)  # tots dos esborrats
+        self.assertEqual(len(graph.get_edges()), 0)
+        graph.close()
+
+    def test_contract_weak_node_nested_chain(self) -> None:
+        """WeakNode nesting: grandparent → parent weak → child weak."""
+        graph = self._make_graph()
+        grandparent = Node(pk={"id": 1}, main_label="Document")
+        parent_weak = WeakNode(parent=grandparent, pk={"section": 1}, main_label="Section")
+        child_weak = WeakNode(parent=parent_weak, pk={"page": 1}, main_label="Page")
+        graph.insertNode(grandparent, replace=True)
+        graph.insertNode(parent_weak, insert_parent=True)
+        graph.insertNode(child_weak, insert_parent=True)
+        self.assertEqual(len(graph.get_nodes()), 3)
+        self.assertEqual(len(graph.get_edges()), 2)  # gp→pw, pw→cw
+        graph.close()
+
+    def test_contract_weak_node_nested_delete_cascade(self) -> None:
+        """ON DELETE CASCADE en cadena de WeakNodes: esborrar grandparent."""
+        graph = self._make_graph()
+        grandparent = Node(pk={"id": 1}, main_label="Document")
+        parent_weak = WeakNode(parent=grandparent, pk={"section": 1}, main_label="Section")
+        child_weak = WeakNode(parent=parent_weak, pk={"page": 1}, main_label="Page")
+        graph.insertNode(grandparent, replace=True)
+        graph.insertNode(parent_weak, insert_parent=True)
+        graph.insertNode(child_weak, insert_parent=True)
+        graph.deleteNode(grandparent, detach=True)
+        # CASCADE esborra arestes però NO nodes veïns
+        self.assertEqual(len(graph.get_nodes()), 2)  # pw, cw queden
+        self.assertEqual(len(graph.get_edges()), 1)  # pw→cw es manté
+        graph.close()
+
+    # -- BULK IMPORT (create) --
+
+    def test_contract_bulk_import(self) -> None:
+        """Bulk import: inserta nodes i relacions en un sol pas."""
+        graph = self._make_graph()
+        nodes: List[Node] = [
+            Node(pk={"id": 1}, main_label="TestNode"),
+            Node(pk={"id": 2}, main_label="TestNode"),
+        ]
+        rel = Relation(nodes[0], nodes[1], "LINKS")
+        migration: Tuple[List, List] = (nodes, [rel])
+        graph.create(migration)
+        self.assertEqual(len(graph.get_nodes()), 2)
+        self.assertEqual(len(graph.get_edges()), 1)
+        graph.close()
+
+    # -- CHECK NODE --
+
+    def test_contract_check_node_exists(self) -> None:
+        """checkNode troba un node que existeix."""
+        graph = self._make_graph()
+        a = Node(pk={"id": 1}, main_label="TestNode")
+        graph.insertNode(a, replace=True)
+        result = graph.checkNode(a)
+        self.assertIsNotNone(result)
+        graph.close()
+
+    def test_contract_check_node_missing(self) -> None:
+        """checkNode retorna None per a nodes inexistents."""
+        graph = self._make_graph()
+        a = Node(pk={"id": 999}, main_label="NonExistent")
+        result = graph.checkNode(a)
+        self.assertIsNone(result)
+        graph.close()
+
+    # -- DUPLICATE KEY --
+
+    def test_contract_duplicate_key_raises(self) -> None:
+        """Inserir el mateix node dues vegades amb update=False + replace=False
+        llança RuntimeError (duplicate key)."""
+        graph = self._make_graph()
+        a1 = Node(pk={"id": 1}, main_label="TestNode")
+        a2 = Node(pk={"id": 1}, main_label="TestNode")
+        graph.insertNode(a1, replace=True)
+        with self.assertRaises(RuntimeError) as ctx:
+            graph.insertNode(a2, update=False, replace=False)
+        self.assertIn("Duplicate key", str(ctx.exception))
+        graph.close()
+
+    # -- CLOSE --
+
+    def test_contract_close_is_safe(self) -> None:
+        """close() no llança excepcions i deixa el store en estat net."""
+        graph = self._make_graph()
+        a = Node(pk={"id": 1}, main_label="TestNode")
+        graph.insertNode(a, replace=True)
+        graph.close()
+        # Després de close, no hauria de quedar estat inconsistent
+        self.assertEqual(len(graph.get_nodes()), 0)
+
+    # -- EXPLICIT PK=None --
+
+    def test_contract_explicit_pk_none_before_insert(self) -> None:
+        """Node amb pk=None explícit: _primary_key = None abans d'insertar."""
+        graph = self._make_graph()
+        node = Node(pk=None, main_label="AutoIdNode")
+        self.assertIsNone(node._primary_key)
+        graph.close()
+
+    def test_contract_explicit_pk_none_assigned_after_insert(self) -> None:
+        """Node amb pk=None explícit: el backend assigna un ID com a PK."""
+        graph = self._make_graph()
+        node = Node(pk=None, main_label="AutoIdNode")
+        self.assertIsNone(node._primary_key)
+        graph.insertNode(node, replace=True)
+        # El backend ha assignat un ID com a PK
+        self.assertIsNotNone(node._primary_key)
+        self.assertIn("id", node._primary_key)
+        self.assertEqual(node._primary_key["id"], node.neo4j_id)
+        # Ara checkNode el pot trobar
+        self.assertEqual(graph.checkNode(node), node.neo4j_id)
+        graph.close()
+
+
+class TestNeo4jGraph(unittest.TestCase):
+    """Contract tests for Neo4jGraph.
+
+    These tests require a real Neo4j database because many contract
+    checks rely on query helpers (get_nodes, get_edges, etc.) that
+    would need full Cypher mocking.  If NEO4J_URL is set in the
+    environment, all tests run against the real database.  Otherwise
+    they are skipped with a note.
+
+    To run:
+        export NEO4J_URL=bolt://localhost:7687
+        export NEO4J_USER=neo4j
+        export NEO4J_PASSWORD=secret
+        python -m unittest test.test_graph_store_contract.TestNeo4jGraph
+    """
+
+    _has_db: bool = False
+    _graph: Optional[GraphStore] = None
+
+    @classmethod
+    def setUpClass(cls) -> None:
+        url = os.environ.get("NEO4J_URL")
+        user = os.environ.get("NEO4J_USER")
+        password = os.environ.get("NEO4J_PASSWORD")
+        if url and user and password:
+            cls._has_db = True
+            from drm.neo4j_graph import Neo4jGraph
+            cls._graph = Neo4jGraph(
+                url=url,
+                user=user,
+                password=password,
+                database=os.environ.get("NEO4J_DATABASE", "neo4j"),
+            )
+            # Clean slate
+            try:
+                cls._graph._tx = cls._graph._session.begin_transaction()
+                cls._graph._tx.run("MATCH (n) DETACH DELETE n")
+                cls._graph._tx.commit()
+            except Exception:
+                pass
+            finally:
+                cls._graph._tx = None
+        else:
+            cls._graph = None
+
+    @classmethod
+    def tearDownClass(cls) -> None:
+        if cls._graph is not None:
+            cls._graph.close()
+
+    def _make_graph(self) -> GraphStore:
+        if self._has_db:
+            return self._graph  # type: ignore[return-value]
+        self.skipTest("NEO4J_URL / NEO4J_USER / NEO4J_PASSWORD not set")
+        raise RuntimeError("No Neo4j database available")
+
+    def setUp(self) -> None:
+        if self._has_db:
+            # Clean slate before each test
+            try:
+                self._graph._tx = self._graph._session.begin_transaction()
+                self._graph._tx.run("MATCH (n) DETACH DELETE n")
+                self._graph._tx.commit()
+            except Exception:
+                pass
+            finally:
+                self._graph._tx = None
+
+    # -- ON DELETE RESTRICT --
+
+    def test_contract_delete_restrict_refuses_with_edges(self) -> None:
+        graph = self._make_graph()
+        a, b, c = _setup_parent_graph(graph)
+        with self.assertRaises(RuntimeError) as ctx:
+            graph.deleteNode(a, detach=False)
+        self.assertIn("ON DELETE RESTRICT", str(ctx.exception))
+        graph.close()
+
+    def test_contract_delete_restrict_succeeds_without_edges(self) -> None:
+        graph = self._make_graph()
+        a = Node(pk={"id": 1}, main_label="TestNode")
+        graph.insertNode(a, replace=True)
+        result = graph.deleteNode(a, detach=False)
+        self.assertTrue(result)
+        graph.close()
+
+    # -- ON DELETE CASCADE --
+
+    def test_contract_delete_cascade_removes_edges(self) -> None:
+        graph = self._make_graph()
+        a, b, c = _setup_parent_graph(graph)
+        result = graph.deleteNode(a, detach=True)
+        self.assertTrue(result)
+        self.assertEqual(len(graph.get_nodes()), 2)
+        self.assertEqual(len(graph.get_edges()), 0)
+        graph.close()
+
+    def test_contract_delete_cascade_leaves_orphans(self) -> None:
+        graph = self._make_graph()
+        a, b, c = _setup_parent_graph(graph)
+        graph.deleteNode(a, detach=True)
+        self.assertIn(2, graph.get_nodes())
+        self.assertIn(3, graph.get_nodes())
+        graph.close()
+
+    def test_contract_delete_cascade_chain(self) -> None:
+        graph = self._make_graph()
+        a, b, c = _setup_chain_graph(graph)
+        graph.deleteNode(a, detach=True)
+        self.assertEqual(len(graph.get_nodes()), 2)
+        self.assertEqual(len(graph.get_edges()), 1)
+        graph.close()
+
+    # -- ON DELETE SET NULL --
+
+    def test_contract_delete_set_null_keeps_neighbors(self) -> None:
+        graph = self._make_graph()
+        a, b, c = _setup_parent_graph(graph)
+        graph.deleteNode(a, detach=True, on_delete="set_null")
+        self.assertEqual(len(graph.get_nodes()), 2)
+        self.assertEqual(len(graph.get_edges()), 0)
+        self.assertIn(2, graph.get_nodes())
+        self.assertIn(3, graph.get_nodes())
+        graph.close()
+
+    def test_contract_delete_set_null_no_cascade_to_neighbors(self) -> None:
+        graph = self._make_graph()
+        a, b, c = _setup_chain_graph(graph)
+        graph.deleteNode(b, detach=True, on_delete="set_null")
+        self.assertEqual(len(graph.get_nodes()), 2)
+        self.assertIn(1, graph.get_nodes())
+        self.assertIn(3, graph.get_nodes())
+        graph.close()
+
+    # -- ON UPDATE CASCADE --
+
+    def test_contract_update_preserves_edges(self) -> None:
+        graph = self._make_graph()
+        a, b, c = _setup_parent_graph(graph)
+        a_updated = Node(pk={"id": 1}, main_label="TestNode", updated="yes")
+        graph.insertNode(a_updated, update=True)
+        self.assertEqual(len(graph.get_nodes()), 3)
+        self.assertEqual(len(graph.get_edges()), 2)
+        graph.close()
+
+    # -- REPLACE --
+
+    def test_contract_replace_removes_edges(self) -> None:
+        graph = self._make_graph()
+        a, b, c = _setup_parent_graph(graph)
+        a_new = Node(pk={"id": 1}, main_label="TestNode", replaced="yes")
+        graph.insertNode(a_new, replace=True)
+        self.assertEqual(len(graph.get_nodes()), 3)
+        self.assertEqual(len(graph.get_edges()), 0)
+        graph.close()
+
+    # -- FK VIOLATION --
+
+    def test_contract_fk_violation_src_missing(self) -> None:
+        graph = self._make_graph()
+        src = Node(pk={"id": 999}, main_label="MissingNode")
+        dst = Node(pk={"id": 1}, main_label="TestNode")
+        graph.insertNode(dst, replace=True)
+        rel = Relation(src, dst, "CONNECTS")
+        with self.assertRaises(RuntimeError) as ctx:
+            graph.insertRelation(rel)
+        self.assertIn("FK violation", str(ctx.exception))
+        self.assertIn("src", str(ctx.exception))
+        graph.close()
+
+    def test_contract_fk_violation_dst_missing(self) -> None:
+        graph = self._make_graph()
+        src = Node(pk={"id": 1}, main_label="TestNode")
+        dst = Node(pk={"id": 999}, main_label="MissingNode")
+        graph.insertNode(src, replace=True)
+        rel = Relation(src, dst, "CONNECTS")
+        with self.assertRaises(RuntimeError) as ctx:
+            graph.insertRelation(rel)
+        self.assertIn("FK violation", str(ctx.exception))
+        self.assertIn("dst", str(ctx.exception))
+        graph.close()
+
+    # -- WEAK NODE --
+
+    def test_contract_weak_node_creates_parent(self) -> None:
+        graph = self._make_graph()
+        parent = Node(pk={"id": 1}, main_label="ParentNode")
+        child = WeakNode(parent=parent, pk={"sub": 1}, main_label="ChildNode")
+        graph.insertNode(parent, replace=True)
+        graph.insertNode(child, insert_parent=True)
+        self.assertEqual(len(graph.get_nodes()), 2)
+        self.assertEqual(len(graph.get_edges()), 1)
+        graph.close()
+
+    def test_contract_weak_node_composite_pk(self) -> None:
+        graph = self._make_graph()
+        parent = Node(pk={"id": 1}, main_label="ParentNode")
+        child = WeakNode(parent=parent, pk={"sub": 1}, main_label="ChildNode")
+        graph.insertNode(parent, replace=True)
+        graph.insertNode(child, insert_parent=True)
+        self.assertIn("id", child._primary_key)
+        self.assertIn("sub", child._primary_key)
+        graph.close()
+
+    def test_contract_weak_node_propagation_delete(self) -> None:
+        graph = self._make_graph()
+        parent = Node(pk={"id": 1}, main_label="ParentNode")
+        child = WeakNode(parent=parent, pk={"sub": 1}, main_label="ChildNode")
+        graph.insertNode(parent, replace=True)
+        graph.insertNode(child, insert_parent=True)
+        edges = graph.get_edges()
+        if edges:
+            src_id, dst_id, rel_type = edges[0]
+            attrs = graph.get_edge_attrs(src_id, dst_id, rel_type)
+            if attrs is not None:
+                attrs["_propagate"] = True
+        result = graph.deleteNode(parent, propagation=True, detach=True)
+        self.assertTrue(result)
+        self.assertEqual(len(graph.get_nodes()), 0)
+        self.assertEqual(len(graph.get_edges()), 0)
+        graph.close()
+
+    def test_contract_weak_node_nested_chain(self) -> None:
+        graph = self._make_graph()
+        grandparent = Node(pk={"id": 1}, main_label="Document")
+        parent_weak = WeakNode(parent=grandparent, pk={"section": 1}, main_label="Section")
+        child_weak = WeakNode(parent=parent_weak, pk={"page": 1}, main_label="Page")
+        graph.insertNode(grandparent, replace=True)
+        graph.insertNode(parent_weak, insert_parent=True)
+        graph.insertNode(child_weak, insert_parent=True)
+        self.assertEqual(len(graph.get_nodes()), 3)
+        self.assertEqual(len(graph.get_edges()), 2)
+        graph.close()
+
+    def test_contract_weak_node_nested_delete_cascade(self) -> None:
+        graph = self._make_graph()
+        grandparent = Node(pk={"id": 1}, main_label="Document")
+        parent_weak = WeakNode(parent=grandparent, pk={"section": 1}, main_label="Section")
+        child_weak = WeakNode(parent=parent_weak, pk={"page": 1}, main_label="Page")
+        graph.insertNode(grandparent, replace=True)
+        graph.insertNode(parent_weak, insert_parent=True)
+        graph.insertNode(child_weak, insert_parent=True)
+        graph.deleteNode(grandparent, detach=True)
+        self.assertEqual(len(graph.get_nodes()), 2)
+        self.assertEqual(len(graph.get_edges()), 1)
+        graph.close()
+
+    # -- BULK IMPORT --
+
+    def test_contract_bulk_import(self) -> None:
+        graph = self._make_graph()
+        nodes: List[Node] = [
+            Node(pk={"id": 1}, main_label="TestNode"),
+            Node(pk={"id": 2}, main_label="TestNode"),
+        ]
+        rel = Relation(nodes[0], nodes[1], "LINKS")
+        migration: Tuple[List, List] = (nodes, [rel])
+        graph.create(migration)
+        self.assertEqual(len(graph.get_nodes()), 2)
+        self.assertEqual(len(graph.get_edges()), 1)
+        graph.close()
+
+    # -- CHECK NODE --
+
+    def test_contract_check_node_exists(self) -> None:
+        graph = self._make_graph()
+        a = Node(pk={"id": 1}, main_label="TestNode")
+        graph.insertNode(a, replace=True)
+        result = graph.checkNode(a)
+        self.assertIsNotNone(result)
+        graph.close()
+
+    def test_contract_check_node_missing(self) -> None:
+        graph = self._make_graph()
+        a = Node(pk={"id": 999}, main_label="NonExistent")
+        result = graph.checkNode(a)
+        self.assertIsNone(result)
+        graph.close()
+
+    # -- DUPLICATE KEY --
+
+    def test_contract_duplicate_key_raises(self) -> None:
+        graph = self._make_graph()
+        a1 = Node(pk={"id": 1}, main_label="TestNode")
+        a2 = Node(pk={"id": 1}, main_label="TestNode")
+        graph.insertNode(a1, replace=True)
+        with self.assertRaises(RuntimeError) as ctx:
+            graph.insertNode(a2, update=False, replace=False)
+        self.assertIn("Duplicate key", str(ctx.exception))
+        graph.close()
+
+    # -- CLOSE --
+
+    def test_contract_close_is_safe(self) -> None:
+        graph = self._make_graph()
+        a = Node(pk={"id": 1}, main_label="TestNode")
+        graph.insertNode(a, replace=True)
+        graph.close()
+        self.assertEqual(len(graph.get_nodes()), 0)
+
+    # -- EXPLICIT PK=None --
+
+    def test_contract_explicit_pk_none_before_insert(self) -> None:
+        """Node amb pk=None explícit: _primary_key = None abans d'insertar."""
+        graph = self._make_graph()
+        node = Node(pk=None, main_label="AutoIdNode")
+        self.assertIsNone(node._primary_key)
+        graph.close()
+
+    def test_contract_explicit_pk_none_assigned_after_insert(self) -> None:
+        """Node amb pk=None explícit: el backend assigna un ID com a PK."""
+        graph = self._make_graph()
+        node = Node(pk=None, main_label="AutoIdNode")
+        self.assertIsNone(node._primary_key)
+        graph.insertNode(node, replace=True)
+        # El backend ha assignat un ID com a PK
+        self.assertIsNotNone(node._primary_key)
+        self.assertIn("id", node._primary_key)
+        self.assertEqual(node._primary_key["id"], node.neo4j_id)
+        # Ara checkNode el pot trobar
+        self.assertEqual(graph.checkNode(node), node.neo4j_id)
+        graph.close()
+

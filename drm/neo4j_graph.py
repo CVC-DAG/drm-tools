@@ -204,6 +204,10 @@ class Neo4jGraph(object):
 
             node["neo4j_id"] = id
 
+            # Si el node tenia pk=None explícit, assignem l'ID generat com a PK
+            if node._primary_key is None:
+                node._primary_key = {"id": id}
+
             # if is a weak entity the edge linking the parent node must be created
             if node["is_weak"]:
                 # print("node", node.main_label, node.neo4j_id, "is weak")

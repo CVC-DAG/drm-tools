@@ -30,7 +30,7 @@ if os.path.exists(_env_path):
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from drm.neo4j_graph import Neo4jGraph
-from drm.entities import *
+from drm.drm_entities import *
 from drm.base import *
 
 

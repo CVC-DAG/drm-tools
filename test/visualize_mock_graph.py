@@ -1,4 +1,4 @@
-"""Script interactiu per visualitzar el comportament de MockGraph pas a pas.
+"""Script interactiu per visualitzar el comportament de NetworkXGraph pas a pas.
 
 Executa:
     python test/visualize_mock_graph.py
@@ -8,9 +8,9 @@ import sys
 import os
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from drm.mock_graph import MockGraph
+from drm.networkx_graph import NetworkXGraph
 from drm.base import Node, Relation
-from drm.entities import IndividuPadro, LlocPadro
+from drm.drm_entities import IndividuPadro, LlocPadro
 
 
 def separator(title: str) -> None:
@@ -20,7 +20,7 @@ def separator(title: str) -> None:
 
 
 def main() -> None:
-    print("Visualització del comportament de MockGraph (NetworkX)")
+    print("Visualització del comportament de NetworkXGraph (NetworkX)")
     print("=" * 70)
 
     # ===================================================================
@@ -28,7 +28,7 @@ def main() -> None:
     # ===================================================================
     separator("1. NODE CRUD: inserció i actualització amb pk compost")
 
-    graph = MockGraph()
+    graph = NetworkXGraph()
 
     a = Node(
         pk={"nom": "Caldes dEstrac", "any": 1905},
@@ -55,7 +55,7 @@ def main() -> None:
     # ===================================================================
     separator("2. INDIVIDUPADRO: inserció de 3 nodes individuals")
 
-    graph = MockGraph()
+    graph = NetworkXGraph()
 
     a = IndividuPadro(pk=1, nom="Oriol", cognom1="Ramos", edat=18, alternative_labels="TEST")
     b = IndividuPadro(pk=2, nom="Sergio", cognom1="Ramos", ofici="fuster", alternative_labels="TEST")
@@ -78,7 +78,7 @@ def main() -> None:
     # ===================================================================
     separator("3. RELACIONS: creació amb validació FK")
 
-    graph = MockGraph()
+    graph = NetworkXGraph()
 
     src = Node(pk={"nom": "NodeA"}, main_label="LlocPadro")
     dst = Node(pk={"nom": "NodeB"}, main_label="LlocPadro")
@@ -109,7 +109,7 @@ def main() -> None:
     # ===================================================================
     separator("4. ON DELETE RESTRICT: no es pot esborrar node amb arestes")
 
-    graph = MockGraph()
+    graph = NetworkXGraph()
 
     node_a = Node(pk={"id": 1}, main_label="TestNode")
     node_b = Node(pk={"id": 2}, main_label="TestNode")
@@ -133,7 +133,7 @@ def main() -> None:
     # ===================================================================
     separator("5. ON DELETE CASCADE: esborrar node elimina les arestes")
 
-    graph = MockGraph()
+    graph = NetworkXGraph()
 
     a = Node(pk={"id": 1}, main_label="TestNode")
     b = Node(pk={"id": 2}, main_label="TestNode")
@@ -158,7 +158,7 @@ def main() -> None:
     # ===================================================================
     separator("6. ON DELETE CASCADE: cadena A→B→C, esborrar A")
 
-    graph = MockGraph()
+    graph = NetworkXGraph()
 
     a = Node(pk={"id": 1}, main_label="TestNode")
     b = Node(pk={"id": 2}, main_label="TestNode")
@@ -184,7 +184,7 @@ def main() -> None:
     # ===================================================================
     separator("7. ON DELETE CASCADE: node amb múltiples arestes sortint")
 
-    graph = MockGraph()
+    graph = NetworkXGraph()
 
     a = Node(pk={"id": 1}, main_label="TestNode")
     b = Node(pk={"id": 2}, main_label="TestNode")
@@ -210,7 +210,7 @@ def main() -> None:
     # ===================================================================
     separator("8. ON DELETE SET NULL: esborrar node sense cascada als veïns")
 
-    graph = MockGraph()
+    graph = NetworkXGraph()
 
     a = Node(pk={"id": 1}, main_label="TestNode")
     b = Node(pk={"id": 2}, main_label="TestNode")
@@ -236,7 +236,7 @@ def main() -> None:
     # ===================================================================
     separator("9. ON DELETE SET NULL: cadena A→B→C, esborrar B")
 
-    graph = MockGraph()
+    graph = NetworkXGraph()
 
     a = Node(pk={"id": 1}, main_label="TestNode")
     b = Node(pk={"id": 2}, main_label="TestNode")
@@ -262,7 +262,7 @@ def main() -> None:
     # ===================================================================
     separator("10. ON UPDATE CASCADE: update=True manté les arestes")
 
-    graph = MockGraph()
+    graph = NetworkXGraph()
 
     a = Node(pk={"id": 1}, main_label="TestNode", name="original", count=1)
     b = Node(pk={"id": 2}, main_label="TestNode", name="other")
@@ -286,7 +286,7 @@ def main() -> None:
     # ===================================================================
     separator("11. ON UPDATE CASCADE: replace=True elimina les arestes")
 
-    graph = MockGraph()
+    graph = NetworkXGraph()
 
     a = Node(pk={"id": 1}, main_label="TestNode", name="old", count=1)
     b = Node(pk={"id": 2}, main_label="TestNode", name="other")

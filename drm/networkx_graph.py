@@ -1,4 +1,4 @@
-"""Mock graph store backed by NetworkX — no real Neo4j required."""
+"""NetworkX-backed graph store — in-memory, no real Neo4j required."""
 
 from __future__ import annotations
 
@@ -7,9 +7,10 @@ from typing import Any, Dict, List, Optional, Set, Tuple, Union
 import networkx as nx
 
 from .base import Node, Relation, WeakRelation
+from .graph_store import GraphStore
 
 
-class MockGraph:
+class NetworkXGraph(GraphStore):
     """In-memory graph store using NetworkX.
 
     Provides the same public interface as ``Neo4jGraph`` but stores
@@ -405,7 +406,7 @@ class MockGraph:
     def print_debug(self) -> None:
         """Print a formatted snapshot of the graph state to stdout."""
         state = self.debug()
-        print("\n=== MockGraph State ===")
+        print("\n=== NetworkXGraph State ===")
         print(f"Nodes ({len(state['nodes'])}):")
         for nid, label, pk in state["nodes"]:
             print(f"  [{nid}] {label} pk={pk}")
@@ -571,6 +572,10 @@ class MockGraph:
             # Node does not exist — create fresh
             self._node_counter += 1
             node_id = self._node_counter
+
+        # Si el node tenia pk=None explícit, assignem l'ID generat com a PK
+        if node._primary_key is None:
+            node._primary_key = {"id": node_id}
 
         # Store node attributes
         pk, attributes = node.attributes

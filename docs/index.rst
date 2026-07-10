@@ -9,9 +9,9 @@ document representation using Neo4j or an in-memory NetworkX backend.
    :caption: Contents:
 
    api/base
-   api/entities
+   api/drm_entities
    api/neo4j_graph
-   api/mock_graph
+   api/networkx_graph
 
 Features
 --------
@@ -19,14 +19,48 @@ Features
 - **Graph-based document representation**: Model documents as nodes and
   relations (Document → Section → Page hierarchy).
 - **Two backends**: Full Neo4j integration via ``Neo4jGraph`` or an
-  in-memory ``MockGraph`` (NetworkX) for testing.
-- **WeakNode support**: Parent-child node relationships with composite
-  primary keys and cascade delete propagation.
+  in-memory ``NetworkXGraph`` (NetworkX) for testing.
+- **Two entity levels**: Root entities (``Node``) and child entities
+  (``WeakNode``) with composite primary keys and cascade delete
+  propagation.
 - **Dependency auto-insertion**: String properties (e.g. names) are
   automatically materialised as ``Valor`` nodes.
 - **FK validation**: Foreign key constraints on relations prevent
   dangling references.
 - **ON DELETE strategies**: CASCADE, RESTRICT, SET NULL.
+
+Primary Key
+-----------
+
+Every node must have a primary key (``pk``) or a ``neo4j_id`` (or both).
+The ``pk`` is either an ``int`` or a ``dict``:
+
+.. code-block:: python
+
+    # Integer PK — converted to {"id": value}
+    node = Node(pk=42, main_label="Document")
+
+    # Dict PK — used as-is
+    node = Node(pk={"doc_id": "DOC-001", "version": 2}, main_label="Document")
+
+    # Auto-assigned PK — pass None explicitly; the backend generates an ID
+    node = Node(pk=None, main_label="AutoIdNode")
+    graph.insertNode(node)  # node._primary_key becomes {"id": <generated_id>}
+
+    # Reconstructed from DB — neo4j_id is used as PK
+    node = Node(neo4j_id=123, main_label="Document")  # _primary_key = {"id": 123}
+
+**Rules:**
+
+- ``Node(pk={"id": 1}, main_label="X")`` → ``_primary_key = {"id": 1}``
+- ``Node(pk=42, main_label="X")`` → ``_primary_key = {"id": 42}``
+- ``Node(pk=None, main_label="X")`` → ``_primary_key = None`` (backend assigns after insert)
+- ``Node(pk=None, neo4j_id=123, main_label="X")`` → ``_primary_key = {"id": 123}``
+- ``Node(main_label="X")`` → **ValueError** — pk must be provided
+
+A node with ``pk=None`` is valid — the backend (Neo4j or NetworkX) assigns
+an auto-generated ID as the primary key after insertion. If no backend is
+used, ``_primary_key`` remains ``None``.
 
 Installation
 ------------
