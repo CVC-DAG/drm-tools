@@ -1,6 +1,13 @@
 traitlets
+hnswlib
 networkx
 matplotlib
 neo4j
 tqdm
 graphviz
+sphinx
+sphinx-rtd-theme
+nbsphinx
+notebook
+ipykernel
+ipywidgets

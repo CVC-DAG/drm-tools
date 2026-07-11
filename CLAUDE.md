@@ -14,12 +14,12 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ### Documentation
 - Generate HTML documentation with Sphinx:
   `sphinx-build -b html docs/ docs/_build/html/`
-  (Or use the virtual environment: `.venv/bin/sphinx-build -b html docs/ docs/_build/html/`)
+  (Or use the virtual environment: `.venv/bin de sphinx-build -b html docs/ docs/_build/html/`)
 
 ## Architecture & Core Concepts
 
 ### Overview
-This library implements a graph-based document representation model. It supports two backends: `Neo4jGraph` for persistent storage in Neo4j and `MockGraph` (using NetworkX) for lightweight in-memory testing.
+This library implements a graph-based document representation model. It supports two backends: `Neo4jGraph` for persistent storage in Neo4j and `NetworkXGraph` for lightweight in-memory testing.
 
 ### Core Data Models
 - **Node**: The fundamental building block, consisting of a `main_label` and a `pk` (primary key).
@@ -27,9 +27,13 @@ This library implements a graph-based document representation model. It supports
 - **Relation**: A typed edge connecting two nodes.
 - **WeakRelation**: A relation between a parent and a `WeakNode` that carries a `_propagate=True` flag, enabling **cascade delete** (deleting the parent automatically deletes the child).
 
-### Key Concepts
+### IMPORTANT: Backend Integrity
+- **DO NOT MODIFY** the core logic, functions, or internal implementation of the Neo4j backend (specifically files in `drm/` and `test/test_neo4j_real.py`) unless explicitly instructed to do so within a dedicated, isolated branch and for a specific, documented task.
+- Any structural changes to the backend must follow a formal review process.
+
+## Key Concepts
 - **Semantic Entities**: Domain-specific node types (e.g., `IndividuPadro`, `LlocPadro`) defined within the graph.
 - **Cascade Delete**: Enabled by `WeakNode` and `WeakRelation` via the `_propagate` flag.
 - **Backends**:
     - `Neo4jGraph`: Full Neo4j integration.
-    - `MockGraph`: In-memory implementation for testing.
+    - `NetworkXGraph`: In-memory implementation for testing.

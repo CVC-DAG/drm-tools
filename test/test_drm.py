@@ -1,6 +1,9 @@
 from typing import Any, Dict, List, Optional, Tuple, Union
 
+import glob
+import os
 import sys
+import tempfile
 import unittest
 
 # Mock external dependencies before importing drm modules that depend on them
@@ -44,8 +47,38 @@ from drm.base import *
 class NetworkXGraphTest(unittest.TestCase):
     """Tests for NetworkXGraph — verifies the in-memory graph implementation."""
 
+    def setUp(self) -> None:
+        self._persistence_path = os.path.join(tempfile.gettempdir(), "drm_tools_networkx_test_state.pkl")
+        if os.path.exists(self._persistence_path):
+            os.remove(self._persistence_path)
+        for path in glob.glob(f"{self._persistence_path}.vectors.*.bin"):
+            os.remove(path)
+
+    def tearDown(self) -> None:
+        if os.path.exists(self._persistence_path):
+            os.remove(self._persistence_path)
+        for path in glob.glob(f"{self._persistence_path}.vectors.*.bin"):
+            os.remove(path)
+
     def _make_graph(self) -> NetworkXGraph:
-        return NetworkXGraph()
+        return NetworkXGraph(persistence_path=self._persistence_path)
+
+    def test_nx_graph_persistence_roundtrip_transparent(self) -> None:
+        """Test que guarda automàticament i recarrega l'estat des de disc."""
+        src = Node(pk={"id": 1}, main_label="SrcNode")
+        dst = Node(pk={"id": 2}, main_label="DstNode")
+
+        graph = self._make_graph()
+        graph.insertNode(src, replace=True)
+        graph.insertNode(dst, replace=True)
+        graph.insertRelation(Relation(src, dst, "CONNECTS"))
+        graph.close()
+
+        reloaded = self._make_graph()
+        self.assertEqual(len(reloaded.get_nodes()), 2)
+        self.assertEqual(len(reloaded.get_edges()), 1)
+        self.assertIsNotNone(reloaded.checkNode(Node(pk={"id": 1}, main_label="SrcNode")))
+        reloaded.close()
 
     # -- Node CRUD --
 
@@ -102,6 +135,115 @@ class NetworkXGraphTest(unittest.TestCase):
 
         self.assertIsNone(result)
         graph.close()
+
+    def test_nx_graph_pk_index_created(self) -> None:
+        """Test que inserir un node crea entrada a l'índex de PK."""
+        node = Node(pk={"id": 1}, main_label="TestNode")
+        graph = self._make_graph()
+        node_id = graph.insertNode(node, replace=True)
+
+        idx_key = graph._pk_index_key("TestNode", {"id": 1})
+        self.assertEqual(graph._pk_index.get(idx_key), node_id)
+        graph.close()
+
+    def test_nx_graph_find_nodes_by_property(self) -> None:
+        """Test cerca de nodes per propietat indexada."""
+        a = Node(pk={"id": 1}, main_label="Person", city="BCN", status="active")
+        b = Node(pk={"id": 2}, main_label="Person", city="BCN", status="inactive")
+        c = Node(pk={"id": 3}, main_label="Person", city="GIR", status="active")
+
+        graph = self._make_graph()
+        graph.insertNode(a, replace=True)
+        graph.insertNode(b, replace=True)
+        graph.insertNode(c, replace=True)
+
+        bcn_ids = graph.find_nodes_by_property("city", "BCN")
+        active_ids = graph.find_nodes_by_property("status", "active")
+
+        self.assertEqual(len(bcn_ids), 2)
+        self.assertEqual(len(active_ids), 2)
+        graph.close()
+
+    def test_nx_graph_find_nodes_all_any(self) -> None:
+        """Test cerca composta amb mode all/any."""
+        a = Node(pk={"id": 1}, main_label="Person", city="BCN", status="active")
+        b = Node(pk={"id": 2}, main_label="Person", city="BCN", status="inactive")
+        c = Node(pk={"id": 3}, main_label="Person", city="GIR", status="active")
+
+        graph = self._make_graph()
+        graph.insertNode(a, replace=True)
+        graph.insertNode(b, replace=True)
+        graph.insertNode(c, replace=True)
+
+        all_match = graph.find_nodes({"city": "BCN", "status": "active"}, match="all")
+        any_match = graph.find_nodes({"city": "BCN", "status": "active"}, match="any")
+
+        self.assertEqual(len(all_match), 1)
+        self.assertEqual(len(any_match), 3)
+        graph.close()
+
+    def test_nx_graph_indexes_persist_after_reload(self) -> None:
+        """Test que els índexs secundaris es mantenen després de recarregar."""
+        a = Node(pk={"id": 1}, main_label="Person", city="BCN", status="active")
+        b = Node(pk={"id": 2}, main_label="Person", city="GIR", status="inactive")
+
+        graph = self._make_graph()
+        graph.insertNode(a, replace=True)
+        graph.insertNode(b, replace=True)
+        graph.close()
+
+        reloaded = self._make_graph()
+        found = reloaded.find_nodes_by_property("city", "BCN")
+        by_pk = reloaded.checkNode(Node(pk={"id": 1}, main_label="Person"))
+        self.assertEqual(len(found), 1)
+        self.assertIsNotNone(by_pk)
+        reloaded.close()
+
+    def test_nx_graph_vector_index_query(self) -> None:
+        """Test ANN query sobre una propietat vectorial indexada."""
+        n1 = Node(pk={"id": 1}, main_label="Doc", embedding=[1.0, 0.0, 0.0])
+        n2 = Node(pk={"id": 2}, main_label="Doc", embedding=[0.0, 1.0, 0.0])
+        n3 = Node(pk={"id": 3}, main_label="Doc", embedding=[0.9, 0.1, 0.0])
+
+        graph = self._make_graph()
+        id1 = graph.insertNode(n1, replace=True)
+        graph.insertNode(n2, replace=True)
+        graph.insertNode(n3, replace=True)
+        graph.enable_vector_index("embedding", dimensions=3, space="cosine")
+
+        results = graph.query_vector_index("embedding", [1.0, 0.0, 0.0], top_k=2)
+
+        self.assertEqual(len(results), 2)
+        self.assertEqual(results[0][0], id1)
+        graph.close()
+
+    def test_nx_graph_vector_index_tracks_new_nodes(self) -> None:
+        """Test que l'índex vectorial s'actualitza quan arriben nodes nous."""
+        graph = self._make_graph()
+        graph.enable_vector_index("embedding", dimensions=3, space="cosine")
+
+        node = Node(pk={"id": 1}, main_label="Doc", embedding=[0.0, 0.0, 1.0])
+        node_id = graph.insertNode(node, replace=True)
+        results = graph.query_vector_index("embedding", [0.0, 0.0, 1.0], top_k=1)
+
+        self.assertEqual(len(results), 1)
+        self.assertEqual(results[0][0], node_id)
+        graph.close()
+
+    def test_nx_graph_vector_index_persists_after_reload(self) -> None:
+        """Test que l'índex vectorial es guarda i funciona després de recarregar."""
+        graph = self._make_graph()
+        graph.enable_vector_index("embedding", dimensions=3, space="cosine")
+
+        node = Node(pk={"id": 1}, main_label="Doc", embedding=[0.0, 1.0, 0.0])
+        node_id = graph.insertNode(node, replace=True)
+        graph.close()
+
+        reloaded = self._make_graph()
+        results = reloaded.query_vector_index("embedding", [0.0, 1.0, 0.0], top_k=1)
+        self.assertEqual(len(results), 1)
+        self.assertEqual(results[0][0], node_id)
+        reloaded.close()
 
     def test_nx_graph_duplicate_key_raises(self) -> None:
         """Test que update=False + replace=False amb pk existent llança RuntimeError."""
@@ -1192,6 +1334,15 @@ class Neo4jGraphTest(unittest.TestCase):
         self.assertGreaterEqual(up_a, 0)
         self.assertGreaterEqual(up_b, 0)
         self.assertGreaterEqual(up_c, 0)
+        graph.close()
+
+    def test_vector_api_is_exposed_but_not_supported(self) -> None:
+        """Neo4jGraph exposa la API vectorial comuna però amb NotImplementedError."""
+        graph = self._make_graph()
+        with self.assertRaises(NotImplementedError):
+            graph.enable_vector_index("embedding", dimensions=3)
+        with self.assertRaises(NotImplementedError):
+            graph.query_vector_index("embedding", [1.0, 0.0, 0.0], top_k=1)
         graph.close()
 
     def test_relation_creation(self) -> None:

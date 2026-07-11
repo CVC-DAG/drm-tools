@@ -1,34 +1,16 @@
 """Semantic entity definitions for the DRM graph model.
 
-This module defines domain-specific node types (Individu, Lloc, DocumentCultural,
-etc.) that extend the base Node class with validation, default labels, and
-relationship configuration.
+rThis module defines domain-specific node types such as ``Individu``, ``Lloc``
+and ``DocumentCultural``. These classes build on :mod:`drm.base` to provide
+validation, default labels, and automatic relationship materialisation.
 
-Entity hierarchy:
+Conceptually, the module is organised around two families of entities:
 
-    Node (root entity)
-    ├── Individu (person)
-    │   ├── IndividuPadro — person with name/surnames as value nodes
-    │   └── IndividuFoto — person linked to a photograph
-    ├── Lloc (place)
-    │   ├── LlocPadro — place with custom label
-    │   └── LlocFoto — place linked to a photograph
-    ├── DocumentCultural (cultural document)
-    │   ├── Fons — document collection (root)
-    │   └── ActaTemporal — temporary act
-    ├── EntitatAmbNom — named entity
-    ├── Esdeventiment — event
-    ├── Atribut — value node
-    └── IndividuAgregat — aggregated person
+- root entities, which inherit from :class:`~drm.base.Node`
+- hierarchical child entities, which inherit from :class:`~drm.base.WeakNode`
 
-    WeakNode (child entity, depends on a parent)
-    ├── DocumentCultural (abstract)
-    │   ├── Padro — padro document
-    │   ├── Fotografia — photograph
-    │   └── BOE — government gazette
-    └── Layout
-        ├── RegioFisica — geographic region
-        └── OCRTranscript — OCR transcript
+The concrete classes model people, places, cultural documents, layouts and
+other semantic concepts used throughout the tutorials and examples.
 """
 
 from typing import Any, Dict, Iterable, Tuple

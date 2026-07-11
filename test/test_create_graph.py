@@ -1,8 +1,8 @@
 """Tests d'integració per Neo4jGraph — creació i manipulació de nodes i relacions.
 
 Verifiquen el comportament del graph store amb un Neo4j real.
-Requereix un .env al directori arrel amb NEO4J_URL, NEO4J_USER,
-NEO4J_PASSWORD i NEO4J_DATABASE.
+Per defecte usen el target DEV (``NEO4J_DEV_*``) o bé les variables
+planes ``NEO4J_*`` si existeixen.
 
 Usage:
     python -m pytest test/test_create_graph.py -v
@@ -10,6 +10,7 @@ Usage:
 
 import os
 import unittest
+from typing import Dict, Optional
 
 # Load .env from project root
 _env_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), ".env")
@@ -21,12 +22,20 @@ from drm.base import Node, Relation, WeakNode
 from drm.neo4j_graph import Neo4jGraph
 
 
-def _get_config() -> dict:
+def _get_config() -> Dict[str, Optional[str]]:
     """Load Neo4j connection config from .env environment variables."""
-    url = os.environ.get("NEO4J_URL")
-    user = os.environ.get("NEO4J_USER")
-    password = os.environ.get("NEO4J_PASSWORD")
-    database = os.environ.get("NEO4J_DATABASE")
+    target = os.environ.get("NEO4J_TARGET", "DEV")
+
+    def _env(key: str) -> Optional[str]:
+        targeted = os.environ.get(f"NEO4J_{target.upper()}_{key}")
+        if targeted:
+            return targeted
+        return os.environ.get(f"NEO4J_{key}")
+
+    url = _env("URL")
+    user = _env("USER")
+    password = _env("PASSWORD")
+    database = _env("DATABASE")
     if not url or not user or not password:
         return {}
     return {"url": url, "user": user, "password": password, "database": database}

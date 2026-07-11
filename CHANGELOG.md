@@ -9,11 +9,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- _No changes yet._
+- **`NetworkXGraph` transparent persistence** — The graph store now always persists state to disk and reloads it automatically on initialization. This makes in-memory usage restart-safe without requiring explicit save/load calls from users.
+- **`NetworkXGraph` secondary indexes** — Added a PK index for O(1)-style identity lookup and a property index for exact-match searches, with new query helpers (`find_nodes_by_property`, `find_nodes`) and persisted index state.
+- **`NetworkXGraph` optional vector indexes** — Added user-triggered ANN indexing for vector properties via `hnswlib`, including `enable_vector_index(...)` and `query_vector_index(...)`, with automatic synchronization on node mutations and persisted vector index files.
+- **`GraphStore` vector API** — Added package-wide vector-index interface methods (`enable_vector_index`, `query_vector_index`) so vector capabilities are exposed consistently across backends.
+- **Tutorial notebooks** — Added a new tutorials section with introductory and backend-specific notebooks under `docs/tutorials/`.
 
 ### Changed
 
-- _No changes yet._
+- **Neo4j real test configuration** — `test/test_neo4j_real.py`, `test/test_graph_store_contract.py`, and `test/test_create_graph.py` now support target-based environment variables via `NEO4J_TARGET` and default to the `DEV` target when no explicit target is set, with backward-compatible fallback to plain `NEO4J_*` vars.
 
 ### Fixed
 
@@ -21,7 +25,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Documentation
 
-- _No changes yet._
+- **Tutorials section** — Added `docs/tutorials/index.rst` plus notebook examples for intro, `NetworkXGraph`, and `Neo4jGraph` usage.
+- **Interactive WeakNode tutorial** — Added `docs/tutorials/notebooks/04_networkx_weaknodes_interactive.ipynb` with step-by-step state inspection and interactive add/delete controls.
+- **Notebook dependencies** — Added `notebook`, `ipykernel`, and `ipywidgets` to project environments.
 
 ## [1.1.0rc1] - 2026-07-11
 

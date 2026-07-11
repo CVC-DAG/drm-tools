@@ -139,6 +139,37 @@ class GraphStore(ABC):
         """Release resources and clear the graph store."""
 
     # ------------------------------------------------------------------
+    # Optional vector index API (concrete default)
+    # ------------------------------------------------------------------
+
+    def enable_vector_index(
+        self,
+        property_name: str,
+        dimensions: int,
+        space: str = "cosine",
+        **kwargs: Any,
+    ) -> None:
+        """Enable vector indexing for one property if the backend supports it.
+
+        Backends without ANN/vector support should keep the default behavior
+        and raise ``NotImplementedError``.
+        """
+        raise NotImplementedError(
+            f"Vector indexing is not supported by {self.__class__.__name__}."
+        )
+
+    def query_vector_index(
+        self,
+        property_name: str,
+        vector: Union[List[float], Tuple[float, ...]],
+        top_k: int = 10,
+    ) -> List[Tuple[int, float]]:
+        """Query nearest nodes for a vector if the backend supports it."""
+        raise NotImplementedError(
+            f"Vector indexing is not supported by {self.__class__.__name__}."
+        )
+
+    # ------------------------------------------------------------------
     # Query helpers (concrete default — may be overridden)
     # ------------------------------------------------------------------
 

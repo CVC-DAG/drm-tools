@@ -5,7 +5,6 @@ NAME = "drm"
 VERSION = "1.1.0rc1"
 DESCR = "Package for document representation model"
 URL = "https://github.com/CVC-DAG/drm-tools"
-#REQUIRES = ['numpy','cython','Image','matplotlib','IPython']
 
 AUTHOR = """Oriol Ramos Terrades
 Jialuo Chen
@@ -18,25 +17,37 @@ LICENSE = "MIT License"
 SRC_DIR = {"drm"}
 PACKAGES = find_packages(exclude='drm/')
 
-with open(os.path.join(os.path.abspath(os.path.dirname(__file__)), "README.md"), encoding="utf-8") as fh:
-  long_description = "\n" + fh.read()
+def get_long_description():
+    path = os.path.join(os.path.abspath(os.path.dirname(__file__)), "README.md")
+    if os.path.exists(path):
+        with open(path, encoding="utf-8") as fh:
+            return fh.read()
+    return ""
 
-with open(os.path.join(os.path.abspath(os.path.dirname(__file__)), "requirements.txt"), encoding="utf-8") as fh:
-  REQUIRES = fh.read().splitlines()
+def get_requirements():
+    reqs = []
+    path = os.path.join(os.path.abspath(os.path.dirname(__file__)), "requirements.txt")
+    if os.path.exists(path):
+        with open(path, encoding="utf-8") as fh:
+            for line in fh:
+                line = line.strip()
+                # Skip empty lines and lines that are not actual package names (e.g. -rtd-theme)
+                if line and not line.startswith("-") and not line.startswith("#"):
+                    reqs.append(line)
+    return reqs
 
 setup(name=NAME,
     version=VERSION,
     description=DESCR,
     long_description_content_type="text/markdown",
-    long_description=long_description,
-    requires=REQUIRES,
+    long_description=get_long_description(),
     author_email=EMAIL,
     author=AUTHOR,
     url=URL,
     license=LICENSE,
     package_dir={},
     packages=PACKAGES,
-    install_requires=[line.strip() for line in open("requirements.txt").readlines()],
+    install_requires=get_requirements(),
     keywords=['python', "documents", "classification", "knowledge representation","neo4j"],
     classifiers=[
           "Development Status :: 4 - Beta",
@@ -53,4 +64,3 @@ setup(name=NAME,
           "Operating System :: Microsoft :: Windows",
       ]
     )
-

@@ -1,0 +1,94 @@
+Tutorials and Examples
+======================
+
+This section contains hands-on notebooks rendered directly in the docs.
+
+Each dataset notebook shows how to load the same data into both
+``NetworkXGraph`` and ``Neo4jGraph``. From every notebook page you can also
+open the notebook in Google Colab, Kaggle, or a local Jupyter server.
+
+Introductory
+------------
+
+Start here for a minimal end-to-end graph workflow:
+
+.. toctree::
+   :maxdepth: 1
+
+   notebooks/intro/intro_basics
+
+Dataset-specific
+-----------------
+
+The tutorials below are grouped by dataset so you can compare how the same
+graph loads in the in-memory backend and in Neo4j.
+
+Karate Club
+~~~~~~~~~~~
+
+Classic social network benchmark from Zachary's karate club study. It has 34
+members and is commonly used for community detection examples.
+
+.. toctree::
+   :maxdepth: 1
+
+   notebooks/datasets/karate_club
+
+Bibliographic references
+~~~~~~~~~~~~~~~~~~~~~~~~~
+
+OpenAlex-based example with paper, author, and citation relationships. If
+network access is limited, the notebook falls back to a bundled sample so the
+example still runs.
+
+.. toctree::
+   :maxdepth: 1
+
+   notebooks/datasets/bibliography_openalex
+
+Movies
+~~~~~~
+
+Small movie-domain graph with movies, genres, and ``IN_GENRE`` relations.
+The loader uses a public sample API and ships with an offline fallback.
+
+.. toctree::
+   :maxdepth: 1
+
+   notebooks/datasets/movies
+
+Game of Thrones
+~~~~~~~~~~~~~~~
+
+Character/house graph built from a public Thrones API. It also includes an
+offline fallback so the example remains usable without network access.
+
+.. toctree::
+   :maxdepth: 1
+
+   notebooks/datasets/game_of_thrones
+
+Legacy tutorials
+----------------
+
+These notebooks are kept for reference and historical context, but they are no
+longer the canonical entry points for the tutorial flow.
+
+.. toctree::
+   :maxdepth: 1
+
+   notebooks/legacy/networkx_backend
+   notebooks/legacy/neo4j_backend
+   notebooks/interactive/weaknodes_interactive
+
+Notes
+-----
+
+- Notebook pages keep the original ``.ipynb`` download link in the rendered output.
+- Tutorials are configured to use the ``drm-tool`` Jupyter kernel by default.
+- Each tutorial notebook starts with an installation cell that upgrades DRM
+  from GitHub and falls back to a local editable install when needed.
+- Button links can be customized with env vars: ``DRM_DOCS_GITHUB_REPO``,
+  ``DRM_DOCS_GITHUB_REF``, ``DRM_DOCS_LOCAL_JUPYTER_BASE``, and
+  ``DRM_DOCS_LOCAL_NOTEBOOK_PREFIX``.
+

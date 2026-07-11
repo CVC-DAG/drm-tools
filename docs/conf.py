@@ -29,6 +29,7 @@ extensions = [
     "sphinx.ext.napoleon",      # Google and NumPy style docstring support
     "sphinx.ext.viewcode",      # Add links to highlighted source code
     "sphinx.ext.intersphinx",   # Link to other projects' documentation
+    "nbsphinx",                 # Render Jupyter notebooks as documentation pages
     # "sphinx_autodoc_typehints" — disabled: crashes on dict-inherited descriptors
 ]
 
@@ -91,6 +92,56 @@ html_theme_options = {
     "includehidden": True,
     "titles_only": False,
 }
+
+# -- nbsphinx ---------------------------------------------------------------
+# Execute notebooks manually; docs build should render existing outputs as-is.
+nbsphinx_execute = "never"
+
+# Notebook link settings (can be overridden in CI/local env):
+# - DRM_DOCS_GITHUB_REPO, e.g. CVC-DAG/drm-tools
+# - DRM_DOCS_GITHUB_REF, e.g. main, dev, feature/branch
+# - DRM_DOCS_LOCAL_JUPYTER_BASE, e.g. http://127.0.0.1:8888
+# - DRM_DOCS_LOCAL_NOTEBOOK_PREFIX, e.g. docs
+docs_github_repo = os.getenv("DRM_DOCS_GITHUB_REPO", "CVC-DAG/drm-tools").strip("/")
+docs_github_ref = os.getenv("DRM_DOCS_GITHUB_REF", "main").strip()
+docs_local_jupyter_base = os.getenv("DRM_DOCS_LOCAL_JUPYTER_BASE", "http://127.0.0.1:8888").rstrip("/")
+docs_local_notebook_prefix = os.getenv("DRM_DOCS_LOCAL_NOTEBOOK_PREFIX", "docs").strip("/")
+
+if docs_local_notebook_prefix:
+    local_notebook_href = (
+        f"{docs_local_jupyter_base}/notebooks/"
+        f"{docs_local_notebook_prefix}/{{{{ env.docname }}}}.ipynb"
+    )
+else:
+    local_notebook_href = f"{docs_local_jupyter_base}/notebooks/{{{{ env.docname }}}}.ipynb"
+
+colab_href = (
+    f"https://colab.research.google.com/github/{docs_github_repo}/"
+    f"blob/{docs_github_ref}/docs/{{{{ env.docname }}}}.ipynb"
+)
+
+kaggle_href = (
+    f"https://www.kaggle.com/kernels/welcome?src="
+    f"https://raw.githubusercontent.com/{docs_github_repo}/"
+    f"{docs_github_ref}/docs/{{{{ env.docname }}}}.ipynb"
+)
+
+# Add a Colab badge at the top of each rendered notebook page.
+nbsphinx_prolog = f"""
+.. raw:: html
+
+    <div style="margin: 0.5rem 0 1rem 0; display: flex; gap: 0.5rem; flex-wrap: wrap; align-items: center;">
+      <a href="{colab_href}" target="_blank" rel="noopener noreferrer">
+        <img alt="Open in Colab" src="https://colab.research.google.com/assets/colab-badge.svg" />
+      </a>
+      <a href="{kaggle_href}" target="_blank" rel="noopener noreferrer">
+        <img alt="Open in Kaggle" src="https://kaggle.com/static/images/open-in-kaggle.svg" />
+      </a>
+      <a href="{local_notebook_href}" target="_blank" rel="noopener noreferrer" style="font-size: 0.9rem; padding: 0.3rem 0.6rem; border: 1px solid #888; border-radius: 4px; text-decoration: none;">
+        Open in Local Jupyter
+      </a>
+    </div>
+"""
 
 # -- Options for LaTeX output ------------------------------------------------
 latex_elements = {}

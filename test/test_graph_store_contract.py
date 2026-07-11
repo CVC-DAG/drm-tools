@@ -10,17 +10,18 @@ Usage::
     python -m unittest test.test_graph_store_contract.TestNetworkXGraph
 
     # For Neo4jGraph (requires a real Neo4j database):
-    export NEO4J_URL=bolt://localhost:7687
-    export NEO4J_USER=neo4j
-    export NEO4J_PASSWORD=secret
+    export NEO4J_DEV_URL=bolt://localhost:7687
+    export NEO4J_DEV_USER=neo4j
+    export NEO4J_DEV_PASSWORD=secret
     python -m unittest test.test_graph_store_contract.TestNeo4jGraph
 """
 
 from __future__ import annotations
 
 import os
+import tempfile
 import unittest
-from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple
+from typing import TYPE_CHECKING, Dict, List, Optional, Tuple
 
 from drm.base import Node, Relation, WeakNode
 from drm.graph_store import GraphStore
@@ -68,9 +69,18 @@ def _setup_chain_graph(graph: GraphStore) -> Tuple[Node, Node, Node]:
 class TestNetworkXGraph(unittest.TestCase):
     """Run all GraphStore contract tests against NetworkXGraph."""
 
+    def setUp(self) -> None:
+        self._persistence_path = os.path.join(tempfile.gettempdir(), "drm_tools_networkx_contract_state.pkl")
+        if os.path.exists(self._persistence_path):
+            os.remove(self._persistence_path)
+
+    def tearDown(self) -> None:
+        if os.path.exists(self._persistence_path):
+            os.remove(self._persistence_path)
+
     def _make_graph(self) -> GraphStore:
         from drm.networkx_graph import NetworkXGraph
-        return NetworkXGraph()
+        return NetworkXGraph(persistence_path=self._persistence_path)
 
     # -- ON DELETE RESTRICT --
 
@@ -369,33 +379,54 @@ class TestNeo4jGraph(unittest.TestCase):
 
     These tests require a real Neo4j database because many contract
     checks rely on query helpers (get_nodes, get_edges, etc.) that
-    would need full Cypher mocking.  If NEO4J_URL is set in the
-    environment, all tests run against the real database.  Otherwise
+    would need full Cypher mocking. By default they use the DEV target
+    (``NEO4J_DEV_*``).  If no suitable environment vars are set,
     they are skipped with a note.
 
     To run:
-        export NEO4J_URL=bolt://localhost:7687
-        export NEO4J_USER=neo4j
-        export NEO4J_PASSWORD=secret
+        export NEO4J_DEV_URL=bolt://localhost:7687
+        export NEO4J_DEV_USER=neo4j
+        export NEO4J_DEV_PASSWORD=secret
         python -m unittest test.test_graph_store_contract.TestNeo4jGraph
     """
 
     _has_db: bool = False
     _graph: Optional[GraphStore] = None
 
+    @staticmethod
+    def _load_config() -> Optional[Dict[str, str]]:
+        target = os.environ.get("NEO4J_TARGET", "DEV")
+
+        def _env(key: str) -> Optional[str]:
+            targeted = os.environ.get(f"NEO4J_{target.upper()}_{key}")
+            if targeted:
+                return targeted
+            return os.environ.get(f"NEO4J_{key}")
+
+        url = _env("URL")
+        user = _env("USER")
+        password = _env("PASSWORD")
+        database = _env("DATABASE")
+        if not url or not user or not password:
+            return None
+        return {
+            "url": url,
+            "user": user,
+            "password": password,
+            "database": database or "neo4j",
+        }
+
     @classmethod
     def setUpClass(cls) -> None:
-        url = os.environ.get("NEO4J_URL")
-        user = os.environ.get("NEO4J_USER")
-        password = os.environ.get("NEO4J_PASSWORD")
-        if url and user and password:
+        config = cls._load_config()
+        if config is not None:
             cls._has_db = True
             from drm.neo4j_graph import Neo4jGraph
             cls._graph = Neo4jGraph(
-                url=url,
-                user=user,
-                password=password,
-                database=os.environ.get("NEO4J_DATABASE", "neo4j"),
+                url=config["url"],
+                user=config["user"],
+                password=config["password"],
+                database=config["database"],
             )
             # Clean slate
             try:
@@ -417,7 +448,7 @@ class TestNeo4jGraph(unittest.TestCase):
     def _make_graph(self) -> GraphStore:
         if self._has_db:
             return self._graph  # type: ignore[return-value]
-        self.skipTest("NEO4J_URL / NEO4J_USER / NEO4J_PASSWORD not set")
+        self.skipTest("NEO4J_DEV_* (or compatible NEO4J target/plain vars) not set")
         raise RuntimeError("No Neo4j database available")
 
     def setUp(self) -> None:

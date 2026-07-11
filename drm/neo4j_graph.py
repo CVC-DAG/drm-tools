@@ -578,6 +578,29 @@ class Neo4jGraph(object):
         self._fk_index.clear()
         self._driver.close()
 
+    def enable_vector_index(
+        self,
+        property_name: str,
+        dimensions: int,
+        space: str = "cosine",
+        **kwargs,
+    ) -> None:
+        """Vector index API placeholder for interface parity with GraphStore."""
+        raise NotImplementedError(
+            "Neo4jGraph does not implement local vector indexing in drm-tools."
+        )
+
+    def query_vector_index(
+        self,
+        property_name: str,
+        vector,
+        top_k: int = 10,
+    ):
+        """Vector query API placeholder for interface parity with GraphStore."""
+        raise NotImplementedError(
+            "Neo4jGraph does not implement local vector indexing in drm-tools."
+        )
+
     @staticmethod
     def _delete_node(tx, node: Node, detach=False):
         neo4j_id = node.neo4j_id

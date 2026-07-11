@@ -1,13 +1,14 @@
 DRM Tools Documentation
 =======================
 
-Document Representation Model (DRM) — Python library for graph-based
-document representation using Neo4j or an in-memory NetworkX backend.
+Document Representation Model (DRM) is a Python library for graph-based
+document representation with Neo4j and an in-memory NetworkX backend.
 
 .. toctree::
    :maxdepth: 2
    :caption: Contents:
 
+   tutorials/index
    api/base
    api/drm_entities
    api/neo4j_graph
@@ -17,14 +18,14 @@ Features
 --------
 
 - **Graph-based document representation**: Model documents as nodes and
-  relations (Document → Section → Page hierarchy).
+  relations, including hierarchical structures such as Document → Section → Page.
 - **Two backends**: Full Neo4j integration via ``Neo4jGraph`` or an
   in-memory ``NetworkXGraph`` (NetworkX) for testing.
 - **Two entity levels**: Root entities (``Node``) and child entities
   (``WeakNode``) with composite primary keys and cascade delete
   propagation.
-- **Dependency auto-insertion**: String properties (e.g. names) are
-  automatically materialised as ``Valor`` nodes.
+- **Dependency auto-insertion**: String properties (for example names) are
+  automatically materialised as ``Valor`` nodes when the graph backend supports them.
 - **FK validation**: Foreign key constraints on relations prevent
   dangling references.
 - **ON DELETE strategies**: CASCADE, RESTRICT, SET NULL.
@@ -61,6 +62,35 @@ The ``pk`` is either an ``int`` or a ``dict``:
 A node with ``pk=None`` is valid — the backend (Neo4j or NetworkX) assigns
 an auto-generated ID as the primary key after insertion. If no backend is
 used, ``_primary_key`` remains ``None``.
+
+Vector Indexing
+---------------
+
+The package exposes a common vector-index API on graph stores:
+
+- ``enable_vector_index(property_name, dimensions, space="cosine", ...)``
+- ``query_vector_index(property_name, vector, top_k=10)``
+
+Current backend support:
+
+- ``NetworkXGraph``: supported (uses ``hnswlib``)
+- ``Neo4jGraph``: API is present but currently raises ``NotImplementedError``
+
+Example (``NetworkXGraph``):
+
+.. code-block:: python
+
+    from drm import NetworkXGraph, Node
+
+    graph = NetworkXGraph()
+    graph.enable_vector_index("embedding", dimensions=3, space="cosine")
+
+    graph.insertNode(Node(pk={"id": 1}, main_label="Doc", embedding=[1.0, 0.0, 0.0]), replace=True)
+    graph.insertNode(Node(pk={"id": 2}, main_label="Doc", embedding=[0.0, 1.0, 0.0]), replace=True)
+
+    results = graph.query_vector_index("embedding", [1.0, 0.0, 0.0], top_k=2)
+    print(results)  # [(node_id, distance), ...]
+    graph.close()
 
 Installation
 ------------
@@ -121,6 +151,16 @@ Create a ``.env`` file with your Neo4j credentials:
     NEO4J_USER=neo4j
     NEO4J_PASSWORD=your_password
     NEO4J_DATABASE=mydb
+
+For multiple Neo4j instances, the test suite defaults to the ``DEV`` target
+when ``NEO4J_TARGET`` is not set:
+
+.. code-block:: ini
+
+    NEO4J_DEV_URL=bolt://dev-host:7687
+    NEO4J_DEV_USER=neo4j
+    NEO4J_DEV_PASSWORD=your_dev_password
+    NEO4J_DEV_DATABASE=neo4j
 
 Running Tests
 -------------

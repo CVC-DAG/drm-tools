@@ -1,10 +1,21 @@
-name: dlm-env
+name: drm-env
+channels:
+  - conda-forge
+  - defaults
 dependencies:
-  - python=3.9
+  - python=3.11
   - pip
   - pip:
-    - traitlets
-    - networkx
+    - graphviz
+    - hnswlib
     - matplotlib
+    - networkx
     - neo4j
+    - notebook
+    - ipykernel
+    - ipywidgets
+    - sphinx
+    - sphinx-rtd-theme
+    - nbsphinx
     - tqdm
+    - traitlets
