@@ -90,10 +90,10 @@ Quick Start
     doc = Node(pk={"doc": "DOC-001"}, main_label="Document")
     graph.insertNode(doc, replace=True)
 
-    section = WeakNode(doc, pk={"section": 1}, main_label="Section")
+    section = WeakNode(parent=doc, pk={"section": 1}, main_label="Section")
     graph.insertNode(section, insert_parent=True)
 
-    page = WeakNode(section, pk={"page": 1}, main_label="Page")
+    page = WeakNode(parent=section, pk={"page": 1}, main_label="Page")
     graph.insertNode(page, insert_parent=True)
 
     graph.close()
@@ -102,9 +102,9 @@ For the in-memory backend:
 
 .. code-block:: python
 
-    from drm import MockGraph, Node
+    from drm import NetworkXGraph, Node
 
-    graph = MockGraph()
+    graph = NetworkXGraph()
     doc = Node(pk={"doc": "DOC-001"}, main_label="Document")
     graph.insertNode(doc, replace=True)
     print(graph.get_nodes())  # {1}

@@ -20,7 +20,7 @@ try:
 except ImportError:
     drm_version = None
 
-release = drm_version if drm_version else "1.0"
+release = drm_version if drm_version else "1.1.0rc1"
 version = release
 
 # -- General configuration ---------------------------------------------------

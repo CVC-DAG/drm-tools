@@ -9,6 +9,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- _No changes yet._
+
+### Changed
+
+- _No changes yet._
+
+### Fixed
+
+- _No changes yet._
+
+### Documentation
+
+- _No changes yet._
+
+## [1.1.0rc1] - 2026-07-11
+
+### Added
+
 - **`GraphStore` ABC** (`drm/graph_store.py`) — Abstract base class defining the interface for all graph backends. Declares 6 abstract methods (`insertNode`, `insertRelation`, `deleteNode`, `checkNode`, `create`, `close`) and provides concrete default implementations for helper methods (`get_node`, `get_nodes`, `get_edges`, `get_node_attrs`, `get_edge_attrs`, `debug`, `print_debug`).
 - **Contract tests** (`test/test_graph_store_contract.py`) — 21 test methods verifying propagation policies (ON DELETE CASCADE, RESTRICT, SET NULL, ON UPDATE CASCADE), WeakNode composite PKs, cascade delete, FK violations, replace behaviour, bulk import, checkNode, duplicate key, and close safety. `TestNetworkXGraph` runs all 21; `TestNeo4jGraph` runs against a real database when `NEO4J_URL`/`NEO4J_USER`/`NEO4J_PASSWORD` are set.
 - **`pk=None` explicit parameter** — `Node(pk=None, main_label="X")` creates a node with `_primary_key = None`. The backend (Neo4jGraph or NetworkXGraph) assigns an auto-generated ID as the primary key after insertion. Passing `pk` without a value (not even `None`) still raises `ValueError`.
