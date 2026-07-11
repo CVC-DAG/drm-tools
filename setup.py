@@ -1,7 +1,7 @@
 from setuptools import setup, find_packages
 import os
 
-NAME = "drm"
+NAME = "drm-tools"
 VERSION = "1.1.0"
 DESCR = "Package for document representation model"
 URL = "https://github.com/CVC-DAG/drm-tools"
