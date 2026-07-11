@@ -2,6 +2,22 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+## Branch Strategy
+
+**Always work on the `develop` branch unless explicitly told otherwise.**
+
+- **`develop`** — Active development branch. All substantial changes, new features, refactors, and bug fixes go here.
+- **`main`** — Release branch. Only minor changes for preparing releases (version bumps, changelog entries, doc links). Never add features or make structural changes here.
+
+Before starting any work, check the current branch:
+```bash
+git branch --show-current
+```
+If on `main`, switch to `develop` first:
+```bash
+git checkout develop
+```
+
 ## Development Commands
 
 ### Installation
