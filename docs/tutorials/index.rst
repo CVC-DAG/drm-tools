@@ -7,7 +7,7 @@ Each dataset notebook shows how to load the same data into both
 ``NetworkXGraph`` and ``Neo4jGraph``. From every notebook page you can also
 open the notebook in Google Colab, Kaggle, or a local Jupyter server.
 
-Introductory
+Introduction
 ------------
 
 Start here for a minimal end-to-end graph workflow:
@@ -80,6 +80,18 @@ offline fallback so the example remains usable without network access.
    :maxdepth: 1
 
    notebooks/datasets/game_of_thrones
+
+Generating classes from OWL/RDF
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Generate Python entity classes from an RDF/OWL ontology (e.g. RiC-O).
+The pipeline downloads the ontology, converts it to DRM YAML, and generates
+``Node``, ``WeakNode``, ``Relation``, and ``WeakRelation`` subclasses.
+
+.. toctree::
+   :maxdepth: 1
+
+   notebooks/datasets/generating_classes_from_owl
 
 Notes
 -----

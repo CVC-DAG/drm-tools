@@ -45,9 +45,15 @@ def _new_key(old_key: str, list_keys: set) -> str:
 
 def _mergePK(
     pk_a: Dict[str, Union[int, str]],
-    pk_b: Dict[str, Union[int, str]],
+    pk_b: Optional[Dict[str, Union[int, str]]],
     version: int = 5,
 ) -> Dict[str, Union[int, str]]:
+    """Merge two PK dicts into a composite PK.
+
+    If pk_b is None, return pk_a as-is (the child inherits the parent's PK).
+    """
+    if pk_b is None:
+        return pk_a
     k = set(pk_a.keys()).intersection(set(pk_b.keys()))
 
     for v in k:

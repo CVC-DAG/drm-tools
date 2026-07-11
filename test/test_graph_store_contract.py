@@ -19,6 +19,7 @@ Usage::
 from __future__ import annotations
 
 import os
+import pytest
 import tempfile
 import unittest
 from typing import TYPE_CHECKING, Dict, List, Optional, Tuple
@@ -84,6 +85,7 @@ class TestNetworkXGraph(unittest.TestCase):
 
     # -- ON DELETE RESTRICT --
 
+    @pytest.mark.integration
     def test_contract_delete_restrict_refuses_with_edges(self) -> None:
         """ON DELETE RESTRICT: no es pot esborrar un node amb arestes."""
         graph = self._make_graph()
@@ -93,6 +95,7 @@ class TestNetworkXGraph(unittest.TestCase):
         self.assertIn("ON DELETE RESTRICT", str(ctx.exception))
         graph.close()
 
+    @pytest.mark.integration
     def test_contract_delete_restrict_succeeds_without_edges(self) -> None:
         """ON DELETE RESTRICT: es pot esborrar un node sense arestes."""
         graph = self._make_graph()
@@ -104,6 +107,7 @@ class TestNetworkXGraph(unittest.TestCase):
 
     # -- ON DELETE CASCADE --
 
+    @pytest.mark.integration
     def test_contract_delete_cascade_removes_edges(self) -> None:
         """ON DELETE CASCADE: esborra node + arestes."""
         graph = self._make_graph()
@@ -114,6 +118,7 @@ class TestNetworkXGraph(unittest.TestCase):
         self.assertEqual(len(graph.get_edges()), 0)  # totes les arestes esborrades
         graph.close()
 
+    @pytest.mark.integration
     def test_contract_delete_cascade_leaves_orphans(self) -> None:
         """ON DELETE CASCADE: els veïns queden com a orfes (NO cascada).
 
@@ -130,6 +135,7 @@ class TestNetworkXGraph(unittest.TestCase):
         self.assertIn({"id": 3}, pks)
         graph.close()
 
+    @pytest.mark.integration
     def test_contract_delete_cascade_chain(self) -> None:
         """ON DELETE CASCADE en cadena A→B→C: esborrar A no esborra B ni C."""
         graph = self._make_graph()
@@ -141,6 +147,7 @@ class TestNetworkXGraph(unittest.TestCase):
 
     # -- ON DELETE SET NULL --
 
+    @pytest.mark.integration
     def test_contract_delete_set_null_keeps_neighbors(self) -> None:
         """ON DELETE SET NULL: esborra node però manté veïns (sense cascada)."""
         graph = self._make_graph()
@@ -154,6 +161,7 @@ class TestNetworkXGraph(unittest.TestCase):
         self.assertIn({"id": 3}, pks)
         graph.close()
 
+    @pytest.mark.integration
     def test_contract_delete_set_null_no_cascade_to_neighbors(self) -> None:
         """ON DELETE SET NULL: esborrar node del mig no cascada als veïns."""
         graph = self._make_graph()
@@ -169,6 +177,7 @@ class TestNetworkXGraph(unittest.TestCase):
 
     # -- ON UPDATE CASCADE --
 
+    @pytest.mark.integration
     def test_contract_update_preserves_edges(self) -> None:
         """ON UPDATE CASCADE: actualitzar un node no trenca les arestes."""
         graph = self._make_graph()
@@ -181,6 +190,7 @@ class TestNetworkXGraph(unittest.TestCase):
 
     # -- REPLACE --
 
+    @pytest.mark.integration
     def test_contract_replace_removes_edges(self) -> None:
         """Replace: esborra node amb detach, les arestes s'esborren."""
         graph = self._make_graph()
@@ -193,6 +203,7 @@ class TestNetworkXGraph(unittest.TestCase):
 
     # -- FK VIOLATION --
 
+    @pytest.mark.integration
     def test_contract_fk_violation_src_missing(self) -> None:
         """FK violation: crear relació amb src no inserit llança RuntimeError."""
         graph = self._make_graph()
@@ -206,6 +217,7 @@ class TestNetworkXGraph(unittest.TestCase):
         self.assertIn("src", str(ctx.exception))
         graph.close()
 
+    @pytest.mark.integration
     def test_contract_fk_violation_dst_missing(self) -> None:
         """FK violation: crear relació amb dst no inserit llança RuntimeError."""
         graph = self._make_graph()
@@ -221,6 +233,7 @@ class TestNetworkXGraph(unittest.TestCase):
 
     # -- WEAK NODE --
 
+    @pytest.mark.integration
     def test_contract_weak_node_creates_parent(self) -> None:
         """WeakNode amb insert_parent=True insereix el parent automàticament."""
         graph = self._make_graph()
@@ -232,6 +245,7 @@ class TestNetworkXGraph(unittest.TestCase):
         self.assertEqual(len(graph.get_edges()), 1)  # parent → child
         graph.close()
 
+    @pytest.mark.integration
     def test_contract_weak_node_composite_pk(self) -> None:
         """WeakNode té PK composta fusionada amb el parent."""
         graph = self._make_graph()
@@ -244,6 +258,7 @@ class TestNetworkXGraph(unittest.TestCase):
         self.assertIn("sub", child._primary_key)
         graph.close()
 
+    @pytest.mark.integration
     def test_contract_weak_node_propagation_delete(self) -> None:
         """Esborrar parent amb propagation=True esborra el fill WeakNode.
 
@@ -268,6 +283,7 @@ class TestNetworkXGraph(unittest.TestCase):
         self.assertEqual(len(graph.get_edges()), 0)
         graph.close()
 
+    @pytest.mark.integration
     def test_contract_weak_node_nested_chain(self) -> None:
         """WeakNode nesting: grandparent → parent weak → child weak."""
         graph = self._make_graph()
@@ -281,6 +297,7 @@ class TestNetworkXGraph(unittest.TestCase):
         self.assertEqual(len(graph.get_edges()), 2)  # gp→pw, pw→cw
         graph.close()
 
+    @pytest.mark.integration
     def test_contract_weak_node_nested_delete_cascade(self) -> None:
         """ON DELETE CASCADE en cadena de WeakNodes: esborrar grandparent."""
         graph = self._make_graph()
@@ -298,6 +315,7 @@ class TestNetworkXGraph(unittest.TestCase):
 
     # -- BULK IMPORT (create) --
 
+    @pytest.mark.integration
     def test_contract_bulk_import(self) -> None:
         """Bulk import: inserta nodes i relacions en un sol pas."""
         graph = self._make_graph()
@@ -314,6 +332,7 @@ class TestNetworkXGraph(unittest.TestCase):
 
     # -- CHECK NODE --
 
+    @pytest.mark.integration
     def test_contract_check_node_exists(self) -> None:
         """checkNode troba un node que existeix."""
         graph = self._make_graph()
@@ -323,6 +342,7 @@ class TestNetworkXGraph(unittest.TestCase):
         self.assertIsNotNone(result)
         graph.close()
 
+    @pytest.mark.integration
     def test_contract_check_node_missing(self) -> None:
         """checkNode retorna None per a nodes inexistents."""
         graph = self._make_graph()
@@ -333,6 +353,7 @@ class TestNetworkXGraph(unittest.TestCase):
 
     # -- DUPLICATE KEY --
 
+    @pytest.mark.integration
     def test_contract_duplicate_key_raises(self) -> None:
         """Inserir el mateix node dues vegades amb update=False + replace=False
         llança RuntimeError (duplicate key)."""
@@ -347,6 +368,7 @@ class TestNetworkXGraph(unittest.TestCase):
 
     # -- CLOSE --
 
+    @pytest.mark.integration
     def test_contract_close_is_safe(self) -> None:
         """close() no llança excepcions i deixa el store en estat net."""
         graph = self._make_graph()
@@ -358,6 +380,7 @@ class TestNetworkXGraph(unittest.TestCase):
 
     # -- EXPLICIT PK=None --
 
+    @pytest.mark.integration
     def test_contract_explicit_pk_none_before_insert(self) -> None:
         """Node amb pk=None explícit: _primary_key = None abans d'insertar."""
         graph = self._make_graph()
@@ -365,6 +388,7 @@ class TestNetworkXGraph(unittest.TestCase):
         self.assertIsNone(node._primary_key)
         graph.close()
 
+    @pytest.mark.integration
     def test_contract_explicit_pk_none_assigned_after_insert(self) -> None:
         """Node amb pk=None explícit: el backend assigna un ID com a PK."""
         graph = self._make_graph()
@@ -473,6 +497,7 @@ class TestNeo4jGraph(unittest.TestCase):
 
     # -- ON DELETE RESTRICT --
 
+    @pytest.mark.slow
     def test_contract_delete_restrict_refuses_with_edges(self) -> None:
         graph = self._make_graph()
         a, b, c = _setup_parent_graph(graph)
@@ -481,6 +506,7 @@ class TestNeo4jGraph(unittest.TestCase):
         self.assertIn("ON DELETE RESTRICT", str(ctx.exception))
         graph.close()
 
+    @pytest.mark.slow
     def test_contract_delete_restrict_succeeds_without_edges(self) -> None:
         graph = self._make_graph()
         a = Node(pk={"id": 1}, main_label="TestNode")
@@ -491,6 +517,7 @@ class TestNeo4jGraph(unittest.TestCase):
 
     # -- ON DELETE CASCADE --
 
+    @pytest.mark.slow
     def test_contract_delete_cascade_removes_edges(self) -> None:
         graph = self._make_graph()
         a, b, c = _setup_parent_graph(graph)
@@ -500,6 +527,7 @@ class TestNeo4jGraph(unittest.TestCase):
         self.assertEqual(len(graph.get_edges()), 0)
         graph.close()
 
+    @pytest.mark.slow
     def test_contract_delete_cascade_leaves_orphans(self) -> None:
         graph = self._make_graph()
         a, b, c = _setup_parent_graph(graph)
@@ -510,6 +538,7 @@ class TestNeo4jGraph(unittest.TestCase):
         self.assertIn({"id": 3}, pks)
         graph.close()
 
+    @pytest.mark.slow
     def test_contract_delete_cascade_chain(self) -> None:
         graph = self._make_graph()
         a, b, c = _setup_chain_graph(graph)
@@ -520,6 +549,7 @@ class TestNeo4jGraph(unittest.TestCase):
 
     # -- ON DELETE SET NULL --
 
+    @pytest.mark.slow
     def test_contract_delete_set_null_keeps_neighbors(self) -> None:
         graph = self._make_graph()
         a, b, c = _setup_parent_graph(graph)
@@ -532,6 +562,7 @@ class TestNeo4jGraph(unittest.TestCase):
         self.assertIn({"id": 3}, pks)
         graph.close()
 
+    @pytest.mark.slow
     def test_contract_delete_set_null_no_cascade_to_neighbors(self) -> None:
         graph = self._make_graph()
         a, b, c = _setup_chain_graph(graph)
@@ -545,6 +576,7 @@ class TestNeo4jGraph(unittest.TestCase):
 
     # -- ON UPDATE CASCADE --
 
+    @pytest.mark.slow
     def test_contract_update_preserves_edges(self) -> None:
         graph = self._make_graph()
         a, b, c = _setup_parent_graph(graph)
@@ -556,6 +588,7 @@ class TestNeo4jGraph(unittest.TestCase):
 
     # -- REPLACE --
 
+    @pytest.mark.slow
     def test_contract_replace_removes_edges(self) -> None:
         graph = self._make_graph()
         a, b, c = _setup_parent_graph(graph)
@@ -567,6 +600,7 @@ class TestNeo4jGraph(unittest.TestCase):
 
     # -- FK VIOLATION --
 
+    @pytest.mark.slow
     def test_contract_fk_violation_src_missing(self) -> None:
         graph = self._make_graph()
         src = Node(pk={"id": 999}, main_label="MissingNode")
@@ -579,6 +613,7 @@ class TestNeo4jGraph(unittest.TestCase):
         self.assertIn("src", str(ctx.exception))
         graph.close()
 
+    @pytest.mark.slow
     def test_contract_fk_violation_dst_missing(self) -> None:
         graph = self._make_graph()
         src = Node(pk={"id": 1}, main_label="TestNode")
@@ -593,6 +628,7 @@ class TestNeo4jGraph(unittest.TestCase):
 
     # -- WEAK NODE --
 
+    @pytest.mark.slow
     def test_contract_weak_node_creates_parent(self) -> None:
         graph = self._make_graph()
         parent = Node(pk={"id": 1}, main_label="ParentNode")
@@ -603,6 +639,7 @@ class TestNeo4jGraph(unittest.TestCase):
         self.assertEqual(len(graph.get_edges()), 1)
         graph.close()
 
+    @pytest.mark.slow
     def test_contract_weak_node_composite_pk(self) -> None:
         graph = self._make_graph()
         parent = Node(pk={"id": 1}, main_label="ParentNode")
@@ -613,6 +650,7 @@ class TestNeo4jGraph(unittest.TestCase):
         self.assertIn("sub", child._primary_key)
         graph.close()
 
+    @pytest.mark.slow
     def test_contract_weak_node_propagation_delete(self) -> None:
         graph = self._make_graph()
         parent = Node(pk={"id": 1}, main_label="ParentNode")
@@ -631,6 +669,7 @@ class TestNeo4jGraph(unittest.TestCase):
         self.assertEqual(len(graph.get_edges()), 0)
         graph.close()
 
+    @pytest.mark.slow
     def test_contract_weak_node_nested_chain(self) -> None:
         graph = self._make_graph()
         grandparent = Node(pk={"id": 1}, main_label="Document")
@@ -643,6 +682,7 @@ class TestNeo4jGraph(unittest.TestCase):
         self.assertEqual(len(graph.get_edges()), 2)
         graph.close()
 
+    @pytest.mark.slow
     def test_contract_weak_node_nested_delete_cascade(self) -> None:
         graph = self._make_graph()
         grandparent = Node(pk={"id": 1}, main_label="Document")
@@ -658,6 +698,7 @@ class TestNeo4jGraph(unittest.TestCase):
 
     # -- BULK IMPORT --
 
+    @pytest.mark.slow
     def test_contract_bulk_import(self) -> None:
         graph = self._make_graph()
         nodes: List[Node] = [
@@ -673,6 +714,7 @@ class TestNeo4jGraph(unittest.TestCase):
 
     # -- CHECK NODE --
 
+    @pytest.mark.slow
     def test_contract_check_node_exists(self) -> None:
         graph = self._make_graph()
         a = Node(pk={"id": 1}, main_label="TestNode")
@@ -681,6 +723,7 @@ class TestNeo4jGraph(unittest.TestCase):
         self.assertIsNotNone(result)
         graph.close()
 
+    @pytest.mark.slow
     def test_contract_check_node_missing(self) -> None:
         graph = self._make_graph()
         a = Node(pk={"id": 999}, main_label="NonExistent")
@@ -690,6 +733,7 @@ class TestNeo4jGraph(unittest.TestCase):
 
     # -- DUPLICATE KEY --
 
+    @pytest.mark.slow
     def test_contract_duplicate_key_raises(self) -> None:
         graph = self._make_graph()
         a1 = Node(pk={"id": 1}, main_label="TestNode")
@@ -702,6 +746,7 @@ class TestNeo4jGraph(unittest.TestCase):
 
     # -- CLOSE --
 
+    @pytest.mark.slow
     def test_contract_close_is_safe(self) -> None:
         graph = self._make_graph()
         a = Node(pk={"id": 1}, main_label="TestNode")
@@ -711,6 +756,7 @@ class TestNeo4jGraph(unittest.TestCase):
 
     # -- EXPLICIT PK=None --
 
+    @pytest.mark.slow
     def test_contract_explicit_pk_none_before_insert(self) -> None:
         """Node amb pk=None explícit: _primary_key = None abans d'insertar."""
         graph = self._make_graph()
@@ -718,6 +764,7 @@ class TestNeo4jGraph(unittest.TestCase):
         self.assertIsNone(node._primary_key)
         graph.close()
 
+    @pytest.mark.slow
     def test_contract_explicit_pk_none_assigned_after_insert(self) -> None:
         """Node amb pk=None explícit: el backend assigna un ID com a PK."""
         graph = self._make_graph()
@@ -730,5 +777,19 @@ class TestNeo4jGraph(unittest.TestCase):
         self.assertEqual(node._primary_key["id"], node.neo4j_id)
         # Ara checkNode el pot trobar
         self.assertEqual(graph.checkNode(node), node.neo4j_id)
+        graph.close()
+
+    @pytest.mark.slow
+    def test_contract_weak_node_no_pk(self) -> None:
+        """WeakNode sense PK: el backend assigna l'ID com a PK."""
+        graph = self._make_graph()
+        parent = Node(pk={"id": 42}, main_label="Document")
+        child = WeakNode(parent=parent, pk=None, main_label="Page")
+        parent_id = graph.insertNode(parent, replace=True)
+        child_id = graph.insertNode(child, insert_parent=True)
+        self.assertIsNotNone(parent_id)
+        self.assertIsNotNone(child_id)
+        self.assertNotEqual(parent_id, child_id)
+        self.assertEqual(len(graph.get_node_ids()), 2)
         graph.close()
 

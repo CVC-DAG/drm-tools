@@ -516,6 +516,69 @@ class Neo4jGraph:
         return dict(single["r"])
 
     # ------------------------------------------------------------------
+    # Public API: Query
+    # ------------------------------------------------------------------
+
+    def query(
+        self,
+        filter_dict: Optional[Union[Dict[str, Any], str]] = None,
+        projection: Optional[Dict[str, int]] = None,
+        sort: Optional[Tuple[str, int]] = None,
+        limit_val: Optional[int] = None,
+        params: Optional[Dict[str, Any]] = None,
+    ) -> List[Dict[str, Any]]:
+        """Execute a raw Cypher query and return results as a list of dicts.
+
+        **Hybrid API** — the first argument accepts either:
+
+        * **str** — a Cypher query string (``MATCH``, ``CREATE``,
+          ``DELETE``, ``SET``, ``RETURN``, ``ORDER BY``, ``LIMIT``,
+          aggregations, parameter substitution via ``$name``).
+        * **dict** — not supported by Neo4jGraph (raises
+          ``ValueError``); use a Cypher string instead.
+
+        Each record is a dict mapping return aliases to values.  Node values
+        are dicts with ``labels`` and ``properties`` keys.  Relation values
+        are dicts with ``type``, ``start_node``, ``end_node``, and
+        ``properties`` keys.  Primitive values are returned as-is.
+
+        Args:
+            filter_dict: Cypher query string for Neo4jGraph.
+                MongoDB-style dicts are not supported — use Cypher instead.
+            projection: Ignored for Cypher queries (use ``RETURN`` aliases).
+            sort: Ignored for Cypher queries (use ``ORDER BY``).
+            limit_val: Ignored for Cypher queries (use ``LIMIT``).
+            params: Optional parameter dict for ``$name`` substitution.
+
+        Returns:
+            A list of dicts, one per result record.
+
+        Example:
+            >>> graph.query("MATCH (n) RETURN n LIMIT 5")
+            >>> graph.query(
+            ...     "MATCH (n:Person {name: $name}) RETURN n",
+            ...     params={"name": "Alice"},
+            ... )
+        """
+        if self._closed:
+            raise RuntimeError("Cannot query a closed Neo4jGraph.")
+        if isinstance(filter_dict, dict):
+            raise ValueError(
+                "Neo4jGraph.query() does not support MongoDB-style dict filters. "
+                "Use a Cypher query string instead."
+            )
+        result = self._session.run(
+            filter_dict or "", parameters=params or {}
+        )
+        records: List[Dict[str, Any]] = []
+        for record in result:
+            converted: Dict[str, Any] = {}
+            for key, value in record.items():
+                converted[key] = _convert_neo4j_value(value)
+            records.append(converted)
+        return records
+
+    # ------------------------------------------------------------------
     # Public API: lifecycle
     # ------------------------------------------------------------------
 
@@ -545,6 +608,145 @@ class Neo4jGraph:
             "Vector queries are not supported by Neo4jGraph. "
             "Use NetworkXGraph for vector search."
         )
+
+    def schema_yaml(self, db_name: str) -> str:
+        """Introspect the Neo4j database and return a YAML schema description.
+
+        Queries ``db.labels()`` and ``db.relationshipTypes()`` to collect
+        all labels, properties, relationship types, and counts.
+
+        Args:
+            db_name: Human-readable database name (e.g. ``"got"``).
+
+        Returns:
+            A YAML string suitable for code generation.
+        """
+        import datetime
+
+        session = self._session
+        # Labels
+        label_results = {}
+        for label_rec in session.run("CALL db.labels()"):
+            label = label_rec["label"]
+            count = session.run(
+                f"MATCH (n:`{label}`) RETURN count(n) AS c"
+            ).single()["c"]
+            # Collect properties from one sample node
+            props = {}
+            sample = session.run(
+                f"MATCH (n:`{label}`) RETURN n LIMIT 1"
+            ).single()
+            if sample:
+                for k, v in sample["n"].items():
+                    props[k] = self._python_type(v)
+            label_results[label] = {"count": count, "properties": props}
+
+        # Relationship types
+        rel_results = {}
+        for rel_rec in session.run("CALL db.relationshipTypes()"):
+            rel_type = rel_rec["relationshipType"]
+            count = session.run(
+                f"MATCH ()-[r:`{rel_type}`]->() RETURN count(r) AS c"
+            ).single()["c"]
+            # Collect src/dst labels and properties
+            src_labels = set()
+            dst_labels = set()
+            props = {}
+            sample = session.run(
+                f"MATCH (a)-[r:`{rel_type}`]->(b) RETURN a, r, b LIMIT 1"
+            ).single()
+            if sample:
+                for k in sample["a"]:
+                    if k not in ("element_id",):
+                        src_labels.add(sample["a"].get("labels", ("Node",))[0])
+                for k in sample["b"]:
+                    if k not in ("element_id",):
+                        dst_labels.add(sample["b"].get("labels", ("Node",))[0])
+                for k, v in sample["r"].items():
+                    if k not in ("element_id",):
+                        props[k] = self._python_type(v)
+            rel_results[rel_type] = {
+                "count": count,
+                "src": sorted(src_labels),
+                "dst": sorted(dst_labels),
+                "properties": props,
+            }
+
+        # Build YAML
+        lines: List[str] = []
+        lines.append(f"# Schema generated from: {db_name}")
+        lines.append(f"# Generated at: {datetime.datetime.now().strftime('%Y-%m-%d')}")
+        lines.append("")
+
+        lines.append("labels:")
+        if not label_results:
+            lines.append("  {}")
+        else:
+            for label in sorted(label_results):
+                info = label_results[label]
+                props = info["properties"]
+                count = info["count"]
+                pk_fields = [k for k in props if k not in ("pk", "main_label", "labels")]
+                pk_str = f"[{', '.join(repr(f) for f in pk_fields[:2])}]" if pk_fields else "[]"
+
+                lines.append(f"  {label}:")
+                lines.append(f"    class_name: {label[0].upper() + label[1:] if label else 'Node'}")
+                lines.append(f"    base_class: Node")
+                lines.append(f"    properties:")
+                if not props:
+                    lines.append(f"      {{}}")
+                else:
+                    for prop_name, prop_type in sorted(props.items()):
+                        lines.append(f"      {prop_name}: {prop_type}")
+                lines.append(f"    primary_key: {pk_str}")
+                lines.append(f"    count: {count}")
+
+        lines.append("")
+        lines.append("relationships:")
+        if not rel_results:
+            lines.append("  {}")
+        else:
+            for rel_type in sorted(rel_results):
+                info = rel_results[rel_type]
+                props = info["properties"]
+                class_name = "".join(w.capitalize() for w in rel_type.lower().split("_"))
+
+                lines.append(f"  {rel_type}:")
+                lines.append(f"    class_name: {class_name}")
+                lines.append(f"    src: {', '.join(info['src']) if info['src'] else 'Node'}")
+                lines.append(f"    dst: {', '.join(info['dst']) if info['dst'] else 'Node'}")
+                lines.append(f"    properties:")
+                if not props:
+                    lines.append(f"      {{}}")
+                else:
+                    for prop_name, prop_type in sorted(props.items()):
+                        lines.append(f"      {prop_name}: {prop_type}")
+                lines.append(f"    count: {info['count']}")
+
+        # WeakRelations section (empty — must be inferred from application logic)
+        lines.append("")
+        lines.append("weak_relations:")
+        lines.append("  {}")
+
+        return "\n".join(lines) + "\n"
+
+    def _python_type(self, value: Any) -> str:
+        """Map a Neo4j value to a YAML/Python type string."""
+        if isinstance(value, bool):
+            return "boolean"
+        if isinstance(value, int):
+            return "integer"
+        if isinstance(value, float):
+            return "float"
+        if isinstance(value, str):
+            return "string"
+        if isinstance(value, list):
+            return "array"
+        if isinstance(value, dict):
+            return "object"
+        if value is None:
+            return "null"
+        return "string"
 
     # ------------------------------------------------------------------
     # Protected helpers: node operations
@@ -616,11 +818,15 @@ class Neo4jGraph:
             # if is a weak entity the edge linking the parent node must be created
             if node["is_weak"]:
                 # print("node", node.main_label, node.neo4j_id, "is weak")
-                for ppk in node["parent"]["pk"]["pk"]:
-                    if not node["parent"]["pk"]["pk"][ppk] == node["pk"]["pk"][ppk]:
-                        raise RuntimeError(
-                            "ADGT Exception: Integrity Constraint Violated. Child node keys does not reference proper parent keys"
-                        )
+                # Skip PK validation for nodes whose PK was backend-generated (pk=None originally).
+                # Such nodes have a simple {"id": backend_id} PK that won't contain parent PK keys.
+                child_pk = node["pk"]["pk"]
+                if not (isinstance(child_pk, dict) and len(child_pk) == 1 and "id" in child_pk):
+                    for ppk in node["parent"]["pk"]["pk"]:
+                        if not node["parent"]["pk"]["pk"][ppk] == node["pk"]["pk"][ppk]:
+                            raise RuntimeError(
+                                "ADGT Exception: Integrity Constraint Violated. Child node keys does not reference proper parent keys"
+                            )
 
                 self.insertRelation(
                     WeakRelation(
@@ -1176,6 +1382,43 @@ class Neo4jGraph:
                 + " AND r._propagate=TRUE RETURN b"
             )
         return tx.run(query).values()
+
+
+def _convert_neo4j_value(value: Any) -> Any:
+    """Convert a Neo4j value to a plain Python dict/list/primitive.
+
+    - ``Node`` → ``{"labels": [...], "properties": {...}}``
+    - ``Relationship`` → ``{"type": ..., "start_node": ..., "end_node": ..., "properties": ...}``
+    - ``Path`` → ``{"nodes": [...], "relationships": [...], "length": ...}``
+    - ``list`` → recursively convert each element
+    - Everything else → returned as-is
+    """
+    if value is None:
+        return None
+    if hasattr(value, "labels") and hasattr(value, "properties"):
+        # Neo4j Node
+        return {
+            "labels": list(value.labels),
+            "properties": dict(value),
+        }
+    if hasattr(value, "type") and hasattr(value, "start_node"):
+        # Neo4j Relationship
+        return {
+            "type": value.type,
+            "start_node": int(value.start_node),
+            "end_node": int(value.end_node),
+            "properties": dict(value),
+        }
+    if hasattr(value, "nodes") and hasattr(value, "relationships"):
+        # Neo4j Path
+        return {
+            "nodes": [_convert_neo4j_value(n) for n in value.nodes],
+            "relationships": [_convert_neo4j_value(r) for r in value.relationships],
+            "length": value.length,
+        }
+    if isinstance(value, (list, tuple)):
+        return [_convert_neo4j_value(v) for v in value]
+    return value
 
 
 def _generate_tuple(node_name, pk, with_values=False):

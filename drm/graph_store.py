@@ -139,6 +139,71 @@ class GraphStore(ABC):
         """Release resources and clear the graph store."""
 
     # ------------------------------------------------------------------
+    # Query API
+    # ------------------------------------------------------------------
+
+    def query(
+        self,
+        filter_dict: Optional[Union[Dict[str, Any], str]] = None,
+        projection: Optional[Dict[str, int]] = None,
+        sort: Optional[Tuple[str, int]] = None,
+        limit_val: Optional[int] = None,
+        params: Optional[Dict[str, Any]] = None,
+    ) -> List[Dict[str, Any]]:
+        """Query nodes using MongoDB-style dictionary filters (NetworkX)
+        or execute raw Cypher (Neo4j).
+
+        **Hybrid API** — the first argument accepts either:
+
+        * **dict** — MongoDB-style filter matching against
+          ``main_label`` and node attributes.  Supports operators
+          ``$eq``, ``$ne``, ``$gt``, ``$gte``, ``$lt``, ``$lte``,
+          ``$in``, ``$nin``, ``$exists``, ``$regex``.
+        * **str** — a Cypher query string (``MATCH``, ``CREATE``,
+          ``DELETE``, ``SET``, ``RETURN``, ``ORDER BY``, ``LIMIT``,
+          aggregations, parameter substitution via ``$name``).
+
+        Args:
+            filter_dict: Filter dict for MongoDB-style queries, or Cypher
+                string for Cypher-style queries.
+            projection: Dict of fields to include (1) or exclude (0).
+                Ignored for Cypher queries (use ``RETURN`` aliases).
+            sort: Tuple of ``(field_name, direction)`` where direction is
+                ``1`` (ascending) or ``-1`` (descending).
+                Ignored for Cypher queries (use ``ORDER BY``).
+            limit_val: Maximum number of results to return.
+                Ignored for Cypher queries (use ``LIMIT``).
+            params: Optional parameter dict for ``$name`` substitution
+                in Cypher queries. Ignored for MongoDB-style queries.
+
+        Returns:
+            A list of dicts, one per matching node (MongoDB-style) or
+            one per result record (Cypher-style).
+
+        Raises:
+            NotImplementedError: If the backend does not support queries.
+        """
+        raise NotImplementedError(
+            f"Query is not supported by {self.__class__.__name__}."
+        )
+
+    def count(
+        self,
+        filter_dict: Optional[Dict[str, Any]] = None,
+    ) -> int:
+        """Count nodes matching the filter dict.
+
+        Args:
+            filter_dict: Dict of field/value pairs to match.
+
+        Returns:
+            Integer count of matching nodes.
+        """
+        raise NotImplementedError(
+            f"Count is not supported by {self.__class__.__name__}."
+        )
+
+    # ------------------------------------------------------------------
     # Optional vector index API (concrete default)
     # ------------------------------------------------------------------
 
@@ -253,3 +318,21 @@ class GraphStore(ABC):
         for item in state.get("edges", []):
             print(f"  {item}")
         print("========================\n")
+
+    # ------------------------------------------------------------------
+    # Schema introspection
+    # ------------------------------------------------------------------
+
+    @abstractmethod
+    def schema_yaml(self, db_name: str) -> str:
+        """Introspect the database and return a YAML schema description.
+
+        The YAML contains labels, properties, relationship types,
+        counts, and Python class names derived from the schema.
+
+        Args:
+            db_name: Human-readable database name (e.g. ``"got"``).
+
+        Returns:
+            A YAML string suitable for code generation.
+        """

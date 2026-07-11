@@ -32,6 +32,23 @@ Follow a strict TDD cycle for all new features and substantial changes:
 
 Never implement code without corresponding tests. If a test fails, fix the implementation — never lower test expectations.
 
+### Commit Discipline
+
+**Never commit changes unless explicitly asked.** Only commit when the user says "fes el commit", "commit", "commit and push", or similar. Do not auto-commit after completing tasks.
+
+### Daily Commit Policy
+
+If the repository has uncommitted changes from previous days when you start working, the first commit of the day must be split into two:
+
+1. **First commit** — Stage and commit all changes from previous days with a message like `chore: daily commit — <date>` summarizing what was done.
+2. **Second commit** — Stage and commit only the changes made during the current session with a descriptive message about today's work.
+
+Check for existing uncommitted changes at the start of each session:
+```bash
+git status
+```
+If there are staged or unstaged changes, ask the user for the date they were made and split the commit accordingly.
+
 ## Development Commands
 
 ### Installation
