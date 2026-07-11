@@ -20,7 +20,7 @@ Features
 - **Graph-based document representation**: Model documents as nodes and
   relations, including hierarchical structures such as Document → Section → Page.
 - **Two backends**: Full Neo4j integration via ``Neo4jGraph`` or an
-  in-memory ``NetworkXGraph`` (NetworkX) for testing.
+  in-memory ``NetworkXGraph`` (NetworkX) for testing and tutorials.
 - **Two entity levels**: Root entities (``Node``) and child entities
   (``WeakNode``) with composite primary keys and cascade delete
   propagation.
@@ -29,6 +29,10 @@ Features
 - **FK validation**: Foreign key constraints on relations prevent
   dangling references.
 - **ON DELETE strategies**: CASCADE, RESTRICT, SET NULL.
+- **Query & filtering**: Secondary index on scalar properties, multi-filter
+  search with intersection/union, and debug snapshots.
+- **Vector search (NetworkX only)**: HNSW-based ANN indexing on node
+  properties with ``cosine``, ``l2``, and ``ip`` distance spaces.
 
 Primary Key
 -----------
@@ -62,6 +66,34 @@ The ``pk`` is either an ``int`` or a ``dict``:
 A node with ``pk=None`` is valid — the backend (Neo4j or NetworkX) assigns
 an auto-generated ID as the primary key after insertion. If no backend is
 used, ``_primary_key`` remains ``None``.
+
+Query & Filtering
+-----------------
+
+``NetworkXGraph`` maintains a secondary index on scalar properties, enabling
+fast lookups without scanning all nodes:
+
+.. code-block:: python
+
+    from drm import NetworkXGraph, Node
+
+    graph = NetworkXGraph()
+    alice = Node(pk={"name": "Alice"}, main_label="Author")
+    alice["affiliation"] = "MIT"
+    bob = Node(pk={"name": "Bob"}, main_label="Author")
+    bob["affiliation"] = "Stanford"
+    graph.insertNode(alice)
+    graph.insertNode(bob)
+
+    # Find all authors from MIT
+    mit_authors = graph.find_nodes_by_property("affiliation", "MIT")
+    print(mit_authors)  # [node_id_of_alice]
+
+    # Multi-filter search (intersection or union)
+    results = graph.find_nodes({"affiliation": "MIT"}, match="all")
+
+    # Debug snapshot
+    graph.print_debug()
 
 Vector Indexing
 ---------------
@@ -136,31 +168,35 @@ For the in-memory backend:
 
     graph = NetworkXGraph()
     doc = Node(pk={"doc": "DOC-001"}, main_label="Document")
-    graph.insertNode(doc, replace=True)
-    print(graph.get_nodes())  # {1}
+    graph.insertNode(doc)
+    print(graph.get_node_ids())  # [1]
     graph.close()
 
 Configuration
 -------------
 
-Create a ``.env`` file with your Neo4j credentials:
+DRM uses environment variables for Neo4j connections. Multiple targets are
+supported via the ``NEO4J_TARGET`` selector:
 
-.. code-block:: ini
+.. code-block:: bash
 
-    NEO4J_URL=bolt://localhost:7687
-    NEO4J_USER=neo4j
-    NEO4J_PASSWORD=your_password
-    NEO4J_DATABASE=mydb
+    export NEO4J_DEV_URL=bolt://dev-host:7687
+    export NEO4J_DEV_USER=neo4j
+    export NEO4J_DEV_PASSWORD=your_dev_password
+    export NEO4J_DEV_DATABASE=neo4j
 
-For multiple Neo4j instances, the test suite defaults to the ``DEV`` target
-when ``NEO4J_TARGET`` is not set:
+For a custom target:
 
-.. code-block:: ini
+.. code-block:: bash
 
-    NEO4J_DEV_URL=bolt://dev-host:7687
-    NEO4J_DEV_USER=neo4j
-    NEO4J_DEV_PASSWORD=your_dev_password
-    NEO4J_DEV_DATABASE=neo4j
+    export NEO4J_TARGET=LOCAL
+    export NEO4J_LOCAL_URL=bolt://localhost:7687
+    export NEO4J_LOCAL_USER=neo4j
+    export NEO4J_LOCAL_PASSWORD=your_password
+    export NEO4J_LOCAL_DATABASE=neo4j
+
+The real Neo4j tests default to ``DEV`` when ``NEO4J_TARGET`` is not set,
+and fall back to plain ``NEO4J_*`` variables when prefixed variables are absent.
 
 Running Tests
 -------------
@@ -170,6 +206,9 @@ Run the test suite with pytest:
 .. code-block:: bash
 
     python -m pytest test/ -v
+
+Tests use ``NetworkXGraph`` for all unit tests and ``Neo4jGraph`` for
+integration tests against a real Neo4j instance (controlled by ``NEO4J_TARGET``).
 
 Building Documentation
 ----------------------

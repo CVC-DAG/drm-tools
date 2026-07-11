@@ -43,9 +43,11 @@ class NetworkXGraph(GraphStore):
         self._vector_index_meta: Dict[str, Dict[str, Any]] = {}
         self._persistence_path = persistence_path or self._default_persistence_path()
         self._load_state()
+        # Internal tracking: node_id -> pk dict (for get_node_pks)
+        self._node_pks: Dict[int, Dict[str, Any]] = {}
 
     # ------------------------------------------------------------------
-    # Public API (mirrors Neo4jGraph)
+    # Public API: CRUD operations
     # ------------------------------------------------------------------
 
     def insertNode(
@@ -68,6 +70,10 @@ class NetworkXGraph(GraphStore):
 
         node_id = self._ensure_node_inserted(node, update=update, replace=replace)
         node.neo4j_id = node_id
+
+        # Track node_id -> pk mapping for get_node_pks()
+        if node._primary_key is not None:
+            self._node_pks[node_id] = dict(node._primary_key)
 
         # If weak, create the parent relation
         if node["is_weak"] and node["parent"] is not None:
@@ -164,60 +170,6 @@ class NetworkXGraph(GraphStore):
 
         self._save_state()
         return (src_id, dst_id, edge_key)
-
-    def _remove_node_attrs(self, node_id: int) -> None:
-        """Remove internal bookkeeping for a node."""
-        old_attrs = self._node_attrs.pop(node_id, None)
-        if old_attrs is not None:
-            self._deindex_node(node_id, old_attrs)
-        self._edge_attrs = {
-            k: v for k, v in self._edge_attrs.items()
-            if k[0] != node_id and k[1] != node_id
-        }
-
-    def _set_null_delete(self, node_id: int) -> None:
-        """ON DELETE SET NULL: delete node, remove connected edges, keep neighbors.
-
-        Unlike CASCADE, this does NOT recurse into neighbor nodes.
-        Edges are removed (required by the graph model), but neighbor
-        nodes remain as standalone entities.
-        """
-        self._clean_fk_index(node_id)
-        self._remove_node_attrs(node_id)
-
-    def _cascade_delete(self, node_id: int) -> None:
-        """ON DELETE CASCADE: delete node and all connected edges.
-
-        Uses the FK index to find all edges connected to the node (both
-        incoming and outgoing) and removes them.  Neighbor nodes are left
-        as standalone entities.  Mirrors Neo4jGraph._cascade_delete.
-        """
-        entries = self._fk_index.get(node_id, set()).copy()
-        for neighbor_id, rel_type, direction in entries:
-            # Delete the edge in the correct direction
-            if direction == "out":
-                # Edge: node_id → neighbor_id
-                if self._graph.has_edge(node_id, neighbor_id, key=rel_type):
-                    self._graph.remove_edge(node_id, neighbor_id, key=rel_type)
-                    self._edge_attrs.pop((node_id, neighbor_id, rel_type), None)
-            else:
-                # Edge: neighbor_id → node_id
-                if self._graph.has_edge(neighbor_id, node_id, key=rel_type):
-                    self._graph.remove_edge(neighbor_id, node_id, key=rel_type)
-                    self._edge_attrs.pop((neighbor_id, node_id, rel_type), None)
-
-            # Clean FK index for neighbor
-            if neighbor_id in self._fk_index:
-                self._fk_index[neighbor_id] = {
-                    e for e in self._fk_index[neighbor_id]
-                    if e != (node_id, rel_type, "in" if direction == "out" else "out")
-                }
-                if not self._fk_index[neighbor_id]:
-                    del self._fk_index[neighbor_id]
-        self._fk_index.pop(node_id, None)
-        old_attrs = self._node_attrs.pop(node_id, None)
-        if old_attrs is not None:
-            self._deindex_node(node_id, old_attrs)
 
     def deleteNode(
         self,
@@ -323,6 +275,99 @@ class NetworkXGraph(GraphStore):
 
         return None
 
+    def create(
+        self,
+        migration: Tuple[List, List],
+        update: bool = False,
+        replace: bool = False,
+    ) -> None:
+        """Bulk import nodes and relations.
+
+        Iterates over the node and relation lists, inserting each with
+        the given ``update`` and ``replace`` flags.
+
+        Args:
+            migration: A tuple ``(node_list, relation_list)``.
+            update: Passed to ``insertNode`` / ``insertRelation``.
+            replace: Passed to ``insertNode`` / ``insertRelation``.
+        """
+        node_info, rel_info = migration
+        for node in node_info:
+            self.insertNode(node, update=update, replace=replace)
+        for rel in rel_info:
+            self.insertRelation(rel, update=update, replace=replace)
+
+    # ------------------------------------------------------------------
+    # Public API: query operations
+    # ------------------------------------------------------------------
+
+    def get_node(self, node_id: int) -> Optional[Node]:
+        """Retrieve a node by its internal id.
+
+        Args:
+            node_id: The internal node id.
+
+        Returns:
+            A ``Node`` instance with the stored attributes, or None
+            if no node with that id exists.
+        """
+        if self._graph.has_node(node_id):
+            attrs = self._node_attrs.get(node_id, {})
+            labels = attrs.get("labels", [])
+            main_label = attrs.get("main_label", "")
+            pk = attrs.get("pk", {})
+            return Node(neo4j_id=node_id, pk=pk, main_label=main_label, alternative_labels=labels)
+        return None
+
+    def get_node_ids(self) -> List[int]:
+        """Return all internal node ids in the graph."""
+        return list(self._graph.nodes())
+
+    def get_nodes(self) -> List[int]:
+        """Alias for :meth:`get_node_ids` for backward compatibility."""
+        return self.get_node_ids()
+
+    def get_node_pks(self) -> List[Dict[str, Any]]:
+        """Return all primary keys of nodes in the graph."""
+        result = []
+        for nid, pk in self._node_pks.items():
+            if nid in self._graph.nodes:
+                node = self._graph.nodes[nid]
+                label = node.get("main_label", "")
+                result.append({"main_label": label, "pk": pk})
+        return result
+
+    def get_edges(self) -> List[Tuple[int, int, str]]:
+        """Return all edges as ``(src_id, dst_id, rel_type)`` tuples."""
+        result = []
+        for u, v, key, data in self._graph.edges(data=True, keys=True):
+            result.append((u, v, data.get("rel_type", key)))
+        return result
+
+    def get_node_attrs(self, node_id: int) -> Optional[Dict[str, Any]]:
+        """Return attributes stored for a node.
+
+        Args:
+            node_id: The internal node id.
+
+        Returns:
+            A dict of node attributes, or None if the node does not exist.
+        """
+        return self._node_attrs.get(node_id)
+
+    def get_edge_attrs(self, u: int, v: int, key: str) -> Optional[Dict[str, Any]]:
+        """Return attributes stored for an edge.
+
+        Args:
+            u: Source node id.
+            v: Destination node id.
+            key: Edge type / key.
+
+        Returns:
+            A dict of edge attributes, or None if the edge does not exist.
+        """
+        return self._edge_attrs.get((u, v, key))
+
     def find_nodes_by_property(self, prop_name: str, value: Any) -> List[int]:
         """Return node ids indexed by an exact property value match."""
         idx_key = (prop_name, self._normalize_index_value(value))
@@ -352,6 +397,62 @@ class NetworkXGraph(GraphStore):
         else:
             result = set.union(*buckets)
         return sorted(result)
+
+    def debug(self) -> Dict[str, Any]:
+        """Return a human-readable snapshot of the graph state.
+
+        Returns a dict with keys:
+        - ``nodes``: list of (id, label, pk)
+        - ``edges``: list of (src_id, dst_id, rel_type, attrs)
+        - ``fk_index``: dict mapping node_id -> list of (other_id, rel_type, direction)
+        """
+        return {
+            "nodes": [
+                (nid, attrs.get("main_label"), attrs.get("pk"))
+                for nid, attrs in self._node_attrs.items()
+            ],
+            "edges": [
+                (u, v, data.get("rel_type", key), self._edge_attrs.get((u, v, key), {}))
+                for u, v, key, data in self._graph.edges(data=True, keys=True)
+            ],
+            "fk_index": {
+                k: list(v) for k, v in self._fk_index.items()
+            },
+        }
+
+    def print_debug(self) -> None:
+        """Print a formatted snapshot of the graph state to stdout."""
+        state = self.debug()
+        print("\n=== NetworkXGraph State ===")
+        print(f"Nodes ({len(state['nodes'])}):")
+        for nid, label, pk in state["nodes"]:
+            print(f"  [{nid}] {label} pk={pk}")
+        print(f"Edges ({len(state['edges'])}):")
+        for u, v, rtype, attrs in state["edges"]:
+            print(f"  [{u}] --[{rtype}]--> [{v}] attrs={attrs}")
+        print(f"FK Index ({len(state['fk_index'])} entries):")
+        for nid, entries in state['fk_index'].items():
+            print(f"  [{nid}] -> {entries}")
+        print("=======================\n")
+
+    # ------------------------------------------------------------------
+    # Public API: lifecycle
+    # ------------------------------------------------------------------
+
+    def close(self) -> None:
+        """Release resources and clear the graph.
+
+        Persists the current graph state and clears in-memory data.
+        """
+        self._save_state()
+        self._graph.clear()
+        self._node_attrs.clear()
+        self._edge_attrs.clear()
+        self._fk_index.clear()
+        self._pk_index.clear()
+        self._property_index.clear()
+        self._vector_indexes.clear()
+        self._vector_index_meta.clear()
 
     def enable_vector_index(
         self,
@@ -420,42 +521,238 @@ class NetworkXGraph(GraphStore):
                 results.append((node_id, float(dist)))
         return results
 
-    def create(
+    # ------------------------------------------------------------------
+    # Protected helpers: node operations
+    # ------------------------------------------------------------------
+
+    def _ensure_node_inserted(
         self,
-        migration: Tuple[List, List],
+        node: Node,
         update: bool = False,
         replace: bool = False,
-    ) -> None:
-        """Bulk import nodes and relations.
+    ) -> int:
+        """Ensure the node exists, returning its id.
 
-        Iterates over the node and relation lists, inserting each with
-        the given ``update`` and ``replace`` flags.
+        Mirrors Neo4jGraph._insertNode semantics:
 
-        Args:
-            migration: A tuple ``(node_list, relation_list)``.
-            update: Passed to ``insertNode`` / ``insertRelation``.
-            replace: Passed to ``insertNode`` / ``insertRelation``.
+        - ``update=True``: MERGE + SET — adds/updates attributes without
+          deleting the node.  The node keeps its existing id.
+        - ``update=False`` + ``replace=True``: deletes the existing node
+          (detach) and creates a fresh one with a new id.
+        - ``update=False`` + ``replace=False``: tries to CREATE a new
+          node.  If a node with the same PK already exists this is a
+          duplicate-key error (raises ``RuntimeError``).
         """
-        node_info, rel_info = migration
-        for node in node_info:
-            self.insertNode(node, update=update, replace=replace)
-        for rel in rel_info:
-            self.insertRelation(rel, update=update, replace=replace)
+        existing = self.checkNode(node)
 
-    def close(self) -> None:
-        """Release resources and clear the graph.
+        if existing is not None:
+            # Node already exists
+            if replace:
+                # ON UPDATE CASCADE: in Neo4j, edges reference nodes
+                # by internal ID which never changes.  replace=True
+                # deletes the node (with detach, cascading edges) and
+                # creates a fresh one — the caller must recreate
+                # relations if needed.
+                self.deleteNode(node, detach=True, propagation=True)
+                self._node_counter += 1
+                node_id = self._node_counter
+            elif update:
+                # ON UPDATE CASCADE: PK changes are safe — the FK index is
+                # keyed by internal node IDs which never change.  The MERGE
+                # + SET in _ensure_node_inserted already updates the PK in
+                # _node_attrs, so all relations continue to resolve correctly.
+                pass
+                # MERGE + SET: merge attributes into existing node
+                node_id = existing
+                old_attrs = self._node_attrs.get(node_id, {}).copy()
+                pk, attributes = node.attributes
+                props = attributes if pk is None else {**pk, **attributes}
+                self._node_attrs[node_id].update(props)
+                self._graph.nodes[node_id].update(props)
+                self._deindex_node(node_id, old_attrs)
+                self._index_node(node_id, self._node_attrs[node_id])
+                self._sync_vector_indexes_for_node(node_id, self._node_attrs[node_id])
+                node.neo4j_id = node_id
+                return node_id
+            else:
+                # Duplicate key — same as Neo4j ConstraintError
+                raise RuntimeError(
+                    f"Duplicate key: node with pk={node._primary_key} "
+                    f"and main_label={node.main_label} already exists (id={existing}). "
+                    f"Use replace=True to overwrite or update=True to merge attributes."
+                )
+        else:
+            # Node does not exist — create fresh
+            self._node_counter += 1
+            node_id = self._node_counter
 
-        Persists the current graph state and clears in-memory data.
+        # Si el node tenia pk=None explícit, assignem l'ID generat com a PK
+        if node._primary_key is None:
+            node._primary_key = {"id": node_id}
+
+        # Store node attributes
+        pk, attributes = node.attributes
+        props = attributes if pk is None else {**pk, **attributes}
+        self._node_attrs[node_id] = {
+            "pk": pk,
+            "main_label": node.main_label,
+            "labels": node.labels,
+            **props,
+        }
+        self._index_node(node_id, self._node_attrs[node_id])
+        self._sync_vector_indexes_for_node(node_id, self._node_attrs[node_id])
+
+        self._graph.add_node(node_id, **props)
+        return node_id
+
+    def _resolve_node_id(self, node_data: Union[Node, Dict[str, Any]]) -> Optional[int]:
+        """Resolve a node or node dict to its internal graph id."""
+        if isinstance(node_data, Node):
+            if node_data.neo4j_id is not None and self._graph.has_node(node_data.neo4j_id):
+                return node_data.neo4j_id
+            return self.checkNode(node_data)
+
+        if isinstance(node_data, dict):
+            nid = node_data.get("neo4j_id")
+            if nid is not None and self._graph.has_node(nid):
+                return nid
+            # Try to find by pk
+            pk = node_data.get("pk")
+            if pk and isinstance(pk, dict):
+                main_label = node_data.get("main_label")
+                idx_key = self._pk_index_key(main_label, pk)
+                idx_id = self._pk_index.get(idx_key)
+                if idx_id is not None and self._graph.has_node(idx_id):
+                    return idx_id
+                for node_id, attrs in self._node_attrs.items():
+                    if attrs.get("main_label") == main_label and self._attrs_match_pk(attrs, pk):
+                        return node_id
+
+        return None
+
+    # ------------------------------------------------------------------
+    # Protected helpers: FK index operations
+    # ------------------------------------------------------------------
+
+    def _add_to_fk_index(self, src_id: int, dst_id: int, edge_key: str) -> None:
+        """Record a new edge in the FK index for both endpoints."""
+        self._fk_index.setdefault(src_id, set()).add((dst_id, edge_key, "out"))
+        self._fk_index.setdefault(dst_id, set()).add((src_id, edge_key, "in"))
+
+    def _remove_from_fk_index(self, src_id: int, dst_id: int, edge_key: str) -> None:
+        """Remove an edge from the FK index."""
+        if src_id in self._fk_index:
+            self._fk_index[src_id].discard((dst_id, edge_key, "out"))
+            if not self._fk_index[src_id]:
+                del self._fk_index[src_id]
+        if dst_id in self._fk_index:
+            self._fk_index[dst_id].discard((src_id, edge_key, "in"))
+            if not self._fk_index[dst_id]:
+                del self._fk_index[dst_id]
+
+    def _clean_fk_index(self, node_id: int) -> None:
+        """Remove all FK index entries for a node being deleted."""
+        if node_id in self._fk_index:
+            for other_id, edge_key, direction in self._fk_index[node_id]:
+                if other_id in self._fk_index:
+                    if direction == "out":
+                        self._fk_index[other_id].discard((node_id, edge_key, "in"))
+                    else:
+                        self._fk_index[other_id].discard((node_id, edge_key, "out"))
+                    if not self._fk_index[other_id]:
+                        del self._fk_index[other_id]
+            del self._fk_index[node_id]
+
+    def _cascade_delete(self, node_id: int) -> None:
+        """ON DELETE CASCADE: delete node and all connected edges.
+
+        Uses the FK index to find all edges connected to the node (both
+        incoming and outgoing) and removes them.  Neighbor nodes are left
+        as standalone entities.  Mirrors Neo4jGraph._cascade_delete.
         """
-        self._save_state()
-        self._graph.clear()
-        self._node_attrs.clear()
-        self._edge_attrs.clear()
-        self._fk_index.clear()
-        self._pk_index.clear()
-        self._property_index.clear()
-        self._vector_indexes.clear()
-        self._vector_index_meta.clear()
+        entries = self._fk_index.get(node_id, set()).copy()
+        for neighbor_id, rel_type, direction in entries:
+            # Delete the edge in the correct direction
+            if direction == "out":
+                # Edge: node_id → neighbor_id
+                if self._graph.has_edge(node_id, neighbor_id, key=rel_type):
+                    self._graph.remove_edge(node_id, neighbor_id, key=rel_type)
+                    self._edge_attrs.pop((node_id, neighbor_id, rel_type), None)
+            else:
+                # Edge: neighbor_id → node_id
+                if self._graph.has_edge(neighbor_id, node_id, key=rel_type):
+                    self._graph.remove_edge(neighbor_id, node_id, key=rel_type)
+                    self._edge_attrs.pop((neighbor_id, node_id, rel_type), None)
+
+            # Clean FK index for neighbor
+            if neighbor_id in self._fk_index:
+                self._fk_index[neighbor_id] = {
+                    e for e in self._fk_index[neighbor_id]
+                    if e != (node_id, rel_type, "in" if direction == "out" else "out")
+                }
+                if not self._fk_index[neighbor_id]:
+                    del self._fk_index[neighbor_id]
+        self._fk_index.pop(node_id, None)
+        old_attrs = self._node_attrs.pop(node_id, None)
+        if old_attrs is not None:
+            self._deindex_node(node_id, old_attrs)
+
+    def _set_null_delete(self, node_id: int) -> None:
+        """ON DELETE SET NULL: delete node, remove connected edges, keep neighbors.
+
+        Unlike CASCADE, this does NOT recurse into neighbor nodes.
+        Edges are removed (required by the graph model), but neighbor
+        nodes remain as standalone entities.
+        """
+        self._clean_fk_index(node_id)
+        self._remove_node_attrs(node_id)
+
+    def _remove_node_attrs(self, node_id: int) -> None:
+        """Remove internal bookkeeping for a node."""
+        old_attrs = self._node_attrs.pop(node_id, None)
+        if old_attrs is not None:
+            self._deindex_node(node_id, old_attrs)
+        self._edge_attrs = {
+            k: v for k, v in self._edge_attrs.items()
+            if k[0] != node_id and k[1] != node_id
+        }
+
+    def _reconnect_edges_for_node(self, old_id: int, new_id: int) -> None:
+        """ON UPDATE CASCADE for relations: rewire edges from old_id to new_id.
+
+        Edges where old_id is src or dst are redirected to new_id.
+        Edges where old_id is in the FK index are also updated.
+        """
+        # Reconnect edges in the graph where old_id is src
+        for neighbor, key, data in list(self._graph.out_edges(old_id, keys=True, data=True)):
+            self._graph.remove_edge(old_id, neighbor, key=key)
+            self._graph.add_edge(new_id, neighbor, key=key, rel_type=data.get("rel_type", key))
+            # Move edge attrs
+            attrs = self._edge_attrs.pop((old_id, neighbor, key), {})
+            if attrs:
+                self._edge_attrs[(new_id, neighbor, key)] = attrs
+
+        # Reconnect edges in the graph where old_id is dst
+        for pred, neighbor, key, data in list(self._graph.in_edges(old_id, keys=True, data=True)):
+            self._graph.remove_edge(pred, old_id, key=key)
+            self._graph.add_edge(pred, new_id, key=key, rel_type=data.get("rel_type", key))
+            attrs = self._edge_attrs.pop((pred, old_id, key), {})
+            if attrs:
+                self._edge_attrs[(pred, new_id, key)] = attrs
+
+        # Update FK index: redirect all entries pointing to old_id
+        for other_id in list(self._fk_index):
+            self._fk_index[other_id] = {
+                (new_id if oid == old_id else oid, rt, d)
+                for oid, rt, d in self._fk_index[other_id]
+            }
+        # Move old_id entries to new_id in FK index
+        if old_id in self._fk_index:
+            self._fk_index[new_id] = self._fk_index.pop(old_id)
+
+    # ------------------------------------------------------------------
+    # Protected helpers: persistence
+    # ------------------------------------------------------------------
 
     def _default_persistence_path(self) -> str:
         """Build a deterministic persistence path for the current workspace."""
@@ -530,224 +827,20 @@ class NetworkXGraph(GraphStore):
                     self._rebuild_vector_index(prop_name)
 
     # ------------------------------------------------------------------
-    # Query helpers
+    # Protected helpers: indexing
     # ------------------------------------------------------------------
-
-    def get_node(self, node_id: int) -> Optional[Node]:
-        """Retrieve a node by its internal id.
-
-        Args:
-            node_id: The internal node id.
-
-        Returns:
-            A ``Node`` instance with the stored attributes, or None
-            if no node with that id exists.
-        """
-        if self._graph.has_node(node_id):
-            attrs = self._node_attrs.get(node_id, {})
-            labels = attrs.get("labels", [])
-            main_label = attrs.get("main_label", "")
-            pk = attrs.get("pk", {})
-            return Node(neo4j_id=node_id, pk=pk, main_label=main_label, alternative_labels=labels)
-        return None
-
-    def get_nodes(self) -> List[int]:
-        """Return all node ids in the graph."""
-        return list(self._graph.nodes())
-
-    def get_edges(self) -> List[Tuple[int, int, str]]:
-        """Return all edges as ``(src_id, dst_id, rel_type)`` tuples."""
-        result = []
-        for u, v, key, data in self._graph.edges(data=True, keys=True):
-            result.append((u, v, data.get("rel_type", key)))
-        return result
-
-    def get_node_attrs(self, node_id: int) -> Optional[Dict[str, Any]]:
-        """Return attributes stored for a node.
-
-        Args:
-            node_id: The internal node id.
-
-        Returns:
-            A dict of node attributes, or None if the node does not exist.
-        """
-        return self._node_attrs.get(node_id)
-
-    def get_edge_attrs(self, u: int, v: int, key: str) -> Optional[Dict[str, Any]]:
-        """Return attributes stored for an edge.
-
-        Args:
-            u: Source node id.
-            v: Destination node id.
-            key: Edge type / key.
-
-        Returns:
-            A dict of edge attributes, or None if the edge does not exist.
-        """
-        return self._edge_attrs.get((u, v, key))
-
-    def debug(self) -> Dict[str, Any]:
-        """Return a human-readable snapshot of the graph state.
-
-        Returns a dict with keys:
-        - ``nodes``: list of (id, label, pk)
-        - ``edges``: list of (src_id, dst_id, rel_type, attrs)
-        - ``fk_index``: dict mapping node_id -> list of (other_id, rel_type, direction)
-        """
-        return {
-            "nodes": [
-                (nid, attrs.get("main_label"), attrs.get("pk"))
-                for nid, attrs in self._node_attrs.items()
-            ],
-            "edges": [
-                (u, v, data.get("rel_type", key), self._edge_attrs.get((u, v, key), {}))
-                for u, v, key, data in self._graph.edges(data=True, keys=True)
-            ],
-            "fk_index": {
-                k: list(v) for k, v in self._fk_index.items()
-            },
-        }
-
-    def print_debug(self) -> None:
-        """Print a formatted snapshot of the graph state to stdout."""
-        state = self.debug()
-        print("\n=== NetworkXGraph State ===")
-        print(f"Nodes ({len(state['nodes'])}):")
-        for nid, label, pk in state["nodes"]:
-            print(f"  [{nid}] {label} pk={pk}")
-        print(f"Edges ({len(state['edges'])}):")
-        for u, v, rtype, attrs in state["edges"]:
-            print(f"  [{u}] --[{rtype}]--> [{v}] attrs={attrs}")
-        print(f"FK Index ({len(state['fk_index'])} entries):")
-        for nid, entries in state["fk_index"].items():
-            print(f"  [{nid}] -> {entries}")
-        print("=======================\n")
-
-    # ------------------------------------------------------------------
-    # Internals
-    # ------------------------------------------------------------------
-
-    def _resolve_node_id(self, node_data: Union[Node, Dict[str, Any]]) -> Optional[int]:
-        """Resolve a node or node dict to its internal graph id."""
-        if isinstance(node_data, Node):
-            if node_data.neo4j_id is not None and self._graph.has_node(node_data.neo4j_id):
-                return node_data.neo4j_id
-            return self.checkNode(node_data)
-
-        if isinstance(node_data, dict):
-            nid = node_data.get("neo4j_id")
-            if nid is not None and self._graph.has_node(nid):
-                return nid
-            # Try to find by pk
-            pk = node_data.get("pk")
-            if pk and isinstance(pk, dict):
-                main_label = node_data.get("main_label")
-                idx_key = self._pk_index_key(main_label, pk)
-                idx_id = self._pk_index.get(idx_key)
-                if idx_id is not None and self._graph.has_node(idx_id):
-                    return idx_id
-                for node_id, attrs in self._node_attrs.items():
-                    if attrs.get("main_label") == main_label and self._attrs_match_pk(attrs, pk):
-                        return node_id
-
-        return None
-
-    def _add_to_fk_index(self, src_id: int, dst_id: int, edge_key: str) -> None:
-        """Record a new edge in the FK index for both endpoints."""
-        self._fk_index.setdefault(src_id, set()).add((dst_id, edge_key, "out"))
-        self._fk_index.setdefault(dst_id, set()).add((src_id, edge_key, "in"))
-
-    def _remove_from_fk_index(self, src_id: int, dst_id: int, edge_key: str) -> None:
-        """Remove an edge from the FK index."""
-        if src_id in self._fk_index:
-            self._fk_index[src_id].discard((dst_id, edge_key, "out"))
-            if not self._fk_index[src_id]:
-                del self._fk_index[src_id]
-        if dst_id in self._fk_index:
-            self._fk_index[dst_id].discard((src_id, edge_key, "in"))
-            if not self._fk_index[dst_id]:
-                del self._fk_index[dst_id]
-
-    def _clean_fk_index(self, node_id: int) -> None:
-        """Remove all FK index entries for a node being deleted."""
-        if node_id in self._fk_index:
-            for other_id, edge_key, direction in self._fk_index[node_id]:
-                if other_id in self._fk_index:
-                    if direction == "out":
-                        self._fk_index[other_id].discard((node_id, edge_key, "in"))
-                    else:
-                        self._fk_index[other_id].discard((node_id, edge_key, "out"))
-                    if not self._fk_index[other_id]:
-                        del self._fk_index[other_id]
-            del self._fk_index[node_id]
-
-    def _reconnect_edges_for_node(self, old_id: int, new_id: int) -> None:
-        """ON UPDATE CASCADE for relations: rewire edges from old_id to new_id.
-
-        Edges where old_id is src or dst are redirected to new_id.
-        Edges where old_id is in the FK index are also updated.
-        """
-        # Reconnect edges in the graph where old_id is src
-        for neighbor, key, data in list(self._graph.out_edges(old_id, keys=True, data=True)):
-            self._graph.remove_edge(old_id, neighbor, key=key)
-            self._graph.add_edge(new_id, neighbor, key=key, rel_type=data.get("rel_type", key))
-            # Move edge attrs
-            attrs = self._edge_attrs.pop((old_id, neighbor, key), {})
-            if attrs:
-                self._edge_attrs[(new_id, neighbor, key)] = attrs
-
-        # Reconnect edges in the graph where old_id is dst
-        for pred, neighbor, key, data in list(self._graph.in_edges(old_id, keys=True, data=True)):
-            self._graph.remove_edge(pred, old_id, key=key)
-            self._graph.add_edge(pred, new_id, key=key, rel_type=data.get("rel_type", key))
-            attrs = self._edge_attrs.pop((pred, old_id, key), {})
-            if attrs:
-                self._edge_attrs[(pred, new_id, key)] = attrs
-
-        # Update FK index: redirect all entries pointing to old_id
-        for other_id in list(self._fk_index):
-            self._fk_index[other_id] = {
-                (new_id if oid == old_id else oid, rt, d)
-                for oid, rt, d in self._fk_index[other_id]
-            }
-        # Move old_id entries to new_id in FK index
-        if old_id in self._fk_index:
-            self._fk_index[new_id] = self._fk_index.pop(old_id)
-
-    def _attrs_match_pk(self, attrs: Dict[str, Any], pk: Dict[str, Any]) -> bool:
-        """Check if node attributes match a primary key dict."""
-        for k, v in pk.items():
-            attr_val = attrs.get(k)
-            if attr_val is None:
-                return False
-            # Compare as strings to handle int/str mismatches
-            if str(attr_val) != str(v):
-                return False
-        return True
-
-    def _normalize_index_value(self, value: Any) -> Any:
-        """Convert arbitrary values to a deterministic hashable representation."""
-        if isinstance(value, dict):
-            return tuple(sorted((str(k), self._normalize_index_value(v)) for k, v in value.items()))
-        if isinstance(value, (list, tuple)):
-            return tuple(self._normalize_index_value(v) for v in value)
-        if isinstance(value, set):
-            normalized = [self._normalize_index_value(v) for v in value]
-            return tuple(sorted(normalized, key=repr))
-        return value
-
-    def _pk_index_key(self, main_label: str, pk: Optional[Dict[str, Any]]) -> Optional[Tuple[str, Tuple[Tuple[str, str], ...]]]:
-        """Build the unique PK index key for a node."""
-        if pk is None:
-            return None
-        items = tuple(sorted((str(k), str(v)) for k, v in pk.items()))
-        return (str(main_label), items)
 
     def _index_node(self, node_id: int, attrs: Dict[str, Any]) -> None:
         """Index a node by PK and by scalar properties."""
         pk = attrs.get("pk")
         pk_key = self._pk_index_key(str(attrs.get("main_label", "")), pk if isinstance(pk, dict) else None)
         if pk_key is not None:
+            existing = self._pk_index.get(pk_key)
+            if existing is not None and existing != node_id:
+                raise RuntimeError(
+                    f"Duplicate PK: node with pk={pk} "
+                    f"and main_label={attrs.get('main_label')} already exists (id={existing})."
+                )
             self._pk_index[pk_key] = node_id
 
         for prop_name, prop_value in attrs.items():
@@ -782,6 +875,39 @@ class NetworkXGraph(GraphStore):
         self._property_index.clear()
         for node_id, attrs in self._node_attrs.items():
             self._index_node(node_id, attrs)
+
+    def _normalize_index_value(self, value: Any) -> Any:
+        """Convert arbitrary values to a deterministic hashable representation."""
+        if isinstance(value, dict):
+            return tuple(sorted((str(k), self._normalize_index_value(v)) for k, v in value.items()))
+        if isinstance(value, (list, tuple)):
+            return tuple(self._normalize_index_value(v) for v in value)
+        if isinstance(value, set):
+            normalized = [self._normalize_index_value(v) for v in value]
+            return tuple(sorted(normalized, key=repr))
+        return value
+
+    def _pk_index_key(self, main_label: str, pk: Optional[Dict[str, Any]]) -> Optional[Tuple[str, Tuple[Tuple[str, str], ...]]]:
+        """Build the unique PK index key for a node."""
+        if pk is None:
+            return None
+        items = tuple(sorted((str(k), str(v)) for k, v in pk.items()))
+        return (str(main_label), items)
+
+    def _attrs_match_pk(self, attrs: Dict[str, Any], pk: Dict[str, Any]) -> bool:
+        """Check if node attributes match a primary key dict."""
+        for k, v in pk.items():
+            attr_val = attrs.get(k)
+            if attr_val is None:
+                return False
+            # Compare as strings to handle int/str mismatches
+            if str(attr_val) != str(v):
+                return False
+        return True
+
+    # ------------------------------------------------------------------
+    # Protected helpers: vector index operations
+    # ------------------------------------------------------------------
 
     def _vector_index_file(self, property_name: str) -> str:
         """Return the on-disk file path for one vector index."""
@@ -904,83 +1030,3 @@ class NetworkXGraph(GraphStore):
         )
         for node_id, attrs in self._node_attrs.items():
             self._sync_vector_index_for_node(property_name, node_id, attrs)
-
-    def _ensure_node_inserted(
-        self,
-        node: Node,
-        update: bool = False,
-        replace: bool = False,
-    ) -> int:
-        """Ensure the node exists, returning its id.
-
-        Mirrors Neo4jGraph._insertNode semantics:
-
-        - ``update=True``: MERGE + SET — adds/updates attributes without
-          deleting the node.  The node keeps its existing id.
-        - ``update=False`` + ``replace=True``: deletes the existing node
-          (detach) and creates a fresh one with a new id.
-        - ``update=False`` + ``replace=False``: tries to CREATE a new
-          node.  If a node with the same PK already exists this is a
-          duplicate-key error (raises ``RuntimeError``).
-        """
-        existing = self.checkNode(node)
-
-        if existing is not None:
-            # Node already exists
-            if replace:
-                # ON UPDATE CASCADE: in Neo4j, edges reference nodes
-                # by internal ID which never changes.  replace=True
-                # deletes the node (with detach, cascading edges) and
-                # creates a fresh one — the caller must recreate
-                # relations if needed.
-                self.deleteNode(node, detach=True, propagation=True)
-                self._node_counter += 1
-                node_id = self._node_counter
-            elif update:
-                # ON UPDATE CASCADE: PK changes are safe — the FK index is
-                # keyed by internal node IDs which never change.  The MERGE
-                # + SET in _ensure_node_inserted already updates the PK in
-                # _node_attrs, so all relations continue to resolve correctly.
-                pass
-                # MERGE + SET: merge attributes into existing node
-                node_id = existing
-                old_attrs = self._node_attrs.get(node_id, {}).copy()
-                pk, attributes = node.attributes
-                props = attributes if pk is None else {**pk, **attributes}
-                self._node_attrs[node_id].update(props)
-                self._graph.nodes[node_id].update(props)
-                self._deindex_node(node_id, old_attrs)
-                self._index_node(node_id, self._node_attrs[node_id])
-                self._sync_vector_indexes_for_node(node_id, self._node_attrs[node_id])
-                node.neo4j_id = node_id
-                return node_id
-            else:
-                # Duplicate key — same as Neo4j ConstraintError
-                raise RuntimeError(
-                    f"Duplicate key: node with pk={node._primary_key} "
-                    f"and main_label={node.main_label} already exists (id={existing}). "
-                    f"Use replace=True to overwrite or update=True to merge attributes."
-                )
-        else:
-            # Node does not exist — create fresh
-            self._node_counter += 1
-            node_id = self._node_counter
-
-        # Si el node tenia pk=None explícit, assignem l'ID generat com a PK
-        if node._primary_key is None:
-            node._primary_key = {"id": node_id}
-
-        # Store node attributes
-        pk, attributes = node.attributes
-        props = attributes if pk is None else {**pk, **attributes}
-        self._node_attrs[node_id] = {
-            "pk": pk,
-            "main_label": node.main_label,
-            "labels": node.labels,
-            **props,
-        }
-        self._index_node(node_id, self._node_attrs[node_id])
-        self._sync_vector_indexes_for_node(node_id, self._node_attrs[node_id])
-
-        self._graph.add_node(node_id, **props)
-        return node_id

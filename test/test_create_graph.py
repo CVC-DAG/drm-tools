@@ -179,7 +179,7 @@ class ADGTTest(unittest.TestCase):
 
         a = Node(pk=0, main_label='strong', alternative_labels='prova',
                  type='text', boundingbox=[0, 0, 1, 0, 1, 1, 1, 0])
-        b = WeakNode(a, pk=0, main_label='weak_1', alternative_labels='prova',
+        b = WeakNode(parent=a, pk=0, main_label='weak_1', alternative_labels='prova',
                      type='text')
 
         # Try to insert weak node without inserting parent first
@@ -209,11 +209,11 @@ class ADGTTest(unittest.TestCase):
 
         a = Node(pk=0, main_label='strong', alternative_labels='prova',
                  type='text', boundingbox=[0, 0, 1, 0, 1, 1, 1, 0])
-        b = WeakNode(a, pk=0, main_label='weak_1', alternative_labels='prova',
+        b = WeakNode(parent=a, pk=0, main_label='weak_1', alternative_labels='prova',
                      type='text')
-        c = WeakNode(b, pk=0, main_label='weak_2', alternative_labels='prova',
+        c = WeakNode(parent=b, pk=0, main_label='weak_2', alternative_labels='prova',
                      type='text', parent_relation='IS')
-        d = WeakNode(c, pk=0, main_label='weak_3', alternative_labels='prova',
+        d = WeakNode(parent=c, pk=0, main_label='weak_3', alternative_labels='prova',
                      type='text', parent_relation='CONTAINS')
 
         # Try to insert deep weak node without parents (should fail)
@@ -250,11 +250,11 @@ class ADGTTest(unittest.TestCase):
 
         a = Node(pk=0, main_label='strong', alternative_labels='prova',
                  type='text', boundingbox=[0, 0, 1, 0, 1, 1, 1, 0])
-        b = WeakNode(a, pk=0, main_label='weak_1', alternative_labels='prova',
+        b = WeakNode(parent=a, pk=0, main_label='weak_1', alternative_labels='prova',
                      type='text')
-        c = WeakNode(b, pk=0, main_label='weak_2', alternative_labels='prova',
+        c = WeakNode(parent=b, pk=0, main_label='weak_2', alternative_labels='prova',
                      type='text', parent_relation='IS')
-        d = WeakNode(c, pk=0, main_label='weak_3', alternative_labels='prova',
+        d = WeakNode(parent=c, pk=0, main_label='weak_3', alternative_labels='prova',
                      type='text', parent_relation='CONTAINS')
 
         # Delete any existing nodes first
@@ -267,18 +267,19 @@ class ADGTTest(unittest.TestCase):
         ins_d = Connection.insertNode(d, replace=True)
 
         # Test delete behaviors:
-        # propagation=False without detach: should fail (node has children)
-        del_a_1 = Connection.deleteNode(a, propagation=False)
-        # detach=False (RESTRICT): should fail (node has edges)
-        del_d = Connection.deleteNode(d, detach=False)
+        # propagation=False without detach: should raise (node has children)
+        with self.assertRaises(RuntimeError):
+            Connection.deleteNode(a, propagation=False)
+        # detach=False (RESTRICT): should raise (node has edges)
+        with self.assertRaises(RuntimeError):
+            Connection.deleteNode(d, detach=False)
         # detach=True (CASCADE): should succeed
         del_c = Connection.deleteNode(c, detach=True)
         # propagation=True (CASCADE): should succeed
         del_a_2 = Connection.deleteNode(a, propagation=True)
 
         Connection.close()
-        self.assertEqual([del_a_1, del_d, del_c, del_a_2],
-                         [False, False, True, True])
+        self.assertEqual([del_c, del_a_2], [True, True])
 
     def test_update_node(self, file=None):
         """Test per validar update vs replace d'un node."""
@@ -298,7 +299,7 @@ class ADGTTest(unittest.TestCase):
         # First insert the weak node chain (as original test did)
         a_chain = Node(pk=0, main_label='strong', alternative_labels='prova',
                        type='text', boundingbox=[0, 0, 1, 0, 1, 1, 1, 0])
-        b_chain = WeakNode(a_chain, pk=0, main_label='weak_1', alternative_labels='prova',
+        b_chain = WeakNode(parent=a_chain, pk=0, main_label='weak_1', alternative_labels='prova',
                            type='text')
         Connection.deleteNode(a_chain, detach=True)
         Connection.insertNode(a_chain, replace=True)

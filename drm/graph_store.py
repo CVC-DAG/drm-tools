@@ -186,15 +186,32 @@ class GraphStore(ABC):
         """
         return None
 
-    def get_nodes(self) -> List[int]:
-        """Return all node ids in the graph.
+    def get_node_ids(self) -> List[int]:
+        """Return all internal node ids in the graph.
+
+        Returns the backend-specific internal ids (Neo4j ``id(n)``,
+        NetworkX node keys).  These are opaque identifiers and must
+        not be compared with primary keys.
+
+        Default implementation returns an empty list.
+        """
+        return []
+
+    def get_node_pks(self) -> List[Dict[str, Any]]:
+        """Return all primary keys of nodes in the graph.
+
+        Each element is a dict with ``main_label`` and ``pk`` keys
+        matching the ``Node`` interface.
 
         Default implementation returns an empty list.
         """
         return []
 
     def get_edges(self) -> List[Tuple[int, int, str]]:
-        """Return all edges as ``(src_id, dst_id, rel_type)`` tuples.
+        """Return all edges as ``(src_node_id, dst_node_id, rel_type)`` tuples.
+
+        The node ids match what ``get_node_ids()`` returns (backend-
+        specific internal ids).
 
         Default implementation returns an empty list.
         """

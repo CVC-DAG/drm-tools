@@ -16,9 +16,22 @@ Start here for a minimal end-to-end graph workflow:
    :maxdepth: 1
 
    notebooks/intro/intro_basics
+   notebooks/intro/querying_and_filtering
 
-Dataset-specific
+Interactive Demos
 -----------------
+
+Hands-on explorations with interactive widgets and advanced features:
+
+.. toctree::
+   :maxdepth: 1
+
+   notebooks/interactive/weaknodes_interactive
+   notebooks/interactive/vector_search
+   notebooks/interactive/delete_strategies
+
+Dataset Examples
+----------------
 
 The tutorials below are grouped by dataset so you can compare how the same
 graph loads in the in-memory backend and in Neo4j.
@@ -35,7 +48,7 @@ members and is commonly used for community detection examples.
    notebooks/datasets/karate_club
 
 Bibliographic references
-~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~~
 
 OpenAlex-based example with paper, author, and citation relationships. If
 network access is limited, the notebook falls back to a bundled sample so the
@@ -68,19 +81,6 @@ offline fallback so the example remains usable without network access.
 
    notebooks/datasets/game_of_thrones
 
-Legacy tutorials
-----------------
-
-These notebooks are kept for reference and historical context, but they are no
-longer the canonical entry points for the tutorial flow.
-
-.. toctree::
-   :maxdepth: 1
-
-   notebooks/legacy/networkx_backend
-   notebooks/legacy/neo4j_backend
-   notebooks/interactive/weaknodes_interactive
-
 Notes
 -----
 
@@ -91,4 +91,3 @@ Notes
 - Button links can be customized with env vars: ``DRM_DOCS_GITHUB_REPO``,
   ``DRM_DOCS_GITHUB_REF``, ``DRM_DOCS_LOCAL_JUPYTER_BASE``, and
   ``DRM_DOCS_LOCAL_NOTEBOOK_PREFIX``.
-

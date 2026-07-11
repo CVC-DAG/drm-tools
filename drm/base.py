@@ -6,27 +6,48 @@ optional alternative labels, and optional parent relationships for
 WeakNode hierarchies.  Relations connect two nodes with a typed edge.
 """
 
-from typing import *
+from typing import Any, Dict, List, Optional, Tuple, Union
 
-# TODO: Typing, qué retorna cada funció
+# Sentinel per distingir "pk no proporcionat" de "pk=None explícit"
+_UNSET = object()
 
 
-def _single_pk(pk: Dict, version=5):
+def _single_pk(pk: Dict[str, Union[int, str]], version: int = 5) -> Dict[str, Union[int, str]]:
+    """Merge multi-field PK into a single-field PK for Neo4j 3.x compatibility.
+
+    Args:
+        pk: Primary key dictionary.
+        version: Neo4j protocol version (3 or 5).
+
+    Returns:
+        A single-field PK dict for version 3, or the original dict for version 5.
+    """
     if version == 3 and len(pk) > 1:
         return {"_".join(pk.keys()): "_".join([str(x) for x in pk.values()])}
-
     return pk
 
 
-def _new_key(old_key, list_keys):
+def _new_key(old_key: str, list_keys: set) -> str:
+    """Generate a unique key by appending _0, _1, ... until a free name is found.
+
+    Args:
+        old_key: The original key to modify.
+        list_keys: Set of existing keys to avoid.
+
+    Returns:
+        A unique key name.
+    """
     n = 0
     while old_key + "_" + str(n) in list_keys:
         n += 1
-
     return old_key + "_" + str(n)
 
 
-def _mergePK(pk_a, pk_b, version=5):
+def _mergePK(
+    pk_a: Dict[str, Union[int, str]],
+    pk_b: Dict[str, Union[int, str]],
+    version: int = 5,
+) -> Dict[str, Union[int, str]]:
     k = set(pk_a.keys()).intersection(set(pk_b.keys()))
 
     for v in k:
@@ -38,7 +59,7 @@ def _mergePK(pk_a, pk_b, version=5):
     return _single_pk(pk, version)
 
 
-def _setNodePK(value: Dict) -> Dict:
+def _setNodePK(value: Dict[str, Any]) -> Dict[str, Any]:
     """Extract main_label and pk from a dict without mutating the original.
 
     Args:
@@ -53,12 +74,7 @@ def _setNodePK(value: Dict) -> Dict:
     return {"main_label": main_label, "pk": pk}
 
 
-# Sentinel per distingir "pk no proporcionat" de "pk=None explícit"
-_UNSET = object()
-
-
-# TODO: Cal modificar el codi per quan es posi src['pk'] retorni la pk en funció de la versió del Neo4j, on src és un node
-class Node(object):
+class Node:
     """A graph node with a primary key, labels, and optional parent.
 
     Nodes are the fundamental building blocks of the DRM graph.  Each node
@@ -100,10 +116,10 @@ class Node(object):
         self,
         pk: Union[Dict[str, Union[int, str]], None, object] = _UNSET,
         main_label: str = "",
-        alternative_labels: Union[str, List[str]] = None,
+        alternative_labels: Optional[Union[str, List[str]]] = None,
         version: int = 5,
-        neo4j_id: int | None = None,
-        **kwargs: Any
+        neo4j_id: Optional[int] = None,
+        **kwargs: Any,
     ):
         # Definim les propietats
         self._neo4j_id = neo4j_id
@@ -174,8 +190,9 @@ class Node(object):
             for k in kwargs:
                 self.__setattr__(k, kwargs[k])
 
-    # def __str__(self):
-    #    return "a:"+ ":".join(self.labels)
+    # ------------------------------------------------------------------
+    # Dunder methods
+    # ------------------------------------------------------------------
 
     def __repr__(self):
         main_label = ":" + self._main_label if len(self._main_label) > 0 else ""
@@ -190,55 +207,7 @@ class Node(object):
         )
         return mess
 
-    @property
-    def version(self):
-        return self._version
-
-    @version.setter
-    def version(self, value):
-        self._version = value
-        if value == 3 and self._primary_key is not None:
-            self._primary_key = _single_pk(self._primary_key, value)
-
-    @property
-    def attributes(self):
-        at = self.__dict__.copy()
-        # at.pop('_label',None)
-        # at.pop('_main_label')
-        # at.pop('_neo4j_id',None)
-        # at.pop('_version')
-        # at.pop('_parent')
-        # at.pop('_is_weak')
-        # at.pop('_parent_relation',None)
-        # at.pop('_propagate', None)
-        pk = at.pop("_primary_key",None)
-        for x in list(at.keys()):
-            if x[0] == "_":
-                at.pop(x, None)
-
-
-        return pk, at
-
-    @property
-    def labels(self):
-        if self._label is None:
-            return [self._main_label]
-        else:
-            return [self._main_label] + self._label
-
-    @property
-    def main_label(self):
-        return self._main_label
-
-    @property
-    def neo4j_id(self):
-        return self._neo4j_id
-
-    @neo4j_id.setter
-    def neo4j_id(self, value):
-        self._neo4j_id = value
-
-    def __getitem__(self, key):
+    def __getitem__(self, key: str) -> Any:
         def get_pk():
             if hasattr(self,'_primary_key'):
                 return self._primary_key
@@ -300,9 +269,72 @@ class Node(object):
 
         self.__setattr__(key, value)
 
+    def __delitem__(self, key: str) -> None:
+        del self.__dict__[key]
+
+    def __contains__(self, key: str) -> bool:
+        return key in self.__dict__ or "_" + key in self.__dict__
+
+    # ------------------------------------------------------------------
+    # Properties
+    # ------------------------------------------------------------------
+
+    @property
+    def version(self) -> int:
+        return self._version
+
+    @version.setter
+    def version(self, value: int) -> None:
+        self._version = value
+        if value == 3 and self._primary_key is not None:
+            self._primary_key = _single_pk(self._primary_key, value)
+
+    @property
+    def attributes(self) -> Tuple[Optional[Dict[str, Union[int, str]]], Dict[str, Any]]:
+        """Return (pk, attributes) tuple for this node.
+
+        Returns:
+            A tuple of (primary_key_dict_or_None, attributes_dict).
+        """
+        at = self.__dict__.copy()
+        pk = at.pop("_primary_key", None)
+        for x in list(at.keys()):
+            if x[0] == "_":
+                at.pop(x, None)
+        return pk, at
+
+    @property
+    def labels(self) -> List[str]:
+        """Return the full list of labels (main + alternative)."""
+        if self._label is None:
+            return [self._main_label]
+        return [self._main_label] + self._label
+
+    @property
+    def main_label(self) -> str:
+        """Return the primary Cypher label."""
+        return self._main_label
+
+    @property
+    def neo4j_id(self) -> Optional[int]:
+        """Return the internal Neo4j node id, if set."""
+        return self._neo4j_id
+
+    @neo4j_id.setter
+    def neo4j_id(self, value: Optional[int]) -> None:
+        self._neo4j_id = value
+
+    # ------------------------------------------------------------------
+    # Utility methods
+    # ------------------------------------------------------------------
+
+    def keys(self) -> List[str]:
+        """Return all public attribute names."""
+        return [k for k in self.__dict__.keys() if not k.startswith("_")]
+
 
 # Class Relation denotes the relation of two nodes in the graph database
-class Relation(object):
+class Relation:
     """A typed edge connecting two nodes in the graph.
 
     Relations store the primary keys of their source and destination nodes
@@ -315,10 +347,16 @@ class Relation(object):
         **kwargs: Edge properties stored as attributes.
     """
 
-    def __init__(self, src: Node, dst: Node, type: str, **kwargs: Any):
-        """Initialize a Relation between two nodes."""
-        # Definim les propietats
-        self._type = type.upper()
+    def __init__(self, src: Node, dst: Node, rel_type: str, **kwargs: Any) -> None:
+        """Initialize a Relation between two nodes.
+
+        Args:
+            src: Source node. Its ``pk`` is extracted and stored.
+            dst: Destination node. Its ``pk`` is extracted and stored.
+            rel_type: Relation type (e.g. "HAS_NOM", "CONNECTS"). Stored uppercase.
+            **kwargs: Edge properties stored as attributes.
+        """
+        self._type = rel_type.upper()
         self._src = src["pk"]
         self._dst = dst["pk"]
 
@@ -326,29 +364,17 @@ class Relation(object):
             for k in kwargs:
                 self.__setattr__(k, kwargs[k])
 
-    @property
-    def src(self):
-        return self._src["main_label"], self._src["pk"]
+    # ------------------------------------------------------------------
+    # Dunder methods
+    # ------------------------------------------------------------------
 
-    @src.setter
-    def src(self, value):
-        self._src = _setNodePK(value)
-
-    @property
-    def dst(self):
-        return self._dst["main_label"], self._dst["pk"]
-
-    @dst.setter
-    def dst(self, value):
-        self._dst = _setNodePK(value)
-
-    def __repr__(self):
-        mess = (
-            "src:" + str(self._src) + ", dst:" + str(self._dst) + " type:" + self._type
+    def __repr__(self) -> str:
+        return (
+            "src:" + str(self._src) + ", dst:" + str(self._dst)
+            + " type:" + self._type
         )
-        return mess
 
-    def __getitem__(self, key):
+    def __getitem__(self, key: str) -> Any:
         if key == "src":
             return {"main_label": self._src["main_label"], "pk": self._src["pk"]}
 
@@ -372,10 +398,9 @@ class Relation(object):
 
         if key in attr:
             return attr[key]
-        else:
-            raise Exception(key + " is not a relation attribute")
+        raise KeyError(key + " is not a relation attribute")
 
-    def __setitem__(self, key, value):
+    def __setitem__(self, key: str, value: Any) -> None:
         if key == "src":
             self._src = _setNodePK(value)
             return
@@ -389,6 +414,42 @@ class Relation(object):
             return
 
         self.__setattr__(key, value)
+
+    # ------------------------------------------------------------------
+    # Properties
+    # ------------------------------------------------------------------
+
+    @property
+    def src(self) -> Tuple[str, Optional[Dict[str, Union[int, str]]]]:
+        """Return (main_label, pk) of the source node."""
+        return self._src["main_label"], self._src["pk"]
+
+    @src.setter
+    def src(self, value: Dict[str, Any]) -> None:
+        self._src = _setNodePK(value)
+
+    @property
+    def dst(self) -> Tuple[str, Optional[Dict[str, Union[int, str]]]]:
+        """Return (main_label, pk) of the destination node."""
+        return self._dst["main_label"], self._dst["pk"]
+
+    @dst.setter
+    def dst(self, value: Dict[str, Any]) -> None:
+        self._dst = _setNodePK(value)
+
+    @property
+    def type(self) -> str:
+        """Return the relation type (uppercase)."""
+        return self._type
+
+    @property
+    def attributes(self) -> Optional[Dict[str, Any]]:
+        """Return edge attributes, or None if empty."""
+        attr = {
+            k: v for k, v in self.__dict__.items()
+            if not k.startswith("_")
+        }
+        return attr if attr else None
 
 
 class WeakNode(Node):
@@ -416,7 +477,7 @@ class WeakNode(Node):
         AssertionError: If ``parent`` is not a ``Node`` instance.
     """
 
-    def __init__(self, **kwargs: Any):
+    def __init__(self, **kwargs: Any) -> None:
         """Initialize a WeakNode tied to a parent node.
 
         Args:
@@ -451,7 +512,7 @@ class WeakRelation(Relation):
     Args:
         src: Source (parent) node.
         dst: Destination (child / WeakNode).
-        type: Relation type (e.g. ``"HAS_PAGE"``, ``"CONTAINS"``).
+        rel_type: Relation type (e.g. ``"HAS_PAGE"``, ``"CONTAINS"``).
         **kwargs: Edge properties.  The ``propagate`` kwarg controls
             whether the ``_propagate`` flag is set (default ``True``).
 
@@ -460,16 +521,18 @@ class WeakRelation(Relation):
             the source node should cascade delete to the destination node.
     """
 
-    def __init__(self, src: Node, dst: Node, type: str, **kwargs: Any):
+    def __init__(
+        self, src: Node, dst: Node, rel_type: str, **kwargs: Any
+    ) -> None:
         """Initialize a WeakRelation with cascade propagation.
 
         Args:
             src: Source (parent) node.
             dst: Destination (child) node.
-            type: Relation type.
+            rel_type: Relation type.
             propagate: If True (default), the edge carries the
                 ``_propagate=TRUE`` flag for cascade delete.
         """
         super().__init__(
-            src, dst, type, _propagate=kwargs.pop("propagate", True), **kwargs
+            src, dst, rel_type, _propagate=kwargs.pop("propagate", True), **kwargs
         )

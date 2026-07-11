@@ -2,16 +2,17 @@
 
 Graph-based document representation library with Neo4j and an in-memory NetworkX backend.
 
-Model documents as graphs where nodes represent document objects (text regions, figures, pages) and edges capture their relationships. The library supports semantic entity definitions, weak nodes with cascade delete, foreign key validation, and reusable example datasets for tutorials.
+Model documents as graphs where nodes represent document objects (text regions, figures, pages) and edges capture their relationships. The library supports semantic entity definitions, weak nodes with cascade delete, foreign key validation, vector search, and reusable example datasets for tutorials.
 
 ## Features
 
 - **Two backends**: Full Neo4j integration (`Neo4jGraph`) or in-memory NetworkX (`NetworkXGraph`) for testing and tutorials
-- **Two entity levels**: Root entities (`Node`) and child entities (`WeakNode`) with composite primary keys and cascade delete
-- **ON DELETE strategies**: CASCADE, RESTRICT, SET NULL
+- **WeakNode hierarchy**: Child entities with composite primary keys and automatic cascade delete through parent-child edges
+- **ON DELETE strategies**: CASCADE, RESTRICT, SET NULL — choose the deletion semantics that fit your use case
 - **Semantic entities**: Domain-specific node types such as `IndividuPadro`, `LlocPadro`, and `Fotografia`
 - **FK validation**: Foreign key constraints on relations prevent dangling references
-- **Vector index API (optional)**: Common `GraphStore` methods for ANN-style vector indexing by property
+- **Query & filtering**: Secondary index on scalar properties, multi-filter search with intersection/union, debug snapshots
+- **Vector search (NetworkX only)**: HNSW-based ANN indexing on node properties with `cosine`, `l2`, and `ip` distance spaces
 
 ## Installation
 
@@ -28,19 +29,14 @@ python -m ipykernel install --user --name drm-tool --display-name "Python (drm-t
 ## Quick Start
 
 ```python
-from drm import Neo4jGraph, Node, WeakNode
+from drm import NetworkXGraph, Node, WeakNode
 
-# Connect to Neo4j
-graph = Neo4jGraph(
-    url="bolt://localhost:7687",
-    user="neo4j",
-    password="secret",
-    database="mydb",
-)
+# In-memory backend — no database required
+graph = NetworkXGraph()
 
 # Create a document hierarchy
 doc = Node(pk={"doc": "DOC-001"}, main_label="Document")
-graph.insertNode(doc, replace=True)
+graph.insertNode(doc)
 
 section = WeakNode(parent=doc, pk={"section": 1}, main_label="Section")
 graph.insertNode(section, insert_parent=True)
@@ -48,38 +44,53 @@ graph.insertNode(section, insert_parent=True)
 page = WeakNode(parent=section, pk={"page": 1}, main_label="Page")
 graph.insertNode(page, insert_parent=True)
 
+# Query the graph
+print("Nodes:", graph.get_node_ids())
+print("Edges:", graph.get_edges())
 graph.close()
 ```
 
-## Example Dataset Loaders (`drm/exemples`)
+## Tutorial Notebooks
+
+The `docs/tutorials/notebooks/` directory contains runnable examples organized by topic:
+
+### Getting Started
+
+- **`intro/intro_basics.ipynb`** — Minimal end-to-end workflow: insert nodes, create WeakNode hierarchies
+- **`intro/querying_and_filtering.ipynb`** — Query operations: `get_node()`, `find_nodes()`, property filtering, debug snapshots
+
+### Interactive Demos
+
+- **`interactive/weaknodes_interactive.ipynb`** — Build Document → Section → Page hierarchies with an interactive widget panel
+- **`interactive/vector_search.ipynb`** — HNSW vector indexing and nearest-neighbor search on node properties
+- **`interactive/delete_strategies.ipynb`** — Compare CASCADE, RESTRICT, SET NULL deletion strategies with WeakNode cascade propagation
+
+### Dataset Examples
+
+Each dataset loads into both backends for side-by-side comparison:
+
+- **`datasets/karate_club.ipynb`** — Zachary Karate Club (34 members, community detection)
+- **`datasets/movies.ipynb`** — Movie-domain graph (actors, genres, films)
+- **`datasets/game_of_thrones.ipynb`** — Character-house graph
+- **`datasets/bibliography_openalex.ipynb`** — OpenAlex bibliographic references with citation links
+
+## Example Dataset Loaders (`drm.exemples`)
 
 The package includes ready-to-run loaders for common graph domains:
 
 - `drm.exemples.networkx_karate`: Karate Club graph (NetworkX classic)
 - `drm.exemples.networkx_bibliografia`: bibliographic references from OpenAlex
-- `drm.exemples.neo4j_movies`: movie-domain graph for Neo4j
-- `drm.exemples.neo4j_got`: Game of Thrones character-house graph for Neo4j
-
-The tutorial notebooks use the same four loaders with both backends, so you
-can compare the NetworkX and Neo4j results side by side (4 datasets × 2 backends).
-
-The docs split the tutorials into dataset-specific notebooks:
-
-- `Karate Club`
-- `Bibliographic references`
-- `Movies`
-- `Game of Thrones`
+- `drm.exemples.neo4j_movies`: movie-domain graph
+- `drm.exemples.neo4j_got`: Game of Thrones character-house graph
 
 ### Command-line loader
-
-You can also load datasets from the terminal:
 
 ```bash
 python -m drm.exemples --dataset karate --backend networkx
 python -m drm.exemples --dataset all --backend both --quiet
 ```
 
-Minimal usage:
+### Programmatic usage
 
 ```python
 from drm import NetworkXGraph
@@ -91,44 +102,37 @@ print(load_bibliografia_openalex(graph, query="graph database", per_page=15))
 graph.close()
 ```
 
-
 ## Configuration
 
-Create a `.env` file with your Neo4j credentials:
-
-```
-NEO4J_URL=bolt://localhost:7687
-NEO4J_USER=neo4j
-NEO4J_PASSWORD=your_password
-NEO4J_DATABASE=mydb
-```
-
-For multiple Neo4j instances, you can use a target selector.
-The test suite defaults to the `DEV` target when `NEO4J_TARGET` is not set:
+DRM uses environment variables for Neo4j connections. Multiple targets are supported via the `NEO4J_TARGET` selector:
 
 ```bash
-NEO4J_TARGET=LOCAL
-
-NEO4J_LOCAL_URL=bolt://localhost:7687
-NEO4J_LOCAL_USER=neo4j
-NEO4J_LOCAL_PASSWORD=your_password
-NEO4J_LOCAL_DATABASE=neo4j
-
-NEO4J_DEV_URL=bolt://dev-host:7687
-NEO4J_DEV_USER=neo4j
-NEO4J_DEV_PASSWORD=your_dev_password
-NEO4J_DEV_DATABASE=neo4j
+# Default target (used when NEO4J_TARGET is not set)
+export NEO4J_DEV_URL=bolt://dev-host:7687
+export NEO4J_DEV_USER=neo4j
+export NEO4J_DEV_PASSWORD=your_dev_password
+export NEO4J_DEV_DATABASE=neo4j
 ```
 
-The real Neo4j tests (`test/test_neo4j_real.py`, `test/test_graph_store_contract.py`,
-and `test/test_create_graph.py`) will use `NEO4J_TARGET` if set, default to
-`DEV` otherwise, and fall back to plain `NEO4J_*` variables when present.
+For a custom target:
+
+```bash
+export NEO4J_TARGET=LOCAL
+export NEO4J_LOCAL_URL=bolt://localhost:7687
+export NEO4J_LOCAL_USER=neo4j
+export NEO4J_LOCAL_PASSWORD=your_password
+export NEO4J_LOCAL_DATABASE=neo4j
+```
+
+The real Neo4j tests (`test/test_neo4j_real.py`, `test/test_graph_store_contract.py`) default to `DEV` when `NEO4J_TARGET` is not set, and fall back to plain `NEO4J_*` variables when prefixed variables are absent.
 
 ## Running Tests
 
 ```bash
 python -m pytest test/ -v
 ```
+
+Tests use `NetworkXGraph` for all unit tests and `Neo4jGraph` for integration tests against a real Neo4j instance (controlled by `NEO4J_TARGET`).
 
 ## Documentation
 

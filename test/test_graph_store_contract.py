@@ -110,7 +110,7 @@ class TestNetworkXGraph(unittest.TestCase):
         a, b, c = _setup_parent_graph(graph)
         result = graph.deleteNode(a, detach=True)
         self.assertTrue(result)
-        self.assertEqual(len(graph.get_nodes()), 2)  # b, c queden
+        self.assertEqual(len(graph.get_node_ids()), 2)  # b, c queden
         self.assertEqual(len(graph.get_edges()), 0)  # totes les arestes esborrades
         graph.close()
 
@@ -124,8 +124,10 @@ class TestNetworkXGraph(unittest.TestCase):
         a, b, c = _setup_parent_graph(graph)
         graph.deleteNode(a, detach=True)
         # b i c queden al graf com a nodes independents
-        self.assertIn(2, graph.get_nodes())
-        self.assertIn(3, graph.get_nodes())
+        pks = [p["pk"] for p in graph.get_node_pks()]
+        self.assertIn({"id": 2}, pks)
+        pks = [p["pk"] for p in graph.get_node_pks()]
+        self.assertIn({"id": 3}, pks)
         graph.close()
 
     def test_contract_delete_cascade_chain(self) -> None:
@@ -133,7 +135,7 @@ class TestNetworkXGraph(unittest.TestCase):
         graph = self._make_graph()
         a, b, c = _setup_chain_graph(graph)
         graph.deleteNode(a, detach=True)
-        self.assertEqual(len(graph.get_nodes()), 2)  # b, c queden
+        self.assertEqual(len(graph.get_node_ids()), 2)  # b, c queden
         self.assertEqual(len(graph.get_edges()), 1)  # B→C es manté
         graph.close()
 
@@ -144,10 +146,12 @@ class TestNetworkXGraph(unittest.TestCase):
         graph = self._make_graph()
         a, b, c = _setup_parent_graph(graph)
         graph.deleteNode(a, detach=True, on_delete="set_null")
-        self.assertEqual(len(graph.get_nodes()), 2)  # b, c queden
+        self.assertEqual(len(graph.get_node_ids()), 2)  # b, c queden
         self.assertEqual(len(graph.get_edges()), 0)  # arestes esborrades
-        self.assertIn(2, graph.get_nodes())
-        self.assertIn(3, graph.get_nodes())
+        pks = [p["pk"] for p in graph.get_node_pks()]
+        self.assertIn({"id": 2}, pks)
+        pks = [p["pk"] for p in graph.get_node_pks()]
+        self.assertIn({"id": 3}, pks)
         graph.close()
 
     def test_contract_delete_set_null_no_cascade_to_neighbors(self) -> None:
@@ -156,9 +160,11 @@ class TestNetworkXGraph(unittest.TestCase):
         a, b, c = _setup_chain_graph(graph)
         graph.deleteNode(b, detach=True, on_delete="set_null")
         # a i c queden (no cascada)
-        self.assertEqual(len(graph.get_nodes()), 2)
-        self.assertIn(1, graph.get_nodes())
-        self.assertIn(3, graph.get_nodes())
+        self.assertEqual(len(graph.get_node_ids()), 2)
+        pks = [p["pk"] for p in graph.get_node_pks()]
+        self.assertIn({"id": 1}, pks)
+        pks = [p["pk"] for p in graph.get_node_pks()]
+        self.assertIn({"id": 3}, pks)
         graph.close()
 
     # -- ON UPDATE CASCADE --
@@ -169,7 +175,7 @@ class TestNetworkXGraph(unittest.TestCase):
         a, b, c = _setup_parent_graph(graph)
         a_updated = Node(pk={"id": 1}, main_label="TestNode", updated="yes")
         graph.insertNode(a_updated, update=True)
-        self.assertEqual(len(graph.get_nodes()), 3)
+        self.assertEqual(len(graph.get_node_ids()), 3)
         self.assertEqual(len(graph.get_edges()), 2)  # les arestes es mantenen
         graph.close()
 
@@ -181,7 +187,7 @@ class TestNetworkXGraph(unittest.TestCase):
         a, b, c = _setup_parent_graph(graph)
         a_new = Node(pk={"id": 1}, main_label="TestNode", replaced="yes")
         graph.insertNode(a_new, replace=True)
-        self.assertEqual(len(graph.get_nodes()), 3)  # a nou + b + c
+        self.assertEqual(len(graph.get_node_ids()), 3)  # a nou + b + c
         self.assertEqual(len(graph.get_edges()), 0)  # les arestes antigues s'esborren
         graph.close()
 
@@ -222,7 +228,7 @@ class TestNetworkXGraph(unittest.TestCase):
         child = WeakNode(parent=parent, pk={"sub": 1}, main_label="ChildNode")
         graph.insertNode(parent, replace=True)
         graph.insertNode(child, insert_parent=True)
-        self.assertEqual(len(graph.get_nodes()), 2)  # parent + child
+        self.assertEqual(len(graph.get_node_ids()), 2)  # parent + child
         self.assertEqual(len(graph.get_edges()), 1)  # parent → child
         graph.close()
 
@@ -258,7 +264,7 @@ class TestNetworkXGraph(unittest.TestCase):
                 attrs["_propagate"] = True
         result = graph.deleteNode(parent, propagation=True, detach=True)
         self.assertTrue(result)
-        self.assertEqual(len(graph.get_nodes()), 0)  # tots dos esborrats
+        self.assertEqual(len(graph.get_node_ids()), 0)  # tots dos esborrats
         self.assertEqual(len(graph.get_edges()), 0)
         graph.close()
 
@@ -271,7 +277,7 @@ class TestNetworkXGraph(unittest.TestCase):
         graph.insertNode(grandparent, replace=True)
         graph.insertNode(parent_weak, insert_parent=True)
         graph.insertNode(child_weak, insert_parent=True)
-        self.assertEqual(len(graph.get_nodes()), 3)
+        self.assertEqual(len(graph.get_node_ids()), 3)
         self.assertEqual(len(graph.get_edges()), 2)  # gp→pw, pw→cw
         graph.close()
 
@@ -286,7 +292,7 @@ class TestNetworkXGraph(unittest.TestCase):
         graph.insertNode(child_weak, insert_parent=True)
         graph.deleteNode(grandparent, detach=True)
         # CASCADE esborra arestes però NO nodes veïns
-        self.assertEqual(len(graph.get_nodes()), 2)  # pw, cw queden
+        self.assertEqual(len(graph.get_node_ids()), 2)  # pw, cw queden
         self.assertEqual(len(graph.get_edges()), 1)  # pw→cw es manté
         graph.close()
 
@@ -302,7 +308,7 @@ class TestNetworkXGraph(unittest.TestCase):
         rel = Relation(nodes[0], nodes[1], "LINKS")
         migration: Tuple[List, List] = (nodes, [rel])
         graph.create(migration)
-        self.assertEqual(len(graph.get_nodes()), 2)
+        self.assertEqual(len(graph.get_node_ids()), 2)
         self.assertEqual(len(graph.get_edges()), 1)
         graph.close()
 
@@ -348,7 +354,7 @@ class TestNetworkXGraph(unittest.TestCase):
         graph.insertNode(a, replace=True)
         graph.close()
         # Després de close, no hauria de quedar estat inconsistent
-        self.assertEqual(len(graph.get_nodes()), 0)
+        self.assertEqual(len(graph.get_node_ids()), 0)
 
     # -- EXPLICIT PK=None --
 
@@ -462,6 +468,8 @@ class TestNeo4jGraph(unittest.TestCase):
                 pass
             finally:
                 self._graph._tx = None
+            self._graph._node_pks.clear()
+            self._graph._closed = False
 
     # -- ON DELETE RESTRICT --
 
@@ -488,7 +496,7 @@ class TestNeo4jGraph(unittest.TestCase):
         a, b, c = _setup_parent_graph(graph)
         result = graph.deleteNode(a, detach=True)
         self.assertTrue(result)
-        self.assertEqual(len(graph.get_nodes()), 2)
+        self.assertEqual(len(graph.get_node_ids()), 2)
         self.assertEqual(len(graph.get_edges()), 0)
         graph.close()
 
@@ -496,15 +504,17 @@ class TestNeo4jGraph(unittest.TestCase):
         graph = self._make_graph()
         a, b, c = _setup_parent_graph(graph)
         graph.deleteNode(a, detach=True)
-        self.assertIn(2, graph.get_nodes())
-        self.assertIn(3, graph.get_nodes())
+        pks = [p["pk"] for p in graph.get_node_pks()]
+        self.assertIn({"id": 2}, pks)
+        pks = [p["pk"] for p in graph.get_node_pks()]
+        self.assertIn({"id": 3}, pks)
         graph.close()
 
     def test_contract_delete_cascade_chain(self) -> None:
         graph = self._make_graph()
         a, b, c = _setup_chain_graph(graph)
         graph.deleteNode(a, detach=True)
-        self.assertEqual(len(graph.get_nodes()), 2)
+        self.assertEqual(len(graph.get_node_ids()), 2)
         self.assertEqual(len(graph.get_edges()), 1)
         graph.close()
 
@@ -514,19 +524,23 @@ class TestNeo4jGraph(unittest.TestCase):
         graph = self._make_graph()
         a, b, c = _setup_parent_graph(graph)
         graph.deleteNode(a, detach=True, on_delete="set_null")
-        self.assertEqual(len(graph.get_nodes()), 2)
+        self.assertEqual(len(graph.get_node_ids()), 2)
         self.assertEqual(len(graph.get_edges()), 0)
-        self.assertIn(2, graph.get_nodes())
-        self.assertIn(3, graph.get_nodes())
+        pks = [p["pk"] for p in graph.get_node_pks()]
+        self.assertIn({"id": 2}, pks)
+        pks = [p["pk"] for p in graph.get_node_pks()]
+        self.assertIn({"id": 3}, pks)
         graph.close()
 
     def test_contract_delete_set_null_no_cascade_to_neighbors(self) -> None:
         graph = self._make_graph()
         a, b, c = _setup_chain_graph(graph)
         graph.deleteNode(b, detach=True, on_delete="set_null")
-        self.assertEqual(len(graph.get_nodes()), 2)
-        self.assertIn(1, graph.get_nodes())
-        self.assertIn(3, graph.get_nodes())
+        self.assertEqual(len(graph.get_node_ids()), 2)
+        pks = [p["pk"] for p in graph.get_node_pks()]
+        self.assertIn({"id": 1}, pks)
+        pks = [p["pk"] for p in graph.get_node_pks()]
+        self.assertIn({"id": 3}, pks)
         graph.close()
 
     # -- ON UPDATE CASCADE --
@@ -536,7 +550,7 @@ class TestNeo4jGraph(unittest.TestCase):
         a, b, c = _setup_parent_graph(graph)
         a_updated = Node(pk={"id": 1}, main_label="TestNode", updated="yes")
         graph.insertNode(a_updated, update=True)
-        self.assertEqual(len(graph.get_nodes()), 3)
+        self.assertEqual(len(graph.get_node_ids()), 3)
         self.assertEqual(len(graph.get_edges()), 2)
         graph.close()
 
@@ -547,7 +561,7 @@ class TestNeo4jGraph(unittest.TestCase):
         a, b, c = _setup_parent_graph(graph)
         a_new = Node(pk={"id": 1}, main_label="TestNode", replaced="yes")
         graph.insertNode(a_new, replace=True)
-        self.assertEqual(len(graph.get_nodes()), 3)
+        self.assertEqual(len(graph.get_node_ids()), 3)
         self.assertEqual(len(graph.get_edges()), 0)
         graph.close()
 
@@ -585,7 +599,7 @@ class TestNeo4jGraph(unittest.TestCase):
         child = WeakNode(parent=parent, pk={"sub": 1}, main_label="ChildNode")
         graph.insertNode(parent, replace=True)
         graph.insertNode(child, insert_parent=True)
-        self.assertEqual(len(graph.get_nodes()), 2)
+        self.assertEqual(len(graph.get_node_ids()), 2)
         self.assertEqual(len(graph.get_edges()), 1)
         graph.close()
 
@@ -613,7 +627,7 @@ class TestNeo4jGraph(unittest.TestCase):
                 attrs["_propagate"] = True
         result = graph.deleteNode(parent, propagation=True, detach=True)
         self.assertTrue(result)
-        self.assertEqual(len(graph.get_nodes()), 0)
+        self.assertEqual(len(graph.get_node_ids()), 0)
         self.assertEqual(len(graph.get_edges()), 0)
         graph.close()
 
@@ -625,7 +639,7 @@ class TestNeo4jGraph(unittest.TestCase):
         graph.insertNode(grandparent, replace=True)
         graph.insertNode(parent_weak, insert_parent=True)
         graph.insertNode(child_weak, insert_parent=True)
-        self.assertEqual(len(graph.get_nodes()), 3)
+        self.assertEqual(len(graph.get_node_ids()), 3)
         self.assertEqual(len(graph.get_edges()), 2)
         graph.close()
 
@@ -638,7 +652,7 @@ class TestNeo4jGraph(unittest.TestCase):
         graph.insertNode(parent_weak, insert_parent=True)
         graph.insertNode(child_weak, insert_parent=True)
         graph.deleteNode(grandparent, detach=True)
-        self.assertEqual(len(graph.get_nodes()), 2)
+        self.assertEqual(len(graph.get_node_ids()), 2)
         self.assertEqual(len(graph.get_edges()), 1)
         graph.close()
 
@@ -653,7 +667,7 @@ class TestNeo4jGraph(unittest.TestCase):
         rel = Relation(nodes[0], nodes[1], "LINKS")
         migration: Tuple[List, List] = (nodes, [rel])
         graph.create(migration)
-        self.assertEqual(len(graph.get_nodes()), 2)
+        self.assertEqual(len(graph.get_node_ids()), 2)
         self.assertEqual(len(graph.get_edges()), 1)
         graph.close()
 
@@ -693,7 +707,7 @@ class TestNeo4jGraph(unittest.TestCase):
         a = Node(pk={"id": 1}, main_label="TestNode")
         graph.insertNode(a, replace=True)
         graph.close()
-        self.assertEqual(len(graph.get_nodes()), 0)
+        self.assertEqual(len(graph.get_node_ids()), 0)
 
     # -- EXPLICIT PK=None --
 
