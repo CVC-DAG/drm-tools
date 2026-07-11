@@ -4,17 +4,14 @@ Graph-based document representation library with Neo4j and an in-memory NetworkX
 
 Model documents as graphs where nodes represent document objects (text regions, figures, pages) and edges capture their relationships. The library supports semantic entity definitions, weak nodes with cascade delete, foreign key validation, vector search, and reusable example datasets for tutorials.
 
-[![PyPI](https://img.shields.io/pypi/v/drm-tools.svg)](https://pypi.org/project/drm-tools/)
-[![License](https://img.shields.io/github/license/CVC-DAG/drm-tools.svg)](https://github.com/CVC-DAG/drm-tools/blob/main/LICENSE)
-
 ## Features
 
 - **Two backends**: Full Neo4j integration (`Neo4jGraph`) or in-memory NetworkX (`NetworkXGraph`) for testing and tutorials
 - **WeakNode hierarchy**: Child entities with composite primary keys and automatic cascade delete through parent-child edges
-- **ON DELETE strategies**: CASCADE, RESTRICT, SET NULL — choose the deletion semantics that fit your use case
+- **ON DELETE strategies**: CASCADE, RESTRICT, SET NULL -- choose the deletion semantics that fit your use case
 - **Semantic entities**: Domain-specific node types such as `IndividuPadro`, `LlocPadro`, and `Fotografia`
 - **FK validation**: Foreign key constraints on relations prevent dangling references
-- **Query & filtering**: Secondary index on scalar properties, multi-filter search with intersection/union, debug snapshots
+- **Query and filtering**: Secondary index on scalar properties, multi-filter search with intersection/union, debug snapshots
 - **Vector search (NetworkX only)**: HNSW-based ANN indexing on node properties with `cosine`, `l2`, and `ip` distance spaces
 - **RDF/OWL ontology conversion**: Generate Python entity classes from RDF/OWL ontologies (RiC-O, etc.)
 
@@ -45,7 +42,7 @@ python -m ipykernel install --user --name drm-tool --display-name "Python (drm-t
 ```python
 from drm import NetworkXGraph, Node, WeakNode
 
-# In-memory backend — no database required
+# In-memory backend -- no database required
 graph = NetworkXGraph()
 
 # Create a document hierarchy
@@ -70,18 +67,27 @@ Runnable Jupyter notebooks in `docs/tutorials/notebooks/`. Each notebook install
 
 You can also view them rendered in the [hosted documentation](https://cvc-dag.github.io/drm-tools/).
 
-| Section | Notebook | Description |
-|---|---|---|
-| **Getting Started** | [intro_basics](docs/tutorials/notebooks/intro/intro_basics.ipynb) | Minimal end-to-end workflow: insert nodes, create WeakNode hierarchies |
-| | [querying_and_filtering](docs/tutorials/notebooks/intro/querying_and_filtering.ipynb) | Query operations: `get_node()`, `find_nodes()`, property filtering |
-| **Interactive Demos** | [weaknodes_interactive](docs/tutorials/notebooks/interactive/weaknodes_interactive.ipynb) | Build hierarchies with an interactive widget panel |
-| | [vector_search](docs/tutorials/notebooks/interactive/vector_search.ipynb) | HNSW vector indexing and nearest-neighbor search |
-| | [delete_strategies](docs/tutorials/notebooks/interactive/delete_strategies.ipynb) | Compare CASCADE, RESTRICT, SET NULL strategies |
-| **Datasets** | [karate_club](docs/tutorials/notebooks/datasets/karate_club.ipynb) | Zachary Karate Club (34 members) |
-| | [movies](docs/tutorials/notebooks/datasets/movies.ipynb) | Movie-domain graph (actors, genres, films) |
-| | [game_of_thrones](docs/tutorials/notebooks/datasets/game_of_thrones.ipynb) | Character-house graph |
-| | [bibliography_openalex](docs/tutorials/notebooks/datasets/bibliography_openalex.ipynb) | OpenAlex bibliographic references with citations |
-| **Ontologies** | [generating_classes_from_owl](docs/tutorials/notebooks/datasets/generating_classes_from_owl.ipynb) | Generate Python entity classes from RDF/OWL ontologies |
+### Getting Started
+
+- `intro_basics` -- Minimal end-to-end workflow: insert nodes, create WeakNode hierarchies
+- `querying_and_filtering` -- Query operations: `get_node()`, `find_nodes()`, property filtering
+
+### Interactive Demos
+
+- `weaknodes_interactive` -- Build hierarchies with an interactive widget panel
+- `vector_search` -- HNSW vector indexing and nearest-neighbor search
+- `delete_strategies` -- Compare CASCADE, RESTRICT, SET NULL strategies
+
+### Datasets
+
+- `karate_club` -- Zachary Karate Club (34 members)
+- `movies` -- Movie-domain graph (actors, genres, films)
+- `game_of_thrones` -- Character-house graph
+- `bibliography_openalex` -- OpenAlex bibliographic references with citations
+
+### Ontologies
+
+- `generating_classes_from_owl` -- Generate Python entity classes from RDF/OWL ontologies
 
 ## RDF/OWL Ontology Conversion
 
@@ -108,7 +114,7 @@ from drm.schema_gen import generate_classes
 # 1. Download ontology
 ont_path = download_ontology(url, output_dir="ontologies/")
 
-# 2. Convert RDF → YAML DRM
+# 2. Convert RDF to YAML DRM
 yaml_str = rdf_to_yaml(ont_path, "my_db")
 
 # 3. Generate Python classes
@@ -121,25 +127,21 @@ with open("drm/entities_my_db.py", "w") as f:
 
 The pipeline maps OWL constructs to DRM:
 
-| OWL construct | DRM mapping |
-|---------------|-------------|
-| `owl:Class` | Node label |
-| `rdfs:subClassOf` | `WeakNode` hierarchy (parent) |
-| `owl:DatatypeProperty` | Node properties |
-| `owl:ObjectProperty` | Relationships |
-| `owl:hasKey` | Primary key fields |
-| `rdfs:comment` | Class docstring |
+- `owl:Class` -- Node label
+- `rdfs:subClassOf` -- `WeakNode` hierarchy (parent)
+- `owl:DatatypeProperty` -- Node properties
+- `owl:ObjectProperty` -- Relationships
+- `owl:hasKey` -- Primary key fields
+- `rdfs:comment` -- Class docstring
 
-## Example Dataset Loaders (`drm.exemples`)
+## Example Dataset Loaders (drm.exemples)
 
 The package includes ready-to-run loaders for common graph domains:
 
-| Module | Description |
-|---|---|
-| `drm.exemples.networkx_karate` | Karate Club graph (NetworkX classic) |
-| `drm.exemples.networkx_bibliografia` | Bibliographic references from OpenAlex |
-| `drm.exemples.neo4j_movies` | Movie-domain graph |
-| `drm.exemples.neo4j_got` | Game of Thrones character-house graph |
+- `drm.exemples.networkx_karate` -- Karate Club graph (NetworkX classic)
+- `drm.exemples.networkx_bibliografia` -- Bibliographic references from OpenAlex
+- `drm.exemples.neo4j_movies` -- Movie-domain graph
+- `drm.exemples.neo4j_got` -- Game of Thrones character-house graph
 
 ### Command-line loader
 
@@ -187,18 +189,16 @@ python -m pytest test/ -v
 
 Three test levels:
 
-| Level | Marker | Count | Time | Description |
-|-------|--------|-------|------|-------------|
-| Unit | `-m unit` | 43 | ~2s | Fast, no graph store |
-| Integration | `-m integration` | 215 | ~3s | NetworkXGraph (in-memory) |
-| Neo4j | `-m slow` | 44 | ~10s | Neo4j (requires real DB) |
+- **Unit** (`-m unit`) -- 43 tests, ~2s, fast, no graph store
+- **Integration** (`-m integration`) -- 215 tests, ~3s, NetworkXGraph (in-memory)
+- **Neo4j** (`-m slow`) -- 44 tests, ~10s, Neo4j (requires real DB)
 
 Skip Neo4j tests: `pytest test/ -v -m "not slow"`
 
 ## Documentation
 
-- **Hosted docs**: [https://cvc-dag.github.io/drm-tools/](https://cvc-dag.github.io/drm-tools/)
-- **Source docs**: [docs/](docs/) — Sphinx documentation source
+- **Hosted docs**: https://cvc-dag.github.io/drm-tools/
+- **Source docs**: `docs/` -- Sphinx documentation source
 
 Generate HTML docs with Sphinx:
 
@@ -207,7 +207,7 @@ cd docs
 sphinx-build -b html . _build/html
 ```
 
-## Authors & Contributors
+## Authors and Contributors
 
 - Oriol Ramos Terrades
 - Jialuo Chen
