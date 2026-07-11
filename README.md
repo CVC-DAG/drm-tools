@@ -4,6 +4,9 @@ Graph-based document representation library with Neo4j and an in-memory NetworkX
 
 Model documents as graphs where nodes represent document objects (text regions, figures, pages) and edges capture their relationships. The library supports semantic entity definitions, weak nodes with cascade delete, foreign key validation, vector search, and reusable example datasets for tutorials.
 
+[![PyPI](https://img.shields.io/pypi/v/drm-tools.svg)](https://pypi.org/project/drm-tools/)
+[![License](https://img.shields.io/github/license/CVC-DAG/drm-tools.svg)](https://github.com/CVC-DAG/drm-tools/blob/main/LICENSE)
+
 ## Features
 
 - **Two backends**: Full Neo4j integration (`Neo4jGraph`) or in-memory NetworkX (`NetworkXGraph`) for testing and tutorials
@@ -16,7 +19,17 @@ Model documents as graphs where nodes represent document objects (text regions, 
 
 ## Installation
 
+Install from PyPI:
+
 ```bash
+pip install drm-tools
+```
+
+Or install from source in development mode:
+
+```bash
+git clone https://github.com/CVC-DAG/drm-tools.git
+cd drm-tools
 pip install -e .
 ```
 
@@ -52,7 +65,7 @@ graph.close()
 
 ## Tutorial Notebooks
 
-The `docs/tutorials/notebooks/` directory contains runnable examples organized by topic:
+The `docs/tutorials/notebooks/` directory contains runnable Jupyter notebooks. Each notebook installs the package automatically from the latest release when run.
 
 ### Getting Started
 
@@ -78,10 +91,12 @@ Each dataset loads into both backends for side-by-side comparison:
 
 The package includes ready-to-run loaders for common graph domains:
 
-- `drm.exemples.networkx_karate`: Karate Club graph (NetworkX classic)
-- `drm.exemples.networkx_bibliografia`: bibliographic references from OpenAlex
-- `drm.exemples.neo4j_movies`: movie-domain graph
-- `drm.exemples.neo4j_got`: Game of Thrones character-house graph
+| Module | Description |
+|---|---|
+| `drm.exemples.networkx_karate` | Karate Club graph (NetworkX classic) |
+| `drm.exemples.networkx_bibliografia` | Bibliographic references from OpenAlex |
+| `drm.exemples.neo4j_movies` | Movie-domain graph |
+| `drm.exemples.neo4j_got` | Game of Thrones character-house graph |
 
 ### Command-line loader
 
@@ -136,8 +151,8 @@ Tests use `NetworkXGraph` for all unit tests and `Neo4jGraph` for integration te
 
 ## Documentation
 
+- **Hosted docs**: [https://cvc-dag.github.io/drm-tools/](https://cvc-dag.github.io/drm-tools/)
 - **Source docs**: [docs/](docs/) — Sphinx documentation source
-- **Tutorials**: [docs/tutorials/notebooks/](docs/tutorials/notebooks/) — Jupyter notebook examples
 
 Generate HTML docs with Sphinx:
 
