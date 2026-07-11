@@ -4,10 +4,14 @@
 # https://www.sphinx-doc.org/en/master/usage/configuration.html
 
 import os
+import shutil
 import sys
 
 # Add the project root to the path so Sphinx can find the drm package.
 sys.path.insert(0, os.path.abspath(os.path.join("..")))
+
+# Check if pandoc is available (required by nbsphinx for notebooks)
+_has_pandoc = shutil.which("pandoc") is not None
 
 # -- Project information -----------------------------------------------------
 project = "DRM Tools"
@@ -29,9 +33,23 @@ extensions = [
     "sphinx.ext.napoleon",      # Google and NumPy style docstring support
     "sphinx.ext.viewcode",      # Add links to highlighted source code
     "sphinx.ext.intersphinx",   # Link to other projects' documentation
-    "nbsphinx",                 # Render Jupyter notebooks as documentation pages
+    # "nbsphinx" — loaded conditionally below (requires pandoc)
     # "sphinx_autodoc_typehints" — disabled: crashes on dict-inherited descriptors
 ]
+
+# nbsphinx requires pandoc; skip it in CI environments without pandoc
+if _has_pandoc:
+    extensions.append("nbsphinx")
+else:
+    nbsphinx_enabled = False
+    # Warn but continue — notebooks will not be rendered
+    import warnings
+    warnings.warn(
+        "nbsphinx disabled: pandoc not found. "
+        "Install pandoc to render notebooks in documentation. "
+        "See https://pandoc.org/installing.html",
+        stacklevel=2,
+    )
 
 # Napoleon settings for Google/NumPy style docstrings
 napoleon_google_docstring = True
