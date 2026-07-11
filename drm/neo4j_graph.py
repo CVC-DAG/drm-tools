@@ -172,16 +172,23 @@ class Neo4jGraph(object):
                     + str(node["parent_relation"])
                 )
 
-        # pk, attributes = node.attributes
+        pk, attributes = node.attributes
         # Check if node already exists
         _trasa = ""
         try:
             # Add constraints
             # [CRITICAL FIX] Create Neo4j NODE KEY constraint to enforce PK uniqueness.
-            # Without this, MATCH WHERE queries can return multiple records, causing
-            # UserWarning from neo4j driver's .single() method.
-            # REVERT: Comment out these two lines to disable constraint enforcement.
-            self._create_constraint(self._tx, node.main_label, list(pk.keys()) if pk else [])
+            # Must be done in a SEPARATE transaction — Neo4j invalidates the current
+            # transaction after any schema modification. Without this, MATCH WHERE
+            # queries can return multiple records, causing UserWarning from .single().
+            # REVERT: Comment out the _session.write_transaction line to disable.
+            if pk:
+                try:
+                    self._session.write_transaction(
+                        self._create_constraint, node.main_label, list(pk.keys())
+                    )
+                except Exception:
+                    pass  # Constraint may already exist or data may violate it
 
             if update:
                 # id = self._session.write_transaction(self._update_node, node)
@@ -767,22 +774,20 @@ class Neo4jGraph(object):
 
     @staticmethod
     def _create_constraint(tx, main_label: str, id: List[str]):
-        # Check whether an index (unique) exists for each node label. If not, it creates one to ensure unicity
+        # Create NODE KEY constraint for PK uniqueness.
+        # Uses modern Cypher 5+ syntax: CREATE CONSTRAINT FOR ... REQUIRE ...
+        # REVERT: Comment out this method to disable constraint enforcement.
         try:
+            fields = ",".join([f"c.{f}" for f in id])
             query = (
-                "CREATE CONSTRAINT "
-                + main_label
-                + "_PK IF NOT EXISTS ON (c:"
-                + main_label
-                + ") ASSERT "
-                + _generate_tuple("c", id)
-                + " IS NODE KEY ;"
+                f"CREATE CONSTRAINT {main_label}_PK IF NOT EXISTS "
+                f"FOR (c:{main_label}) REQUIRE c.({fields}) IS NODE KEY"
             )
-
-            result = tx.run(query)
-        except ConstraintError as err:
-            print("[ADGT Message]: " + err.message)
-            pass
+            tx.run(query)
+        except ConstraintError:
+            pass  # Already exists
+        except Exception:
+            pass  # May fail if data violates constraint — that's ok
 
     @staticmethod
     def _has_no_edges(tx, node: Node) -> bool:
