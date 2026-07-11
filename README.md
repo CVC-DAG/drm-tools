@@ -136,6 +136,9 @@ Tests use `NetworkXGraph` for all unit tests and `Neo4jGraph` for integration te
 
 ## Documentation
 
+- **Source docs**: [docs/](docs/) — Sphinx documentation source
+- **Tutorials**: [docs/tutorials/notebooks/](docs/tutorials/notebooks/) — Jupyter notebook examples
+
 Generate HTML docs with Sphinx:
 
 ```bash
