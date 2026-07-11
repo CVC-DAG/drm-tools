@@ -18,7 +18,7 @@ SRC_DIR = {"drm"}
 PACKAGES = find_packages(exclude='drm/')
 
 def get_long_description():
-    path = os.path.join(os.path.abspath(os.path.dirname(__file__)), "README.md")
+    path = os.path.join(os.path.abspath(os.path.dirname(__file__)), "README.rst")
     if os.path.exists(path):
         with open(path, encoding="utf-8") as fh:
             return fh.read()
@@ -39,7 +39,7 @@ def get_requirements():
 setup(name=NAME,
     version=VERSION,
     description=DESCR,
-    long_description_content_type="text/markdown",
+    long_description_content_type="text/x-rst",
     long_description=get_long_description(),
     author_email=EMAIL,
     author=AUTHOR,
