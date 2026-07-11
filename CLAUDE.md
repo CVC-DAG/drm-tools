@@ -2,6 +2,53 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+## Branch Strategy
+
+**Always work on the `develop` branch unless explicitly told otherwise.**
+
+- **`develop`** — Active development branch. All substantial changes, new features, refactors, and bug fixes go here.
+- **`main`** — Release branch. Only minor changes for preparing releases (version bumps, changelog entries, doc links). Never add features or make structural changes here.
+
+Before starting any work, check the current branch:
+```bash
+git branch --show-current
+```
+If on `main`, switch to `develop` first:
+```bash
+git checkout develop
+```
+
+## Development Workflow
+
+### Test-Driven Development (TDD)
+
+Follow a strict TDD cycle for all new features and substantial changes:
+
+1. **Write tests first** — Before any implementation, write failing tests that define the expected behavior.
+2. **Run tests and confirm failure** — Verify the tests fail (red phase).
+3. **Implement the feature** — Write the minimum code to make the tests pass.
+4. **Run tests and confirm success** — Verify all tests pass (green phase).
+5. **Refactor** — Clean up code while keeping tests passing.
+
+Never implement code without corresponding tests. If a test fails, fix the implementation — never lower test expectations.
+
+### Commit Discipline
+
+**Never commit changes unless explicitly asked.** Only commit when the user says "fes el commit", "commit", "commit and push", or similar. Do not auto-commit after completing tasks.
+
+### Daily Commit Policy
+
+If the repository has uncommitted changes from previous days when you start working, the first commit of the day must be split into two:
+
+1. **First commit** — Stage and commit all changes from previous days with a message like `chore: daily commit — <date>` summarizing what was done.
+2. **Second commit** — Stage and commit only the changes made during the current session with a descriptive message about today's work.
+
+Check for existing uncommitted changes at the start of each session:
+```bash
+git status
+```
+If there are staged or unstaged changes, ask the user for the date they were made and split the commit accordingly.
+
 ## Development Commands
 
 ### Installation

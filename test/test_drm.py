@@ -937,6 +937,57 @@ class NetworkXGraphTest(unittest.TestCase):
 
         graph.close()
 
+    def test_nx_graph_weak_node_no_pk_uses_backend_id(self) -> None:
+        """Test WeakNode sense PK: el backend assigna l'ID com a PK."""
+        parent = Node(pk={"id": 42}, main_label="Document")
+        child = WeakNode(parent=parent, pk=None, main_label="Page")
+
+        # Abans d'insertar, el fill hereta la PK del pare
+        self.assertEqual(child._primary_key, {"id": 42})
+
+        graph = self._make_graph()
+        parent_id = graph.insertNode(parent, replace=True)
+        child_id = graph.insertNode(child, insert_parent=True)
+
+        self.assertIsNotNone(parent_id)
+        self.assertIsNotNone(child_id)
+        self.assertNotEqual(parent_id, child_id)
+        # Després d'insertar, el fill té el seu propi ID
+        self.assertEqual(child.neo4j_id, child_id)
+        graph.close()
+
+    def test_nx_graph_weak_node_with_pk_composed(self) -> None:
+        """Test WeakNode amb PK: la PK es composa amb la del pare."""
+        parent = Node(pk={"id": 42}, main_label="Document")
+        child = WeakNode(parent=parent, pk={"page": 1}, main_label="Page")
+
+        # La PK és composta
+        self.assertEqual(child._primary_key, {"id": 42, "page": 1})
+
+        graph = self._make_graph()
+        parent_id = graph.insertNode(parent, replace=True)
+        child_id = graph.insertNode(child, insert_parent=True)
+
+        self.assertIsNotNone(parent_id)
+        self.assertIsNotNone(child_id)
+        graph.close()
+
+    def test_nx_graph_weak_node_no_pk_composite_validation(self) -> None:
+        """Test que dos WeakNodes sense PK però amb el mateix parent tenen IDs diferents."""
+        parent = Node(pk={"doc_id": "DOC-001"}, main_label="Document")
+        child_a = WeakNode(parent=parent, pk=None, main_label="Page")
+        child_b = WeakNode(parent=parent, pk=None, main_label="Page")
+
+        graph = self._make_graph()
+        parent_id = graph.insertNode(parent, replace=True)
+        child_a_id = graph.insertNode(child_a, insert_parent=True)
+        child_b_id = graph.insertNode(child_b, insert_parent=True)
+
+        # Cada fill té un ID únic assignat pel backend
+        self.assertNotEqual(child_a_id, child_b_id)
+        self.assertEqual(len(graph.get_nodes()), 3)
+        graph.close()
+
 
 # ---------------------------------------------------------------------------
 # Tests for Neo4jGraph — wraps Neo4j driver (mocked in tests)

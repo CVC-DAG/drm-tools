@@ -13,6 +13,8 @@ document representation with Neo4j and an in-memory NetworkX backend.
    api/drm_entities
    api/neo4j_graph
    api/networkx_graph
+   api/rdf_schema
+   api/schema_gen
 
 Features
 --------
