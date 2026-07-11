@@ -16,6 +16,7 @@ Model documents as graphs where nodes represent document objects (text regions, 
 - **FK validation**: Foreign key constraints on relations prevent dangling references
 - **Query & filtering**: Secondary index on scalar properties, multi-filter search with intersection/union, debug snapshots
 - **Vector search (NetworkX only)**: HNSW-based ANN indexing on node properties with `cosine`, `l2`, and `ip` distance spaces
+- **RDF/OWL ontology conversion**: Generate Python entity classes from RDF/OWL ontologies (RiC-O, etc.)
 
 ## Installation
 
@@ -65,27 +66,69 @@ graph.close()
 
 ## Tutorial Notebooks
 
-The `docs/tutorials/notebooks/` directory contains runnable Jupyter notebooks. Each notebook installs the package automatically from the latest release when run.
+Runnable Jupyter notebooks in `docs/tutorials/notebooks/`. Each notebook installs the package automatically from the latest release when run.
 
-### Getting Started
+You can also view them rendered in the [hosted documentation](https://cvc-dag.github.io/drm-tools/).
 
-- **`intro/intro_basics.ipynb`** — Minimal end-to-end workflow: insert nodes, create WeakNode hierarchies
-- **`intro/querying_and_filtering.ipynb`** — Query operations: `get_node()`, `find_nodes()`, property filtering, debug snapshots
+| Section | Notebook | Description |
+|---|---|---|
+| **Getting Started** | [intro_basics](docs/tutorials/notebooks/intro/intro_basics.ipynb) | Minimal end-to-end workflow: insert nodes, create WeakNode hierarchies |
+| | [querying_and_filtering](docs/tutorials/notebooks/intro/querying_and_filtering.ipynb) | Query operations: `get_node()`, `find_nodes()`, property filtering |
+| **Interactive Demos** | [weaknodes_interactive](docs/tutorials/notebooks/interactive/weaknodes_interactive.ipynb) | Build hierarchies with an interactive widget panel |
+| | [vector_search](docs/tutorials/notebooks/interactive/vector_search.ipynb) | HNSW vector indexing and nearest-neighbor search |
+| | [delete_strategies](docs/tutorials/notebooks/interactive/delete_strategies.ipynb) | Compare CASCADE, RESTRICT, SET NULL strategies |
+| **Datasets** | [karate_club](docs/tutorials/notebooks/datasets/karate_club.ipynb) | Zachary Karate Club (34 members) |
+| | [movies](docs/tutorials/notebooks/datasets/movies.ipynb) | Movie-domain graph (actors, genres, films) |
+| | [game_of_thrones](docs/tutorials/notebooks/datasets/game_of_thrones.ipynb) | Character-house graph |
+| | [bibliography_openalex](docs/tutorials/notebooks/datasets/bibliography_openalex.ipynb) | OpenAlex bibliographic references with citations |
+| **Ontologies** | [generating_classes_from_owl](docs/tutorials/notebooks/datasets/generating_classes_from_owl.ipynb) | Generate Python entity classes from RDF/OWL ontologies |
 
-### Interactive Demos
+## RDF/OWL Ontology Conversion
 
-- **`interactive/weaknodes_interactive.ipynb`** — Build Document → Section → Page hierarchies with an interactive widget panel
-- **`interactive/vector_search.ipynb`** — HNSW vector indexing and nearest-neighbor search on node properties
-- **`interactive/delete_strategies.ipynb`** — Compare CASCADE, RESTRICT, SET NULL deletion strategies with WeakNode cascade propagation
+Generate Python entity classes from RDF/OWL ontologies in one step:
 
-### Dataset Examples
+```python
+from drm.rdf_schema import download_ontology_and_convert
 
-Each dataset loads into both backends for side-by-side comparison:
+# Downloads, converts to YAML, and generates Python classes
+output_path = download_ontology_and_convert(
+    "https://raw.githubusercontent.com/ICA-EGAD/RiC-O/master/ontology/current-version/RiC-O_1-1.rdf",
+    "rico",
+    output_dir="drm/"
+)
+# Generates drm/rico_entities.py (677 classes from RiC-O)
+```
 
-- **`datasets/karate_club.ipynb`** — Zachary Karate Club (34 members, community detection)
-- **`datasets/movies.ipynb`** — Movie-domain graph (actors, genres, films)
-- **`datasets/game_of_thrones.ipynb`** — Character-house graph
-- **`datasets/bibliography_openalex.ipynb`** — OpenAlex bibliographic references with citation links
+Step by step:
+
+```python
+from drm.rdf_schema import download_ontology, rdf_to_yaml
+from drm.schema_gen import generate_classes
+
+# 1. Download ontology
+ont_path = download_ontology(url, output_dir="ontologies/")
+
+# 2. Convert RDF → YAML DRM
+yaml_str = rdf_to_yaml(ont_path, "my_db")
+
+# 3. Generate Python classes
+py_source = generate_classes(yaml_str)
+
+# 4. Write file
+with open("drm/entities_my_db.py", "w") as f:
+    f.write(py_source)
+```
+
+The pipeline maps OWL constructs to DRM:
+
+| OWL construct | DRM mapping |
+|---------------|-------------|
+| `owl:Class` | Node label |
+| `rdfs:subClassOf` | `WeakNode` hierarchy (parent) |
+| `owl:DatatypeProperty` | Node properties |
+| `owl:ObjectProperty` | Relationships |
+| `owl:hasKey` | Primary key fields |
+| `rdfs:comment` | Class docstring |
 
 ## Example Dataset Loaders (`drm.exemples`)
 
@@ -122,16 +165,13 @@ graph.close()
 DRM uses environment variables for Neo4j connections. Multiple targets are supported via the `NEO4J_TARGET` selector:
 
 ```bash
-# Default target (used when NEO4J_TARGET is not set)
+# Default target
 export NEO4J_DEV_URL=bolt://dev-host:7687
 export NEO4J_DEV_USER=neo4j
 export NEO4J_DEV_PASSWORD=your_dev_password
 export NEO4J_DEV_DATABASE=neo4j
-```
 
-For a custom target:
-
-```bash
+# Custom target
 export NEO4J_TARGET=LOCAL
 export NEO4J_LOCAL_URL=bolt://localhost:7687
 export NEO4J_LOCAL_USER=neo4j
@@ -139,15 +179,21 @@ export NEO4J_LOCAL_PASSWORD=your_password
 export NEO4J_LOCAL_DATABASE=neo4j
 ```
 
-The real Neo4j tests (`test/test_neo4j_real.py`, `test/test_graph_store_contract.py`) default to `DEV` when `NEO4J_TARGET` is not set, and fall back to plain `NEO4J_*` variables when prefixed variables are absent.
-
 ## Running Tests
 
 ```bash
 python -m pytest test/ -v
 ```
 
-Tests use `NetworkXGraph` for all unit tests and `Neo4jGraph` for integration tests against a real Neo4j instance (controlled by `NEO4J_TARGET`).
+Three test levels:
+
+| Level | Marker | Count | Time | Description |
+|-------|--------|-------|------|-------------|
+| Unit | `-m unit` | 43 | ~2s | Fast, no graph store |
+| Integration | `-m integration` | 215 | ~3s | NetworkXGraph (in-memory) |
+| Neo4j | `-m slow` | 44 | ~10s | Neo4j (requires real DB) |
+
+Skip Neo4j tests: `pytest test/ -v -m "not slow"`
 
 ## Documentation
 
@@ -159,12 +205,6 @@ Generate HTML docs with Sphinx:
 ```bash
 cd docs
 sphinx-build -b html . _build/html
-```
-
-Or use the virtual environment:
-
-```bash
-.venv/bin/sphinx-build -b html docs/ docs/_build/html/
 ```
 
 ## Authors & Contributors
