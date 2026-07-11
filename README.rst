@@ -1,0 +1,190 @@
+Document Representation Model (drm-tools)
+==========================================
+
+Graph-based document representation library with Neo4j and an in-memory NetworkX backend.
+
+Model documents as graphs where nodes represent document objects (text regions, figures, pages) and edges capture their relationships. The library supports semantic entity definitions, weak nodes with cascade delete, foreign key validation, vector search, and reusable example datasets for tutorials.
+
+| PyPI | License |
+|------|---------|
+| `pip install drm-tools <https://pypi.org/project/drm-tools/>`_ | MIT |
+
+Features
+--------
+
+- **Two backends**: Full Neo4j integration (``Neo4jGraph``) or in-memory NetworkX (``NetworkXGraph``) for testing and tutorials
+- **WeakNode hierarchy**: Child entities with composite primary keys and automatic cascade delete through parent-child edges
+- **ON DELETE strategies**: CASCADE, RESTRICT, SET NULL — choose the deletion semantics that fit your use case
+- **Semantic entities**: Domain-specific node types such as ``IndividuPadro``, ``LlocPadro``, and ``Fotografia``
+- **FK validation**: Foreign key constraints on relations prevent dangling references
+- **Query & filtering**: Secondary index on scalar properties, multi-filter search with intersection/union, debug snapshots
+- **Vector search (NetworkX only)**: HNSW-based ANN indexing on node properties with ``cosine``, ``l2``, and ``ip`` distance spaces
+- **RDF/OWL ontology conversion**: Generate Python entity classes from RDF/OWL ontologies (RiC-O, etc.)
+
+Installation
+------------
+
+Install from PyPI:
+
+.. code-block:: bash
+
+    pip install drm-tools
+
+Or install from source in development mode:
+
+.. code-block:: bash
+
+    git clone https://github.com/CVC-DAG/drm-tools.git
+    cd drm-tools
+    pip install -e .
+
+Register the recommended Jupyter kernel for tutorials:
+
+.. code-block:: bash
+
+    python -m ipykernel install --user --name drm-tool --display-name "Python (drm-tool)"
+
+Quick Start
+-----------
+
+.. code-block:: python
+
+    from drm import NetworkXGraph, Node, WeakNode
+
+    # In-memory backend — no database required
+    graph = NetworkXGraph()
+
+    # Create a document hierarchy
+    doc = Node(pk={"doc": "DOC-001"}, main_label="Document")
+    graph.insertNode(doc)
+
+    section = WeakNode(parent=doc, pk={"section": 1}, main_label="Section")
+    graph.insertNode(section, insert_parent=True)
+
+    page = WeakNode(parent=section, pk={"page": 1}, main_label="Page")
+    graph.insertNode(page, insert_parent=True)
+
+    # Query the graph
+    print("Nodes:", graph.get_node_ids())
+    print("Edges:", graph.get_edges())
+    graph.close()
+
+Tutorial Notebooks
+------------------
+
+Runnable Jupyter notebooks in ``docs/tutorials/notebooks/``. Each notebook installs the package automatically from the latest release when run.
+
+You can also view them rendered in the `hosted documentation <https://cvc-dag.github.io/drm-tools/>`_.
+
+Getting Started
+~~~~~~~~~~~~~~~
+
+- ``intro_basics`` — Minimal end-to-end workflow: insert nodes, create WeakNode hierarchies
+- ``querying_and_filtering`` — Query operations: ``get_node()``, ``find_nodes()``, property filtering
+
+Interactive Demos
+~~~~~~~~~~~~~~~~~
+
+- ``weaknodes_interactive`` — Build hierarchies with an interactive widget panel
+- ``vector_search`` — HNSW vector indexing and nearest-neighbor search
+- ``delete_strategies`` — Compare CASCADE, RESTRICT, SET NULL strategies
+
+Datasets
+~~~~~~~~
+
+- ``karate_club`` — Zachary Karate Club (34 members)
+- ``movies`` — Movie-domain graph (actors, genres, films)
+- ``game_of_thrones`` — Character-house graph
+- ``bibliography_openalex`` — OpenAlex bibliographic references with citations
+
+Ontologies
+~~~~~~~~~~
+
+- ``generating_classes_from_owl`` — Generate Python entity classes from RDF/OWL ontologies
+
+RDF/OWL Ontology Conversion
+----------------------------
+
+Generate Python entity classes from RDF/OWL ontologies in one step:
+
+.. code-block:: python
+
+    from drm.rdf_schema import download_ontology_and_convert
+
+    output_path = download_ontology_and_convert(
+        "https://raw.githubusercontent.com/ICA-EGAD/RiC-O/master/ontology/current-version/RiC-O_1-1.rdf",
+        "rico",
+        output_dir="drm/"
+    )
+    # Generates drm/rico_entities.py (677 classes from RiC-O)
+
+The pipeline maps OWL constructs to DRM:
+
+- ``owl:Class`` → Node label
+- ``rdfs:subClassOf`` → ``WeakNode`` hierarchy (parent)
+- ``owl:DatatypeProperty`` → Node properties
+- ``owl:ObjectProperty`` → Relationships
+- ``owl:hasKey`` → Primary key fields
+- ``rdfs:comment`` → Class docstring
+
+Example Dataset Loaders (drm.exemples)
+--------------------------------------
+
+The package includes ready-to-run loaders for common graph domains:
+
+- ``drm.exemples.networkx_karate`` — Karate Club graph (NetworkX classic)
+- ``drm.exemples.networkx_bibliografia`` — Bibliographic references from OpenAlex
+- ``drm.exemples.neo4j_movies`` — Movie-domain graph
+- ``drm.exemples.neo4j_got`` — Game of Thrones character-house graph
+
+Configuration
+-------------
+
+DRM uses environment variables for Neo4j connections. Multiple targets are supported via the ``NEO4J_TARGET`` selector:
+
+.. code-block:: bash
+
+    export NEO4J_DEV_URL=bolt://dev-host:7687
+    export NEO4J_DEV_USER=neo4j
+    export NEO4J_DEV_PASSWORD=your_dev_password
+    export NEO4J_DEV_DATABASE=neo4j
+
+Running Tests
+-------------
+
+.. code-block:: bash
+
+    python -m pytest test/ -v
+
+Three test levels:
+
+- **Unit** (``-m unit``) — 43 tests, ~2s, fast, no graph store
+- **Integration** (``-m integration``) — 215 tests, ~3s, NetworkXGraph (in-memory)
+- **Neo4j** (``-m slow``) — 44 tests, ~10s, Neo4j (requires real DB)
+
+Skip Neo4j tests: ``pytest test/ -v -m "not slow"``
+
+Documentation
+-------------
+
+- **Hosted docs**: https://cvc-dag.github.io/drm-tools/
+- **Source docs**: ``docs/`` — Sphinx documentation source
+
+Generate HTML docs with Sphinx:
+
+.. code-block:: bash
+
+    cd docs
+    sphinx-build -b html . _build/html
+
+Authors & Contributors
+----------------------
+
+- Oriol Ramos Terrades
+- Jialuo Chen
+- Adrià Molina
+
+Acknowledgements
+----------------
+
+This work has been partially supported by the Spanish project PID2021-126808OB-I00, Ministerio de Ciencia e Innovación, the Departament de Cultura of the Generalitat de Catalunya, and the CERCA Program / Generalitat de Catalunya. Adrià Molina is funded with the PRE2022-101575 grant provided by MCIN / AEI / 10.13039/501100011033 and by the European Social Fund (FSE+).
