@@ -177,9 +177,11 @@ class Neo4jGraph(object):
         _trasa = ""
         try:
             # Add constraints
-
-            # self._create_constraint(self._tx, node.main_label, list(pk.keys()))
-            # self._session.write_transaction(self._create_constraint, node.main_label, list(pk.keys()))
+            # [CRITICAL FIX] Create Neo4j NODE KEY constraint to enforce PK uniqueness.
+            # Without this, MATCH WHERE queries can return multiple records, causing
+            # UserWarning from neo4j driver's .single() method.
+            # REVERT: Comment out these two lines to disable constraint enforcement.
+            self._create_constraint(self._tx, node.main_label, list(pk.keys()) if pk else [])
 
             if update:
                 # id = self._session.write_transaction(self._update_node, node)
