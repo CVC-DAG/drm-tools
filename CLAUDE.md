@@ -18,6 +18,20 @@ If on `main`, switch to `develop` first:
 git checkout develop
 ```
 
+## Development Workflow
+
+### Test-Driven Development (TDD)
+
+Follow a strict TDD cycle for all new features and substantial changes:
+
+1. **Write tests first** — Before any implementation, write failing tests that define the expected behavior.
+2. **Run tests and confirm failure** — Verify the tests fail (red phase).
+3. **Implement the feature** — Write the minimum code to make the tests pass.
+4. **Run tests and confirm success** — Verify all tests pass (green phase).
+5. **Refactor** — Clean up code while keeping tests passing.
+
+Never implement code without corresponding tests. If a test fails, fix the implementation — never lower test expectations.
+
 ## Development Commands
 
 ### Installation
