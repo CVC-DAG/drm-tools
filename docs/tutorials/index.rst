@@ -12,37 +12,45 @@ Getting Started
 
 Minimal end-to-end graph workflows:
 
-notebooks/getting_started/intro_basics
-notebooks/getting_started/querying_and_filtering
+.. toctree::
+
+   notebooks/getting_started/intro_basics
+   notebooks/getting_started/querying_and_filtering
 
 Demos
 -----
 
 Step-by-step demonstrations covering core features:
 
-notebooks/demos/delete_strategies
-notebooks/demos/propagation_demo
-notebooks/demos/ric_o_demo
-notebooks/demos/ric_o_networkx_demo
-notebooks/demos/vector_search
+.. toctree::
+
+   notebooks/demos/delete_strategies
+   notebooks/demos/propagation_demo
+   notebooks/demos/ric_o_demo
+   notebooks/demos/ric_o_networkx_demo
+   notebooks/demos/vector_search
 
 Interactive
 -----------
 
 Hands-on explorations with Jupyter widgets:
 
-notebooks/interactive/weaknodes
+.. toctree::
+
+   notebooks/interactive/weaknodes
 
 Dataset Examples
 ----------------
 
 Datasets loaded into both NetworkXGraph and Neo4jGraph:
 
-notebooks/datasets/karate_club
-notebooks/datasets/bibliography_openalex
-notebooks/datasets/movies
-notebooks/datasets/game_of_thrones
-notebooks/datasets/generating_classes_from_owl
+.. toctree::
+
+   notebooks/datasets/karate_club
+   notebooks/datasets/bibliography_openalex
+   notebooks/datasets/movies
+   notebooks/datasets/game_of_thrones
+   notebooks/datasets/generating_classes_from_owl
 
 Notes
 -----
