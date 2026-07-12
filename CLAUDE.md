@@ -90,6 +90,15 @@ This library implements a graph-based document representation model. It supports
 - **DO NOT MODIFY** the core logic, functions, or internal implementation of the Neo4j backend (specifically files in `drm/` and `test/test_neo4j_real.py`) unless explicitly instructed to do so within a dedicated, isolated branch and for a specific, documented task.
 - Any structural changes to the backend must follow a formal review process.
 
+## PyPI Publishing
+
+**NEVER publish to PyPI automatically.** Only publish when explicitly asked by the user.
+
+- Do not run `twine upload`, `python -m build`, or `pip install --upload` without explicit user instruction
+- Do not suggest publishing as part of a "next step" or "todo"
+- Publishing is a manual, user-initiated action — the user will say "publica al PyPI" or similar
+- Always confirm the version number before publishing
+
 ## Key Concepts
 - **Semantic Entities**: Domain-specific node types (e.g., `IndividuPadro`, `LlocPadro`) defined within the graph.
 - **Cascade Delete**: Enabled by `WeakNode` and `WeakRelation` via the `_propagate` flag.

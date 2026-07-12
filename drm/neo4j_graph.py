@@ -697,7 +697,7 @@ class Neo4jGraph:
             return result
 
         try:
-            return session.write_transaction(_create_group_tx)
+            return session.execute_write(_create_group_tx)
         except ConstraintError as err:
             raise RuntimeError("Duplicate key: " + err.message) from err
         except TransactionError as err:
