@@ -2,7 +2,7 @@ from setuptools import setup, find_packages
 import os
 
 NAME = "drm-tools"
-VERSION = "1.1.0a4"
+VERSION = "1.1.0"
 DESCR = "Graph-based document representation library with Neo4j and NetworkX backends"
 URL = "https://github.com/CVC-DAG/drm-tools"
 AUTHOR = "Oriol Ramos Terrades"
