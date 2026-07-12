@@ -18,6 +18,8 @@ document representation with Neo4j and an in-memory NetworkX backend.
    :hidden:
 
    api/base
+   api/drm_entities
+   api/drm_entities
 
 Features
 --------
