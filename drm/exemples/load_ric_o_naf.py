@@ -1,16 +1,15 @@
 """Load RiC-O data from the National Archives of France into Neo4j.
 
 Downloads RDF/XML files from the National Archives of France RiC-O examples
-and imports them into Neo4j using Neo4j's native ``LOAD CSV`` bulk import.
+and imports them into Neo4j using Cypher MERGE commands.
 
 The loader:
 
 1. Downloads RDF files from GitHub (agents, recordResources, relations, vocabularies)
 2. Parses them with ``rdflib``
 3. Extracts nodes and relationships
-4. Writes temporary CSV files
-5. Uses ``LOAD CSV`` Cypher commands to bulk-import into Neo4j
-6. Returns load statistics
+4. Uses Cypher MERGE to insert nodes and relationships into Neo4j
+5. Returns load statistics
 
 Usage::
 
@@ -22,10 +21,7 @@ Usage::
 
 from __future__ import annotations
 
-import csv
-import io
 import os
-import tempfile
 import urllib.request
 from typing import Any, Dict, List, Optional, Set, Tuple
 
@@ -64,14 +60,13 @@ RDF_TO_LABEL: Dict[str, str] = {
     str(ONTO.Individual): "Person",
     str(ONTO.AgentName): "AgentName",
     str(ONTO.RecordResource): "RecordResource",
-    str(ONTO.RecordSet): "RecordResource",  # RecordSet is a subtype of RecordResource
+    str(ONTO.RecordSet): "RecordResource",
     str(ONTO.Instantiation): "Instantiation",
     str(ONTO.Activity): "Activity",
     str(ONTO.ActivityType): "ActivityType",
     str(ONTO.DocumentaryFormType): "DocumentaryFormType",
     str(ONTO.Language): "Language",
     str(ONTO.CorporateBodyType): "CorporateBodyType",
-    str(ONTO.occupationTypes): "OccupationType",
     str(ONTO.Place): "Place",
     str(ONTO.PlaceName): "PlaceName",
     str(ONTO.PhysicalLocation): "PhysicalLocation",
@@ -89,7 +84,6 @@ RDF_TO_LABEL: Dict[str, str] = {
     str(ONTO.Event): "Event",
     str(ONTO.EventType): "EventType",
     str(ONTO.RecordState): "RecordState",
-    str(ONTO.Contenttype): "ContentType",
     str(ONTO.Extent): "Extent",
     str(ONTO.ExtentType): "ExtentType",
     str(ONTO.UnitOfMeasurement): "UnitOfMeasurement",
@@ -97,8 +91,6 @@ RDF_TO_LABEL: Dict[str, str] = {
     str(ONTO.LegalStatus): "LegalStatus",
     str(ONTO.Mandate): "Mandate",
     str(ONTO.MandateType): "MandateType",
-    str(ONTO.Mechanism): "Mechanism",
-    str(ONTO.OrganicOrFunctionalProvenanceRelation): "OrganicOrFunctionalProvenanceRelation",
 }
 
 # ---------------------------------------------------------------------------
@@ -119,7 +111,6 @@ def _list_github_dir(url: str) -> List[str]:
     with urllib.request.urlopen(req, timeout=30) as resp:
         data = resp.read().decode("utf-8")
 
-    # GitHub returns a simple list of filenames, one per line
     return [line.strip() for line in data.splitlines() if line.strip().endswith(".rdf")]
 
 
@@ -171,7 +162,7 @@ def _extract_node_id(uri: URIRef, base_uri: str) -> str:
     """
     uri_str = str(uri)
     if base_uri and uri_str.startswith(base_uri):
-        return uri_str[len(base_uri) :]
+        return uri_str[len(base_uri):]
     # Fallback: extract last path segment
     for sep in ("#", "/"):
         if sep in uri_str:
@@ -179,16 +170,25 @@ def _extract_node_id(uri: URIRef, base_uri: str) -> str:
     return str(uri)
 
 
+def _local_name(uri: str) -> str:
+    """Extract a local name from a URI."""
+    if "#" in uri:
+        return uri.rsplit("#", 1)[-1]
+    if "/" in uri:
+        return uri.rsplit("/", 1)[-1]
+    if ":" in uri:
+        return uri.rsplit(":", 1)[-1]
+    return uri
+
+
 def _parse_rdf_file(
     url: str,
-    limit: Optional[int] = None,
     category: str = "",
 ) -> Tuple[Graph, str]:
     """Parse a single RDF file and return the graph and its base URI.
 
     Args:
         url: The URL of the RDF file.
-        limit: Not used for parsing (applied at the loader level).
         category: Category name for logging.
 
     Returns:
@@ -197,9 +197,8 @@ def _parse_rdf_file(
     data = _download_file(url)
     g = _parse_rdf(data)
 
-    # Extract base URI
-    base_uri = str(g.namespace_manager.normalizeUri(g.identifier)) if g.identifier else ""
     # Try to find xml:base from the graph
+    base_uri = ""
     for s, p, o in g:
         if str(p) == "http://www.w3.org/XML/1998/namespace#base":
             base_uri = str(o)
@@ -230,15 +229,12 @@ def _extract_nodes(
     """
     nodes: Dict[str, Dict[str, Any]] = {}
 
+    # First pass: find all subjects with known RDF types
     for s, p, o in g:
-        # Only process subjects that are resources (not literals)
         if not isinstance(s, URIRef):
             continue
-
-        # Check if this subject is an instance of a known class
         if not isinstance(p, URIRef) or str(p) != str(RDF.type):
             continue
-
         if not isinstance(o, URIRef):
             continue
 
@@ -249,28 +245,25 @@ def _extract_nodes(
 
         node_id = _extract_node_id(s, base_uri)
         if node_id in nodes:
-            # Merge labels
             if label not in nodes[node_id]["labels"]:
                 nodes[node_id]["labels"].append(label)
             continue
 
-        node_id = _extract_node_id(s, base_uri)
         nodes[node_id] = {
             "id": node_id,
             "labels": [label],
             "properties": {},
         }
 
-    # Now extract properties for each node
-    for s in list(nodes.keys()):
-        node_id = s
+    # Second pass: extract properties for each node
+    for node_id in list(nodes.keys()):
         uri = URIRef(base_uri + node_id) if base_uri else URIRef(node_id)
 
         for prop_uri, prop in g.predicate_objects(uri):
             prop_str = str(prop_uri)
             prop_name = _local_name(prop_str)
 
-            # Skip RDF type and known relation properties (handled separately)
+            # Skip RDF type and subClassOf
             if prop_str == str(RDF.type):
                 continue
             if prop_str == str(RDFS.subClassOf):
@@ -280,14 +273,16 @@ def _extract_nodes(
                 val = str(prop)
                 if prop.language:
                     val = f"{val}@{prop.language}"
-                nodes[node_id]["properties"][prop_name] = val
+                # Avoid overwriting with empty values
+                if prop_name not in nodes[node_id]["properties"] or not nodes[node_id]["properties"][prop_name]:
+                    nodes[node_id]["properties"][prop_name] = val
             elif isinstance(prop, URIRef):
-                # Store as a reference (relationship)
                 ref_id = _extract_node_id(prop, base_uri)
                 prop_key = f"_ref_{_local_name(prop_str)}"
                 if prop_key not in nodes[node_id]["properties"]:
                     nodes[node_id]["properties"][prop_key] = []
-                nodes[node_id]["properties"][prop_key].append(ref_id)
+                if ref_id not in nodes[node_id]["properties"][prop_key]:
+                    nodes[node_id]["properties"][prop_key].append(ref_id)
 
     return list(nodes.values())
 
@@ -296,64 +291,65 @@ def _extract_nodes(
 # Relationship extraction
 # ---------------------------------------------------------------------------
 
-# Map of RiC-O properties → (source_node_prop, target_node_prop, rel_type)
+# Map of RiC-O properties → (rel_type, src_label, dst_label)
+# Used to generate Cypher MERGE for relationships
 RELATION_MAP: Dict[str, Tuple[str, str, str]] = {
-    str(ONTO.hasOrganicProvenance): ("recordResourceId", "agentId", "HAS_ORGANIC_PROVENANCE"),
-    str(ONTO.isOrWasOrganicProvenanceOf): ("agentId", "recordResourceId", "IS_ORGANIC_PROVENANCE_OF"),
-    str(ONTO.directlyIncludes): ("recordResourceId", "recordResourceId", "DIRECTLY_INCLUDES"),
-    str(ONTO.isDirectlyIncludedIn): ("recordResourceId", "recordResourceId", "IS_DIRECTLY_INCLUDED_IN"),
-    str(ONTO.hasOrHadInstantiation): ("recordResourceId", "instantiationId", "HAS_INSTANTIATION"),
-    str(ONTO.isOrWasInstantiationOf): ("instantiationId", "recordResourceId", "IS_INSTANTIATION_OF"),
-    str(ONTO.hasOrHadHolder): ("instantiationId", "agentId", "HAS_HOLDER"),
-    str(ONTO.hasOrHadLocation): ("instantiationId", "placeId", "HAS_LOCATION"),
-    str(ONTO.hasOrHadAgentName): ("agentId", "agentNameId", "HAS_AGENT_NAME"),
-    str(ONTO.isOrWasAgentNameOf): ("agentNameId", "agentId", "IS_AGENT_NAME_OF"),
-    str(ONTO.hasOrHadCreator): ("recordId", "agentId", "HAS_CREATOR"),
-    str(ONTO.hasCreator): ("recordId", "agentId", "HAS_CREATOR"),
-    str(ONTO.hasPublisher): ("recordId", "agentId", "HAS_PUBLISHER"),
-    str(ONTO.isOrWasDescribedBy): ("agentId", "recordId", "IS_DESCRIBED_BY"),
-    str(ONTO.describesOrDescribed): ("recordId", "agentId", "DESCRIBES_OR_DESCRIBED"),
-    str(ONTO.hasOrHadController): ("agentId", "agentId", "HAS_CONTROLLER"),
-    str(ONTO.hasOrHadEmployer): ("agentId", "agentId", "HAS_EMPLOYER"),
-    str(ONTO.hasOrHadMember): ("groupOrFamilyId", "agentId", "HAS_MEMBER"),
-    str(ONTO.hasOrHadSpouse): ("agentId", "agentId", "HAS_SPOUSE"),
-    str(ONTO.hasOrHadStudent): ("agentId", "agentId", "HAS_STUDENT"),
-    str(ONTO.hasOrHadTeacher): ("agentId", "agentId", "HAS_TEACHER"),
-    str(ONTO.hasOrHadChild): ("agentId", "agentId", "HAS_CHILD"),
-    str(ONTO.hasOrHadParent): ("agentId", "agentId", "HAS_PARENT"),
-    str(ONTO.hasOrHadHierarchicalRelation): ("agentId", "agentId", "HAS_HIERARCHICAL_RELATION"),
-    str(ONTO.hasOrHadTemporalRelation): ("agentId", "agentId", "HAS_TEMPORAL_RELATION"),
-    str(ONTO.hasOrHadAgentToAgentRelation): ("agentId", "agentId", "HAS_AGENT_TO_AGENT_RELATION"),
-    str(ONTO.hasOrHadSubject): ("recordResourceId", "thingId", "HAS_SUBJECT"),
-    str(ONTO.hasOrHadMainsubject): ("recordResourceId", "thingId", "HAS_MAIN_SUBJECT"),
-    str(ONTO.hasOrHadLanguage): ("recordId", "languageId", "HAS_LANGUAGE"),
-    str(ONTO.hasOrHadDocumentaryFormType): ("recordId", "documentaryFormTypeId", "HAS_DOCUMENTARY_FORM_TYPE"),
-    str(ONTO.hasOrHadCorporateBodyType): ("corporateBodyId", "corporateBodyTypeId", "HAS_CORPORATE_BODY_TYPE"),
-    str(ONTO.hasOrHadIdentifier): ("agentId", "identifierId", "HAS_IDENTIFIER"),
-    str(ONTO.hasOrHadBirthDate): ("agentId", "dateId", "HAS_BIRTH_DATE"),
-    str(ONTO.hasOrHadDeathDate): ("agentId", "dateId", "HAS_DEATH_DATE"),
-    str(ONTO.hasOrHadBirthPlace): ("agentId", "placeId", "HAS_BIRTH_PLACE"),
-    str(ONTO.hasOrHadDeathPlace): ("agentId", "placeId", "HAS_DEATH_PLACE"),
-    str(ONTO.hasOrHadOccupation): ("agentId", "occupationId", "HAS_OCCUPATION"),
-    str(ONTO.hasOrHadPosition): ("agentId", "positionId", "HAS_POSITION"),
-    str(ONTO.hasOrHadRole): ("agentId", "roleTypeId", "HAS_ROLE"),
-    str(ONTO.hasOrHadDate): ("recordResourceId", "dateId", "HAS_DATE"),
-    str(ONTO.hasOrHadTitle): ("recordResourceId", "titleId", "HAS_TITLE"),
-    str(ONTO.hasOrHadExtent): ("recordResourceId", "extentId", "HAS_EXTENT"),
-    str(ONTO.hasOrHadContentType): ("recordResourceId", "contentType", "HAS_CONTENT_TYPE"),
-    str(ONTO.hasOrHadRecordState): ("recordResourceId", "recordStateId", "HAS_RECORD_STATE"),
-    str(ONTO.hasOrHadLegalStatus): ("recordResourceId", "legalStatusId", "HAS_LEGAL_STATUS"),
-    str(ONTO.hasOrHadCreationDate): ("recordResourceId", "dateId", "HAS_CREATION_DATE"),
-    str(ONTO.hasOrHadPublicationDate): ("recordResourceId", "dateId", "HAS_PUBLICATION_DATE"),
-    str(ONTO.hasOrHadModificationDate): ("recordResourceId", "dateId", "HAS_MODIFICATION_DATE"),
-    str(ONTO.hasOrHadMigrationDate): ("recordResourceId", "dateId", "HAS_MIGRATION_DATE"),
-    str(ONTO.hasOrHadDerivationRelation): ("instantiationId", "instantiationId", "HAS_DERIVATION_RELATION"),
-    str(ONTO.hasOrHadAnalogueInstantiation): ("instantiationId", "instantiationId", "HAS_ANALOGUE_INSTANTIATION"),
-    str(ONTO.hasOrHadDigitalInstantiation): ("recordId", "instantiationId", "HAS_DIGITAL_INSTANTIATION"),
-    str(ONTO.hasOrHadDirectPart): ("recordResourceId", "recordResourceId", "HAS_DIRECT_PART"),
-    str(ONTO.isOrWasPartOf): ("recordResourceId", "recordResourceId", "IS_PART_OF"),
-    str(ONTO.directlyPrecedesInSequence): ("recordResourceId", "recordResourceId", "DIRECTLY_PRECEDES"),
-    str(ONTO.isOrWasAffectedBy): ("recordId", "activityId", "IS_AFFECTED_BY"),
+    str(ONTO.hasOrganicProvenance): ("HAS_ORGANIC_PROVENANCE", "RecordResource", "Agent"),
+    str(ONTO.isOrWasOrganicProvenanceOf): ("IS_ORGANIC_PROVENANCE_OF", "Agent", "RecordResource"),
+    str(ONTO.directlyIncludes): ("DIRECTLY_INCLUDES", "RecordResource", "RecordResource"),
+    str(ONTO.isDirectlyIncludedIn): ("IS_DIRECTLY_INCLUDED_IN", "RecordResource", "RecordResource"),
+    str(ONTO.hasOrHadInstantiation): ("HAS_INSTANTIATION", "RecordResource", "Instantiation"),
+    str(ONTO.isOrWasInstantiationOf): ("IS_INSTANTIATION_OF", "Instantiation", "RecordResource"),
+    str(ONTO.hasOrHadHolder): ("HAS_HOLDER", "Instantiation", "Agent"),
+    str(ONTO.hasOrHadLocation): ("HAS_LOCATION", "Instantiation", "PhysicalLocation"),
+    str(ONTO.hasOrHadAgentName): ("HAS_AGENT_NAME", "Agent", "AgentName"),
+    str(ONTO.isOrWasAgentNameOf): ("IS_AGENT_NAME_OF", "AgentName", "Agent"),
+    str(ONTO.hasOrHadCreator): ("HAS_CREATOR", "Thing", "Agent"),
+    str(ONTO.hasCreator): ("HAS_CREATOR", "Thing", "Agent"),
+    str(ONTO.hasPublisher): ("HAS_PUBLISHER", "Thing", "Agent"),
+    str(ONTO.isOrWasDescribedBy): ("IS_DESCRIBED_BY", "Agent", "Thing"),
+    str(ONTO.describesOrDescribed): ("DESCRIBES_OR_DESCRIBED", "Thing", "Agent"),
+    str(ONTO.hasOrHadController): ("HAS_CONTROLLER", "Agent", "Agent"),
+    str(ONTO.hasOrHadEmployer): ("HAS_EMPLOYER", "Agent", "Agent"),
+    str(ONTO.hasOrHadMember): ("HAS_MEMBER", "Group", "Agent"),
+    str(ONTO.hasOrHadSpouse): ("HAS_SPOUSE", "Agent", "Agent"),
+    str(ONTO.hasOrHadStudent): ("HAS_STUDENT", "Agent", "Agent"),
+    str(ONTO.hasOrHadTeacher): ("HAS_TEACHER", "Agent", "Agent"),
+    str(ONTO.hasOrHadChild): ("HAS_CHILD", "Agent", "Agent"),
+    str(ONTO.hasOrHadParent): ("HAS_PARENT", "Agent", "Agent"),
+    str(ONTO.hasOrHadHierarchicalRelation): ("HAS_HIERARCHICAL_RELATION", "Agent", "Agent"),
+    str(ONTO.hasOrHadTemporalRelation): ("HAS_TEMPORAL_RELATION", "Agent", "Agent"),
+    str(ONTO.hasOrHadAgentToAgentRelation): ("HAS_AGENT_TO_AGENT_RELATION", "Agent", "Agent"),
+    str(ONTO.hasOrHadSubject): ("HAS_SUBJECT", "RecordResource", "Thing"),
+    str(ONTO.hasOrHadMainsubject): ("HAS_MAIN_SUBJECT", "RecordResource", "Thing"),
+    str(ONTO.hasOrHadLanguage): ("HAS_LANGUAGE", "Thing", "Language"),
+    str(ONTO.hasOrHadDocumentaryFormType): ("HAS_DOCUMENTARY_FORM_TYPE", "Thing", "DocumentaryFormType"),
+    str(ONTO.hasOrHadCorporateBodyType): ("HAS_CORPORATE_BODY_TYPE", "CorporateBody", "CorporateBodyType"),
+    str(ONTO.hasOrHadIdentifier): ("HAS_IDENTIFIER", "Agent", "Identifier"),
+    str(ONTO.hasOrHadBirthDate): ("HAS_BIRTH_DATE", "Agent", "Date"),
+    str(ONTO.hasOrHadDeathDate): ("HAS_DEATH_DATE", "Agent", "Date"),
+    str(ONTO.hasOrHadBirthPlace): ("HAS_BIRTH_PLACE", "Agent", "PhysicalLocation"),
+    str(ONTO.hasOrHadDeathPlace): ("HAS_DEATH_PLACE", "Agent", "PhysicalLocation"),
+    str(ONTO.hasOrHadOccupation): ("HAS_OCCUPATION", "Agent", "OccupationType"),
+    str(ONTO.hasOrHadPosition): ("HAS_POSITION", "Agent", "Position"),
+    str(ONTO.hasOrHadRole): ("HAS_ROLE", "Agent", "RoleType"),
+    str(ONTO.hasOrHadDate): ("HAS_DATE", "RecordResource", "Date"),
+    str(ONTO.hasOrHadTitle): ("HAS_TITLE", "RecordResource", "Title"),
+    str(ONTO.hasOrHadExtent): ("HAS_EXTENT", "RecordResource", "Extent"),
+    str(ONTO.hasOrHadContentType): ("HAS_CONTENT_TYPE", "RecordResource", "ContentType"),
+    str(ONTO.hasOrHadRecordState): ("HAS_RECORD_STATE", "RecordResource", "RecordState"),
+    str(ONTO.hasOrHadLegalStatus): ("HAS_LEGAL_STATUS", "RecordResource", "LegalStatus"),
+    str(ONTO.hasOrHadCreationDate): ("HAS_CREATION_DATE", "RecordResource", "Date"),
+    str(ONTO.hasOrHadPublicationDate): ("HAS_PUBLICATION_DATE", "RecordResource", "Date"),
+    str(ONTO.hasOrHadModificationDate): ("HAS_MODIFICATION_DATE", "RecordResource", "Date"),
+    str(ONTO.hasOrHadMigrationDate): ("HAS_MIGRATION_DATE", "RecordResource", "Date"),
+    str(ONTO.hasOrHadDerivationRelation): ("HAS_DERIVATION_RELATION", "Instantiation", "Instantiation"),
+    str(ONTO.hasOrHadAnalogueInstantiation): ("HAS_ANALOGUE_INSTANTIATION", "Instantiation", "Instantiation"),
+    str(ONTO.hasOrHadDigitalInstantiation): ("HAS_DIGITAL_INSTANTIATION", "Thing", "Instantiation"),
+    str(ONTO.hasOrHadDirectPart): ("HAS_DIRECT_PART", "RecordResource", "RecordResource"),
+    str(ONTO.isOrWasPartOf): ("IS_PART_OF", "RecordResource", "RecordResource"),
+    str(ONTO.directlyPrecedesInSequence): ("DIRECTLY_PRECEDES", "RecordResource", "RecordResource"),
+    str(ONTO.isOrWasAffectedBy): ("IS_AFFECTED_BY", "Thing", "Activity"),
 }
 
 
@@ -370,7 +366,7 @@ def _extract_relationships(
         category: Category name.
 
     Returns:
-        List of relationship dicts with keys: src_id, dst_id, type, properties.
+        List of relationship dicts with keys: src_id, dst_id, type, src_label, dst_label.
     """
     rels: List[Dict[str, Any]] = []
     seen: Set[Tuple[str, str, str]] = set()
@@ -384,7 +380,7 @@ def _extract_relationships(
         if mapping is None:
             continue
 
-        src_key, dst_key, rel_type = mapping
+        rel_type, src_label, dst_label = mapping
 
         src_id = _extract_node_id(s, base_uri)
         dst_id = _extract_node_id(o, base_uri)
@@ -399,274 +395,113 @@ def _extract_relationships(
             "src_id": src_id,
             "dst_id": dst_id,
             "type": rel_type,
-            "properties": {},
+            "src_label": src_label,
+            "dst_label": dst_label,
         })
 
     return rels
 
 
 # ---------------------------------------------------------------------------
-# CSV generation
+# Neo4j import via Cypher MERGE
 # ---------------------------------------------------------------------------
 
 
-def _write_nodes_csv(
+def _import_nodes_via_cypher(
+    graph: Any,
     nodes: List[Dict[str, Any]],
-    path: str,
 ) -> int:
-    """Write nodes to a CSV file for Neo4j LOAD CSV.
+    """Import nodes into Neo4j using Cypher MERGE commands.
 
-    Format:
-        :ID,label,property1,property2,...
+    For each node, generates a MERGE query that:
+    - Matches or creates the node by its unique ID
+    - Sets all properties
 
     Args:
+        graph: Neo4jGraph instance.
         nodes: List of node dicts.
-        path: Output CSV file path.
 
     Returns:
-        Number of nodes written.
+        Number of nodes imported.
     """
     if not nodes:
         return 0
 
-    # Collect all property keys
-    all_props: Set[str] = set()
+    count = 0
     for node in nodes:
-        all_props.update(node["properties"].keys())
+        node_id = node["id"]
+        labels = ":".join(node["labels"])
 
-    fieldnames = [":ID", "label"] + sorted(all_props)
+        # Build SET clause from properties
+        set_parts = []
+        for prop_name, prop_val in node["properties"].items():
+            if isinstance(prop_val, list):
+                # List values: set as array
+                items = ", ".join(f'"{v}"' for v in prop_val)
+                set_parts.append(f'n.`{prop_name}` = [{items}]')
+            else:
+                escaped = prop_val.replace('"', '\\"')
+                set_parts.append(f'n.`{prop_name}` = "{escaped}"')
 
-    with open(path, "w", newline="", encoding="utf-8") as f:
-        writer = csv.DictWriter(f, fieldnames=fieldnames)
-        writer.writeheader()
+        if set_parts:
+            set_clause = " SET " + " ".join(set_parts)
+        else:
+            set_clause = ""
 
-        for node in nodes:
-            row: Dict[str, Any] = {
-                ":ID": node["id"],
-                "label": "|".join(node["labels"]),
-            }
-            for prop_name, prop_val in node["properties"].items():
-                if isinstance(prop_val, list):
-                    row[prop_name] = "|".join(prop_val)
-                else:
-                    row[prop_name] = prop_val
-            writer.writerow(row)
+        query = f"MERGE (n:{labels} {{id: \"{node_id}\"}}){set_clause}"
 
-    return len(nodes)
+        try:
+            graph.query(query)
+            count += 1
+        except Exception:
+            # Skip nodes that fail (e.g., constraint violations)
+            pass
+
+    return count
 
 
-def _write_rels_csv(
+def _import_rels_via_cypher(
+    graph: Any,
     rels: List[Dict[str, Any]],
-    path: str,
 ) -> int:
-    """Write relationships to a CSV file for Neo4j LOAD CSV.
+    """Import relationships into Neo4j using Cypher MATCH + CREATE commands.
 
-    Format:
-        :START_ID,:END_ID,:TYPE,property1,...
+    For each relationship:
+    - MATCHes the source and target nodes by ID
+    - Creates the relationship with the specified type
 
     Args:
+        graph: Neo4jGraph instance.
         rels: List of relationship dicts.
-        path: Output CSV file path.
 
     Returns:
-        Number of relationships written.
+        Number of relationships imported.
     """
     if not rels:
         return 0
 
-    # Collect all property keys
-    all_props: Set[str] = set()
+    count = 0
     for rel in rels:
-        all_props.update(rel["properties"].keys())
+        src_id = rel["src_id"]
+        dst_id = rel["dst_id"]
+        rel_type = rel["type"]
+        src_label = rel.get("src_label", "Node")
+        dst_label = rel.get("dst_label", "Node")
 
-    fieldnames = [":START_ID", ":END_ID", ":TYPE"] + sorted(all_props)
-
-    with open(path, "w", newline="", encoding="utf-8") as f:
-        writer = csv.DictWriter(f, fieldnames=fieldnames)
-        writer.writeheader()
-
-        for rel in rels:
-            row: Dict[str, Any] = {
-                ":START_ID": rel["src_id"],
-                ":END_ID": rel["dst_id"],
-                ":TYPE": rel["type"],
-            }
-            for prop_name, prop_val in rel["properties"].items():
-                row[prop_name] = prop_val
-            writer.writerow(row)
-
-    return len(rels)
-
-
-# ---------------------------------------------------------------------------
-# Neo4j LOAD CSV import
-# ---------------------------------------------------------------------------
-
-
-def _load_csv_to_neo4j(
-    graph: Any,
-    nodes_csv: str,
-    rels_csv: str,
-) -> Dict[str, int]:
-    """Import CSV files into Neo4j using LOAD Cypher commands.
-
-    Args:
-        graph: Neo4jGraph instance.
-        nodes_csv: Path to nodes CSV file.
-        rels_csv: Path to relationships CSV file.
-
-    Returns:
-        Dict with import statistics.
-    """
-    stats: Dict[str, int] = {"nodes": 0, "relationships": 0}
-
-    # Import nodes
-    nodes_query = (
-        "LOAD CSV WITH HEADERS FROM 'file:///nodes.csv' AS row "
-        "FIELDTERMINATOR ',' "
-        "MERGE (n {id: row.id}) "
-        "SET n += row"
-    )
-
-    # We need to set the file directory for Neo4j
-    # Use the neo4j-admin import approach or set the import directory
-    # For simplicity, we use the file:// protocol with the Neo4j import directory
-
-    # Alternative: use the graph's query method with the import directory
-    try:
-        # Try to find the Neo4j import directory
-        import_dir = _get_neo4j_import_dir()
-
-        # Copy CSV files to Neo4j import directory
-        if import_dir:
-            import shutil
-            nodes_dest = os.path.join(import_dir, "nodes.csv")
-            rels_dest = os.path.join(import_dir, "relationships.csv")
-
-            shutil.copy2(nodes_csv, nodes_dest)
-            shutil.copy2(rels_csv, rels_dest)
-
-            # Import nodes
-            result = graph.query(
-                "LOAD CSV WITH HEADERS FROM 'file:///nodes.csv' AS row "
-                "FIELDTERMINATOR ',' "
-                "MERGE (n {id: row.id}) "
-                "SET n += row"
-            )
-            stats["nodes"] = len(result) if result else 0
-
-            # Import relationships
-            result = graph.query(
-                "LOAD CSV WITH HEADERS FROM 'file:///relationships.csv' AS row "
-                "FIELDTERMINATOR ',' "
-                "MATCH (a {id: row.`:START_ID`}) "
-                "MATCH (b {id: row.`:END_ID`}) "
-                "CALL apoc.create.relationship(a, row.`:TYPE`, row, b) YIELD rel "
-                "RETURN count(rel) AS count"
-            )
-            stats["relationships"] = result[0]["count"] if result and len(result) > 0 else 0
-        else:
-            # Fallback: use createNode/createRelationship directly
-            stats = _fallback_import(graph, nodes_csv, rels_csv)
-    except Exception as exc:
-        # Fallback to direct insertion
-        stats = _fallback_import(graph, nodes_csv, rels_csv)
-
-    return stats
-
-
-def _get_neo4j_import_dir() -> Optional[str]:
-    """Detect the Neo4j import directory.
-
-    Returns:
-        Path to the import directory, or None if not found.
-    """
-    candidates = [
-        "/var/lib/neo4j/import",
-        "/usr/local/neo4j/import",
-        os.path.expanduser("~/.neo4j/import"),
-    ]
-
-    # Try to get from Neo4j configuration
-    import subprocess
-
-    try:
-        result = subprocess.run(
-            ["neo4j", "config", "settings", "server.directories.import"],
-            capture_output=True,
-            text=True,
-            timeout=5,
+        query = (
+            f"MATCH (a:{src_label} {{id: \"{src_id}\"}}) "
+            f"MATCH (b:{dst_label} {{id: \"{dst_id}\"}}) "
+            f"MERGE (a)-[r:{rel_type}]->(b)"
         )
-        if result.returncode == 0 and result.stdout.strip():
-            candidates.insert(0, result.stdout.strip())
-    except (FileNotFoundError, subprocess.TimeoutExpired):
-        pass
 
-    for candidate in candidates:
-        if os.path.isdir(candidate):
-            return candidate
+        try:
+            graph.query(query)
+            count += 1
+        except Exception:
+            # Skip relationships that fail (e.g., nodes not yet found)
+            pass
 
-    return None
-
-
-def _fallback_import(
-    graph: Any,
-    nodes_csv: str,
-    rels_csv: str,
-) -> Dict[str, int]:
-    """Fallback import using direct Node/Relation insertion.
-
-    Reads CSV files and inserts nodes/relations one by one using
-    the Neo4jGraph API.
-
-    Args:
-        graph: Neo4jGraph instance.
-        nodes_csv: Path to nodes CSV file.
-        rels_csv: Path to relationships CSV file.
-
-    Returns:
-        Dict with import statistics.
-    """
-    from drm.base import Node, Relation
-
-    stats: Dict[str, int] = {"nodes": 0, "relationships": 0}
-
-    # Import nodes from CSV
-    with open(nodes_csv, "r", encoding="utf-8") as f:
-        reader = csv.DictReader(f)
-        for row in reader:
-            node_id = row.pop(":ID", None)
-            label = row.pop("label", "Node")
-            if not node_id:
-                continue
-
-            node = Node(
-                pk={"id": node_id},
-                main_label=label,
-                **{k: v for k, v in row.items() if v},
-            )
-            graph.insertNode(node, replace=True)
-            stats["nodes"] += 1
-
-    # Import relationships from CSV
-    with open(rels_csv, "r", encoding="utf-8") as f:
-        reader = csv.DictReader(f)
-        for row in reader:
-            src_id = row.pop(":START_ID", None)
-            dst_id = row.pop(":END_ID", None)
-            rel_type = row.pop(":TYPE", None)
-            if not src_id or not dst_id or not rel_type:
-                continue
-
-            src = Node(pk={"id": src_id}, main_label="Node")
-            dst = Node(pk={"id": dst_id}, main_label="Node")
-            graph.insertRelation(
-                Relation(src, dst, rel_type),
-                update=True,
-            )
-            stats["relationships"] += 1
-
-    return stats
+    return count
 
 
 # ---------------------------------------------------------------------------
@@ -683,8 +518,7 @@ def load_ric_o_naf(
     """Load RiC-O data from the National Archives of France into Neo4j.
 
     Downloads RDF/XML files from the National Archives of France RiC-O
-    examples and imports them into Neo4j using Neo4j's native
-    ``LOAD CSV`` bulk import.
+    examples and imports them into Neo4j using Cypher MERGE commands.
 
     Args:
         graph: Neo4jGraph instance.
@@ -712,12 +546,10 @@ def load_ric_o_naf(
         "total": 0,
     }
 
-    # Temporary directory for CSV files
-    tmpdir = tempfile.mkdtemp(prefix="ric_o_")
-
     try:
         # ── 1. Download and parse agent files ─────────────────────────
         agent_files = _list_github_dir(AGENT_URL)[:max_agents]
+        print(f"  Downloading {len(agent_files)} agent files...")
         for fname in agent_files:
             url = f"{AGENT_URL}/{fname}"
             g, base_uri = _parse_rdf_file(url, category="agents")
@@ -728,7 +560,6 @@ def load_ric_o_naf(
             for node in nodes:
                 if node["id"] not in all_nodes:
                     all_nodes[node["id"]] = node
-                    # Count by label
                     if "Agent" in node["labels"] or "CorporateBody" in node["labels"] or "Person" in node["labels"]:
                         counters["agents"] += 1
                     elif "Thing" in node["labels"]:
@@ -740,6 +571,7 @@ def load_ric_o_naf(
 
         # ── 2. Download and parse record resource files ───────────────
         record_files = _list_github_dir(RECORD_URL)[:max_records]
+        print(f"  Downloading {len(record_files)} record resource files...")
         for fname in record_files:
             url = f"{RECORD_URL}/{fname}"
             g, base_uri = _parse_rdf_file(url, category="recordResources")
@@ -763,6 +595,7 @@ def load_ric_o_naf(
 
         # ── 3. Download and parse relation files ──────────────────────
         relation_files = _list_github_dir(RELATION_URL)
+        print(f"  Downloading {len(relation_files)} relation files...")
         for fname in relation_files[:5]:  # Limit relation files
             url = f"{RELATION_URL}/{fname}"
             g, base_uri = _parse_rdf_file(url, category="relations")
@@ -777,22 +610,21 @@ def load_ric_o_naf(
 
             all_rels.extend(rels)
 
-        # ── 4. Write CSV files ───────────────────────────────────────
-        nodes_csv = os.path.join(tmpdir, "nodes.csv")
-        rels_csv = os.path.join(tmpdir, "relationships.csv")
+        # ── 4. Import nodes into Neo4j ────────────────────────────────
+        print(f"  Importing {len(all_nodes)} nodes...")
+        node_count = _import_nodes_via_cypher(graph, list(all_nodes.values()))
+        print(f"  Imported {node_count} nodes.")
 
-        node_count = _write_nodes_csv(list(all_nodes.values()), nodes_csv)
-        rel_count = _write_rels_csv(all_rels, rels_csv)
+        # ── 5. Import relationships into Neo4j ────────────────────────
+        print(f"  Importing {len(all_rels)} relationships...")
+        rel_count = _import_rels_via_cypher(graph, all_rels)
+        print(f"  Imported {rel_count} relationships.")
 
-        # ── 5. Import into Neo4j ─────────────────────────────────────
-        import_stats = _load_csv_to_neo4j(graph, nodes_csv, rels_csv)
+        counters["relationships"] = rel_count
+        counters["total"] = node_count
 
-        counters["relationships"] = import_stats.get("relationships", 0)
-        counters["total"] = import_stats.get("nodes", 0)
-
-    finally:
-        # Clean up temporary files
-        import shutil
-        shutil.rmtree(tmpdir, ignore_errors=True)
+    except Exception as exc:
+        print(f"  Error loading data: {exc}")
+        raise
 
     return counters
