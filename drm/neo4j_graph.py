@@ -1627,37 +1627,112 @@ class Neo4jGraph:
 def _convert_neo4j_value(value: Any) -> Any:
     """Convert a Neo4j value to a plain Python dict/list/primitive.
 
-    - ``Node`` → ``{"labels": [...], "properties": {...}}``
-    - ``Relationship`` → ``{"type": ..., "start_node": ..., "end_node": ..., "properties": ...}``
-    - ``Path`` → ``{"nodes": [...], "relationships": [...], "length": ...}``
+    Handles both native Neo4j objects (driver 4.x) and dict/tuple/list
+    representations (driver 6.x default format):
+
+    - Native ``Node`` → ``{"labels": [...], "properties": {...}}``
+    - Native ``Relationship`` → ``{"type": ..., "start_node": ..., "end_node": ..., "properties": ...}``
+    - Native ``Path`` → ``{"nodes": [...], "relationships": [...], "length": ...}``
+    - Dict (driver 6.x node) → properties dict
+    - Tuple (driver 6.x rel) → ``{"type": ..., "start_node": ..., "end_node": ...}``
+    - List (driver 6.x path) → ``{"nodes": [...], "relationships": [...]}``
     - ``list`` → recursively convert each element
     - Everything else → returned as-is
     """
     if value is None:
         return None
-    if hasattr(value, "labels") and hasattr(value, "properties"):
-        # Neo4j Node
+
+    # --- Native Neo4j objects (driver 4.x / raw mode) ---
+    if hasattr(value, "labels") and (hasattr(value, "properties") or hasattr(value, "items")):
+        # Neo4j Node (driver 4.x has .properties, driver 6.x has .items())
         return {
             "labels": list(value.labels),
             "properties": dict(value),
         }
     if hasattr(value, "type") and hasattr(value, "start_node"):
-        # Neo4j Relationship
+        # Neo4j Relationship (native object)
+        sn = value.start_node
+        en = value.end_node
+        # In driver 6.x raw mode, start/end can be Node objects.
+        # In driver 4.x they may be Node objects (has .labels) or numeric IDs.
+        # In driver 6.x non-raw mode they may be dicts.
+        # Heuristic: if it's a dict, pass through; if it has .labels, recurse;
+        # otherwise try int() as a last resort (numeric ID or neo4j.Int).
+        if isinstance(sn, dict):
+            start = sn
+        elif hasattr(sn, "labels"):
+            start = _convert_neo4j_value(sn)
+        else:
+            try:
+                start = int(sn)
+            except (TypeError, ValueError):
+                # Fallback: treat as a dict-like node
+                start = dict(sn) if hasattr(sn, "items") else sn
+        if isinstance(en, dict):
+            end = en
+        elif hasattr(en, "labels"):
+            end = _convert_neo4j_value(en)
+        else:
+            try:
+                end = int(en)
+            except (TypeError, ValueError):
+                end = dict(en) if hasattr(en, "items") else en
         return {
             "type": value.type,
-            "start_node": int(value.start_node),
-            "end_node": int(value.end_node),
-            "properties": dict(value),
+            "start_node": start,
+            "end_node": end,
+            "properties": {k: _convert_neo4j_value(v) for k, v in value.items()},
         }
     if hasattr(value, "nodes") and hasattr(value, "relationships"):
-        # Neo4j Path
+        # Neo4j Path (native object)
         return {
             "nodes": [_convert_neo4j_value(n) for n in value.nodes],
             "relationships": [_convert_neo4j_value(r) for r in value.relationships],
-            "length": value.length,
+            "length": len(list(value.nodes)) - 1,
         }
+
+    # --- Driver 6.x default format (dicts, tuples, lists) ---
+    if isinstance(value, dict):
+        # Driver 6.x node — return as-is (it's already a plain dict)
+        return value
+
+    if isinstance(value, tuple) and len(value) == 3:
+        # Driver 6.x relationship: (start_node_dict, rel_type_str, end_node_dict)
+        start, rel_type, end = value
+        return {
+            "type": rel_type,
+            "start_node": start,
+            "end_node": end,
+        }
+
+    if isinstance(value, list) and len(value) >= 3:
+        # Driver 6.x path: [node_dict, rel_type, node_dict, ...]
+        # Only treat as path if it contains at least one dict (node).
+        # Plain lists like collect(['a', 'b', 'c']) must be returned as-is.
+        has_dict = any(isinstance(item, dict) for item in value)
+        if not has_dict:
+            return [_convert_neo4j_value(v) for v in value]
+        nodes = []
+        relationships = []
+        i = 0
+        while i < len(value):
+            item = value[i]
+            if isinstance(item, dict):
+                nodes.append(item)
+            elif isinstance(item, str) and i + 1 < len(value) and isinstance(value[i + 1], dict):
+                # This is a relationship type string followed by a node
+                if i > 0 and isinstance(value[i - 1], dict):
+                    relationships.append({"type": item})
+            i += 1
+        return {
+            "nodes": nodes,
+            "relationships": relationships,
+            "length": len(nodes) - 1 if nodes else 0,
+        }
+
     if isinstance(value, (list, tuple)):
         return [_convert_neo4j_value(v) for v in value]
+
     return value
 
 
