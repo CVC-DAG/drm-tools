@@ -7,31 +7,40 @@ Each dataset notebook shows how to load the same data into both
 ``NetworkXGraph`` and ``Neo4jGraph``. From every notebook page you can also
 open the notebook in Google Colab, Kaggle, or a local Jupyter server.
 
-Introduction
-------------
+Getting Started
+---------------
 
 Start here for a minimal end-to-end graph workflow:
 
 .. toctree::
    :maxdepth: 1
 
-   notebooks/intro/intro_basics
-   notebooks/intro/querying_and_filtering
+   notebooks/getting_started/intro_basics
+   notebooks/getting_started/querying_and_filtering
 
-Interactive Demos
------------------
+Demos
+-----
 
-Hands-on explorations with interactive widgets and advanced features:
+Step-by-step demonstrations covering core features:
 
 .. toctree::
    :maxdepth: 1
 
-   notebooks/interactive/weaknodes_interactive
-   notebooks/interactive/vector_search
-   notebooks/interactive/delete_strategies
-   notebooks/interactive/propagation_demo
-   notebooks/interactive/ric_o_demo
-   notebooks/interactive/ric_o_networkx_demo
+   notebooks/demos/delete_strategies
+   notebooks/demos/propagation_demo
+   notebooks/demos/ric_o_demo
+   notebooks/demos/ric_o_networkx_demo
+   notebooks/demos/vector_search
+
+Interactive
+-----------
+
+Hands-on explorations with Jupyter widgets:
+
+.. toctree::
+   :maxdepth: 1
+
+   notebooks/interactive/weaknodes
 
 Dataset Examples
 ----------------
