@@ -1,6 +1,6 @@
 """Semantic entity definitions for the DRM graph model.
 
-rThis module defines domain-specific node types such as ``Individu``, ``Lloc``
+This module defines domain-specific node types such as ``Individu``, ``Lloc``
 and ``DocumentCultural``. These classes build on :mod:`drm.base` to provide
 validation, default labels, and automatic relationship materialisation.
 
