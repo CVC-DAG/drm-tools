@@ -6,7 +6,8 @@ import hashlib
 import os
 import pickle
 import tempfile
-from typing import Any, Dict, List, Optional, Set, Tuple, Union
+import threading
+from typing import Any, Callable, Dict, List, Optional, Set, Tuple, Union
 
 import numpy as np
 import networkx as nx
@@ -45,6 +46,9 @@ class NetworkXGraph(GraphStore):
         self._load_state()
         # Internal tracking: node_id -> pk dict (for get_node_pks)
         self._node_pks: Dict[int, Dict[str, Any]] = {}
+        # Propagation initialization tracking
+        self._propagation_initialized: bool = False
+        self._propagation_lock: threading.Lock = threading.Lock()
 
     # ------------------------------------------------------------------
     # Public API: CRUD operations
@@ -75,16 +79,13 @@ class NetworkXGraph(GraphStore):
         if node._primary_key is not None:
             self._node_pks[node_id] = dict(node._primary_key)
 
-        # If weak, create the parent relation
+        # If weak, create the parent relation with _propagate=True
         if node["is_weak"] and node["parent"] is not None:
             parent_id = node["parent"].neo4j_id
             self._graph.add_edge(parent_id, node_id, key=node["parent_relation"], rel_type=node["parent_relation"])
-            self._edge_attrs[(parent_id, node_id, node["parent_relation"])] = {}
+            self._edge_attrs[(parent_id, node_id, node["parent_relation"])] = {"_propagate": True}
             # Register parent-child edge in FK index (like Neo4jGraph)
             self._add_to_fk_index(parent_id, node_id, node["parent_relation"])
-            # Propagate _propagate flag if set on the node
-            if getattr(node, "_propagate", False):
-                self._edge_attrs[(parent_id, node_id, node["parent_relation"])]["_propagate"] = True
 
         # Handle dependencies: create Valor nodes and HAS_* edges
         deps = getattr(node, "_dependencies", None)
@@ -790,6 +791,158 @@ class NetworkXGraph(GraphStore):
         )
 
     # ------------------------------------------------------------------
+    # Transactional group creation
+    # ------------------------------------------------------------------
+
+    def create_group(
+        self,
+        strong_node: Node,
+        weak_nodes: Optional[List[Node]] = None,
+        weak_relations: Optional[List[Relation]] = None,
+        **kwargs: Any,
+    ) -> int:
+        """Create a strong node together with its WeakNodes and WeakRelations
+        atomically.
+
+        Takes a snapshot of the graph state before any modifications.
+        If any insertion fails, the snapshot is restored so the graph
+        is left unchanged.
+
+        Args:
+            strong_node: The root (non-weak) node of the group.
+            weak_nodes: Optional list of WeakNode instances.
+            weak_relations: Optional list of WeakRelation instances.
+
+        Returns:
+            The internal id of the ``strong_node``.
+
+        Raises:
+            RuntimeError: If any part of the group creation fails.
+        """
+        # Snapshot current state for rollback on failure
+        snapshot = self._snapshot()
+
+        try:
+            # 1. Insert the strong node
+            strong_id = self.insertNode(strong_node, insert_parent=False, update=False, replace=False)
+
+            # 2. Insert weak nodes (they reference the strong node as parent)
+            if weak_nodes:
+                for wn in weak_nodes:
+                    self.insertNode(wn, insert_parent=True, update=False, replace=False)
+
+            # 3. Insert weak relations
+            if weak_relations:
+                for wr in weak_relations:
+                    self.insertRelation(wr, update=False, replace=False)
+
+            # 4. Mark the strong node as having its weak children initialized.
+            #    The edges already carry _propagate=True from insertNode, so
+            #    init_propagation() will detect the weak nodes without issue.
+            strong_attrs = self._node_attrs.get(strong_id, {})
+            strong_attrs["_weak_init_done"] = True
+            self._node_attrs[strong_id] = strong_attrs
+            self._graph.nodes[strong_id]["_weak_init_done"] = True
+
+            return strong_id
+
+        except Exception:
+            # Rollback: restore snapshot
+            self._restore(snapshot)
+            raise
+
+    def _get_group_nodes(self) -> Set[int]:
+        """Return the set of node ids that belong to the current group
+        (strong node + weak nodes). Used for targeted rollback."""
+        return set()
+
+    # ------------------------------------------------------------------
+    # Propagation property initialization
+    # ------------------------------------------------------------------
+
+    def init_propagation(
+        self,
+        background: bool = False,
+        progress_callback: Optional[Callable[[int, int], None]] = None,
+    ) -> bool:
+        """Scan the backend graph and initialize propagation properties.
+
+        See GraphStore.init_propagation for details.
+        """
+        with self._propagation_lock:
+            if self._propagation_initialized:
+                return False
+            self._propagation_initialized = True
+
+        def _run():
+            # Collect all node ids
+            all_ids = list(self._node_attrs.keys())
+            total = len(all_ids)
+
+            # First pass: identify weak nodes by scanning edges for _propagate
+            weak_node_ids: Set[int] = set()
+            node_parent_relation: Dict[int, str] = {}
+
+            for (u, v, key), edge_attrs in self._edge_attrs.items():
+                if edge_attrs.get("_propagate"):
+                    weak_node_ids.add(v)
+                    node_parent_relation[v] = key
+
+            # Second pass: set properties on nodes
+            for idx, nid in enumerate(all_ids):
+                attrs = self._node_attrs.get(nid, {})
+
+                # Skip strong nodes whose weak children are already initialized.
+                # _weak_init_done=True means create_group() created this node
+                # together with its WeakNodes (edges carry _propagate=True).
+                if attrs.get("_weak_init_done"):
+                    continue
+
+                # Mark weak nodes
+                if nid in weak_node_ids:
+                    if "is_weak" not in attrs:
+                        attrs["is_weak"] = True
+                        self._node_attrs[nid] = attrs
+                        self._graph.nodes[nid]["is_weak"] = True
+
+                    # Also set _propagate flag on the node
+                    if "_propagate" not in attrs:
+                        attrs["_propagate"] = True
+                        self._node_attrs[nid] = attrs
+                        self._graph.nodes[nid]["_propagate"] = True
+
+                # Set parent_relation on weak nodes
+                if nid in node_parent_relation and "parent_relation" not in attrs:
+                    attrs["parent_relation"] = node_parent_relation[nid]
+                    self._node_attrs[nid] = attrs
+                    self._graph.nodes[nid]["parent_relation"] = node_parent_relation[nid]
+
+                # Check for dependency edges (HAS_*)
+                deps = {}
+                for (u2, v2, key2), edge_attrs2 in self._edge_attrs.items():
+                    if u2 == nid and key2.startswith("HAS_"):
+                        deps[key2[4:].lower()] = {
+                            "main_label": self._node_attrs.get(v2, {}).get("main_label", ""),
+                            "pk": self._node_attrs.get(v2, {}).get("pk", {}),
+                        }
+                if deps and "_dependencies" not in attrs:
+                    attrs["_dependencies"] = deps
+                    self._node_attrs[nid] = attrs
+                    self._graph.nodes[nid]["_dependencies"] = deps
+
+                # Progress callback
+                if progress_callback and (idx % 100 == 0 or idx == total - 1):
+                    progress_callback(idx + 1, total)
+
+        if background:
+            thread = threading.Thread(target=_run, daemon=True)
+            thread.start()
+            return True
+        else:
+            _run()
+            return True
+
+    # ------------------------------------------------------------------
     # Public API: lifecycle
     # ------------------------------------------------------------------
 
@@ -1118,6 +1271,43 @@ class NetworkXGraph(GraphStore):
         # Move old_id entries to new_id in FK index
         if old_id in self._fk_index:
             self._fk_index[new_id] = self._fk_index.pop(old_id)
+
+    # ------------------------------------------------------------------
+    # Protected helpers: snapshot / rollback for create_group
+    # ------------------------------------------------------------------
+
+    def _snapshot(self) -> Dict[str, Any]:
+        """Capture the current graph state for rollback on failure."""
+        import copy
+        return {
+            "graph_edges": list(self._graph.edges(data=True, keys=True)),
+            "graph_nodes": list(self._graph.nodes(data=True)),
+            "node_attrs": copy.deepcopy(self._node_attrs),
+            "edge_attrs": copy.deepcopy(self._edge_attrs),
+            "fk_index": copy.deepcopy(self._fk_index),
+            "pk_index": copy.deepcopy(self._pk_index),
+            "property_index": copy.deepcopy(self._property_index),
+            "node_pks": copy.deepcopy(self._node_pks),
+            "node_counter": self._node_counter,
+        }
+
+    def _restore(self, snap: Dict[str, Any]) -> None:
+        """Restore graph state from a snapshot (rollback)."""
+        import copy
+        import networkx as nx
+
+        self._graph = nx.MultiDiGraph()
+        for nid, data in snap["graph_nodes"]:
+            self._graph.add_node(nid, **data)
+        for u, v, key, data in snap["graph_edges"]:
+            self._graph.add_edge(u, v, key=key, **data)
+        self._node_attrs = snap["node_attrs"]
+        self._edge_attrs = snap["edge_attrs"]
+        self._fk_index = snap["fk_index"]
+        self._pk_index = snap["pk_index"]
+        self._property_index = snap["property_index"]
+        self._node_pks = snap["node_pks"]
+        self._node_counter = snap["node_counter"]
 
     # ------------------------------------------------------------------
     # Protected helpers: persistence

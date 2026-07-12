@@ -18,6 +18,18 @@ If on `main`, switch to `develop` first:
 git checkout develop
 ```
 
+### New Feature Branch Strategy
+
+When the user indicates they want to add a **new feature**, follow these steps:
+
+1. **Switch to `develop`** — ensure you're on the development branch.
+2. **Check for uncommitted changes** — run `git status`.
+   - If there are **uncommitted changes** on `develop` that could interfere with the new feature, **propose creating a dedicated feature branch**: `feature/<name>` (e.g., `feature/ontology-import`). Ask the user for confirmation before creating it.
+   - If there are **no conflicting changes**, proceed directly on `develop`.
+3. **If no uncommitted changes exist** but the user has work-in-progress from previous sessions that is not yet committed, ask about it before proceeding.
+
+This ensures new features are developed in isolation when there are active changes on `develop` that might conflict.
+
 ## Development Workflow
 
 ### Test-Driven Development (TDD)

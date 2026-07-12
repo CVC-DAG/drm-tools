@@ -323,6 +323,79 @@ class GraphStore(ABC):
     # Schema introspection
     # ------------------------------------------------------------------
 
+    # ------------------------------------------------------------------
+    # Transactional group creation
+    # ------------------------------------------------------------------
+
+    def create_group(
+        self,
+        strong_node: Node,
+        weak_nodes: Optional[List[Node]] = None,
+        weak_relations: Optional[List[Relation]] = None,
+        **kwargs: Any,
+    ) -> int:
+        """Create a strong node together with its WeakNodes and WeakRelations
+        atomically.
+
+        All nodes and relations are inserted in a single isolated
+        transaction.  If any step fails the entire group is rolled back
+        so the graph is never left in a partially-created state.
+
+        Args:
+            strong_node: The root (non-weak) node of the group.
+            weak_nodes: Optional list of WeakNode instances belonging to
+                this group.
+            weak_relations: Optional list of WeakRelation instances that
+                connect the strong node (or other nodes) to the WeakNodes.
+
+        Returns:
+            The internal id of the ``strong_node``.
+
+        Raises:
+            RuntimeError: If any part of the group creation fails —
+                the transaction is rolled back automatically.
+        """
+        raise NotImplementedError(
+            f"create_group is not supported by {self.__class__.__name__}."
+        )
+
+    # ------------------------------------------------------------------
+    # Propagation property initialization
+    # ------------------------------------------------------------------
+
+    def init_propagation(
+        self,
+        background: bool = False,
+        progress_callback: Optional[callable] = None,
+    ) -> bool:
+        """Scan the backend graph and initialize propagation properties
+        on nodes and edges that are missing them.
+
+        This method inspects every node and edge, determines whether it
+        participates in a WeakNode / WeakRelation hierarchy, and sets
+        the corresponding ``_propagate``, ``is_weak``, ``parent_relation``,
+        and ``_dependencies`` properties.
+
+        **Lazy + background approach**: the first call runs synchronously
+        and marks the graph as initialized.  Subsequent calls return
+        ``False`` immediately.  For large graphs set ``background=True``
+        to run the scan in a background thread (the method still returns
+        ``True`` once initialization completes).
+
+        Args:
+            background: If True, run the scan in a background thread.
+                The method returns immediately after starting the thread.
+            progress_callback: Optional callable ``(processed, total)``
+                called periodically during the scan.
+
+        Returns:
+            ``True`` if initialization was performed (or is running in
+            the background), ``False`` if already initialized.
+        """
+        raise NotImplementedError(
+            f"init_propagation is not supported by {self.__class__.__name__}."
+        )
+
     @abstractmethod
     def schema_yaml(self, db_name: str) -> str:
         """Introspect the database and return a YAML schema description.

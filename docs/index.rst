@@ -35,6 +35,15 @@ Features
   search with intersection/union, and debug snapshots.
 - **Vector search (NetworkX only)**: HNSW-based ANN indexing on node
   properties with ``cosine``, ``l2``, and ``ip`` distance spaces.
+- **Propagation properties**: Every node and edge can carry ``_propagate``,
+  ``is_weak``, ``parent_relation``, and ``_dependencies`` flags that enable
+  cascade delete and hierarchical traversal.
+- **Transactional group creation**: ``create_group()`` creates a strong node
+  together with its WeakNodes and WeakRelations in a single isolated
+  transaction. On failure the entire group is rolled back.
+- **Lazy background initialization**: ``init_propagation()`` scans the
+  backend graph, detects WeakNodes from edge structure, and initializes
+  propagation properties. Supports background mode and progress callbacks.
 
 Primary Key
 -----------
@@ -125,6 +134,168 @@ Example (``NetworkXGraph``):
     results = graph.query_vector_index("embedding", [1.0, 0.0, 0.0], top_k=2)
     print(results)  # [(node_id, distance), ...]
     graph.close()
+
+Propagation Properties
+----------------------
+
+Every node and edge in the graph can carry propagation-related properties.
+These properties come in two families: **structural** (describing the
+hierarchy) and **operational** (tracking initialization state).
+
+**Structural properties** — describe the parent-child relationship:
+
+- ``_propagate`` (bool): marks **edges** that trigger cascade delete when the
+  parent node is removed. Set automatically on WeakNode parent-child edges.
+- ``is_weak`` (bool): marks **child nodes** (WeakNodes) that are linked to
+  their parent by a ``_propagate`` edge. Use this to find all nodes that
+  will be cascade-deleted when their parent is removed.
+
+**Operational properties** — track initialization state:
+
+- ``parent_relation`` (str): stores the edge type linking a parent to its
+  WeakNode child (e.g. ``"HAS_SECTION"``, ``"HAS_PAGE"``).
+- ``_dependencies`` (dict): tracks auto-inserted ``Valor`` nodes for string
+  properties.
+- ``_weak_init_done`` (bool): tracks whether a **strong node** (parent) has
+  been processed by ``init_propagation()``. Set automatically by
+  ``create_group()`` because the edges already carry ``_propagate=True``.
+
+Example:
+
+.. code-block:: python
+
+    from drm import Neo4jGraph, Node, WeakNode
+
+    graph = Neo4jGraph(
+        url="bolt://localhost:7687",
+        user="neo4j",
+        password="secret",
+        database="mydb",
+    )
+
+    doc = Node(pk={"doc_id": "DOC-1"}, main_label="Document")
+    graph.insertNode(doc)
+
+    section = WeakNode(
+        parent=doc,
+        parent_relation="HAS_SECTION",
+        pk={"section": "intro"},
+        main_label="Section",
+    )
+    graph.insertNode(section, insert_parent=True)
+
+    # The edge doc → section carries _propagate=True
+    # The section node carries is_weak=True
+
+    # After init_propagation():
+    #   section.is_weak = True              (structural: it's a WeakNode)
+    #   section._propagate = True           (structural: cascade-delete enabled)
+    #   section.parent_relation = "HAS_SECTION" (operational: edge type)
+    #   doc._weak_init_done = True          (operational: parent initialized)
+
+**Key distinction** — ``is_weak`` vs ``_weak_init_done``:
+
+- **``is_weak``** lives on the **child node** and describes its role in the
+  hierarchy. It is set by ``init_propagation()`` when it detects a node
+  connected via a ``_propagate`` edge.
+- **``_weak_init_done``** lives on the **parent node** and tracks whether
+  that parent's WeakNodes have been processed. It is set automatically by
+  ``create_group()`` because the group is created with edges that already
+  carry ``_propagate=True``.
+
+.. code-block:: python
+
+    # After create_group(doc, [section, page]):
+    doc._weak_init_done = True   # parent: "my children are initialized"
+    section.is_weak = True       # child: "I am a WeakNode"
+    page.is_weak = True          # child: "I am a WeakNode"
+
+    # After init_propagation() on a pre-existing graph:
+    section.is_weak = True       # child: "I was detected as a WeakNode"
+    doc._weak_init_done = True   # parent: "I have been processed"
+
+Transactional Group Creation
+----------------------------
+
+``create_group()`` inserts a strong node together with its WeakNodes and
+WeakRelations in a single atomic transaction. On failure the entire group
+is rolled back so the graph is never left in a partially-created state.
+
+Example:
+
+.. code-block:: python
+
+    from drm import Neo4jGraph, Node, WeakNode
+
+    graph = Neo4jGraph(
+        url="bolt://localhost:7687",
+        user="neo4j",
+        password="secret",
+        database="mydb",
+    )
+
+    doc = Node(pk={"doc_id": "DOC-1"}, main_label="Document", title="My Document")
+    section = WeakNode(
+        parent=doc,
+        parent_relation="HAS_SECTION",
+        pk={"section": "intro"},
+        main_label="Section",
+        title="Introduction",
+    )
+    page = WeakNode(
+        parent=section,
+        parent_relation="HAS_PAGE",
+        pk={"page": 1},
+        main_label="Page",
+        content="Welcome to the document.",
+    )
+
+    # Atomic creation — all-or-nothing
+    doc_id = graph.create_group(
+        strong_node=doc,
+        weak_nodes=[section, page],
+    )
+    print(f"Created group with strong node id: {doc_id}")
+
+    # _weak_init_done is automatically set on the strong node
+    # because the edges already carry _propagate=True
+
+Lazy Background Initialization
+------------------------------
+
+``init_propagation()`` scans the backend graph and initializes propagation
+properties on nodes and edges that are missing them. It detects WeakNodes
+by looking for edges with ``_propagate=True`` and marks the child nodes
+accordingly.
+
+Example:
+
+.. code-block:: python
+
+    from drm import Neo4jGraph
+
+    graph = Neo4jGraph(
+        url="bolt://localhost:7687",
+        user="neo4j",
+        password="secret",
+        database="mydb",
+    )
+
+    # Synchronous — blocks until complete
+    result = graph.init_propagation()
+    print(f"Initialized: {result}")  # True on first call, False if already done
+
+    # Background mode — returns immediately, runs in daemon thread
+    graph.init_propagation(background=True)
+
+    # With progress callback
+    def progress(processed, total):
+        print(f"  {processed}/{total} nodes processed")
+
+    graph.init_propagation(progress_callback=progress)
+
+    # Idempotent — second call returns False immediately
+    graph.init_propagation()  # Returns False
 
 Installation
 ------------

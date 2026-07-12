@@ -29,6 +29,7 @@ Hands-on explorations with interactive widgets and advanced features:
    notebooks/interactive/weaknodes_interactive
    notebooks/interactive/vector_search
    notebooks/interactive/delete_strategies
+   notebooks/interactive/propagation_demo
 
 Dataset Examples
 ----------------

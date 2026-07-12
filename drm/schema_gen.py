@@ -141,8 +141,9 @@ def generate_classes(yaml_source: str) -> str:
     for rel_name in sorted(wrs):
         info = wrs[rel_name]
         class_name = info.get("class_name", rel_name)
+        propagate = info.get("propagate", True)
         lines.append(_generate_weakrelation_class(
-            class_name, rel_name,
+            class_name, rel_name, propagate,
         ))
 
     return "\n".join(lines) + "\n"
@@ -290,11 +291,22 @@ def _generate_relation_class(
 def _generate_weakrelation_class(
     class_name: str,
     rel_type: str,
+    propagate: bool = True,
 ) -> str:
-    """Generate a WeakRelation subclass."""
+    """Generate a WeakRelation subclass.
+
+    Args:
+        class_name: The name of the class to generate.
+        rel_type: The relation type (e.g. ``"HAS_PAGE"``).
+        propagate: Whether the relation carries the ``_propagate=TRUE``
+            flag for cascade delete (default ``True``).
+    """
     lines: List[str] = []
     lines.append(f"class {class_name}(WeakRelation):")
-    lines.append(f'    """Auto-generated weak relation class."""')
+    lines.append(f'    """Auto-generated weak relation class.')
+    lines.append(f'')
+    lines.append(f'    Propagate: {propagate}.')
+    lines.append(f'    """')
     lines.append("")
     lines.append(f"    def __init__(self, src: Node, dst: Node, **kwargs: Any) -> None:")
     lines.append(f'        """Initialize a {class_name} weak relation.')
@@ -302,10 +314,13 @@ def _generate_weakrelation_class(
     lines.append(f"        Args:")
     lines.append(f"            src: Source (parent) node.")
     lines.append(f"            dst: Destination (child) node.")
+    lines.append(f"            propagate: Override the default propagation flag.")
     lines.append(f"            **kwargs: Edge properties.")
     lines.append(f"        \"\"\"")
 
     init_kwargs = [f"src=src", f"dst=dst", f'rel_type="{rel_type}"']
+    if propagate:
+        init_kwargs.append(f"propagate={propagate}")
     lines.append("        super().__init__(" + ", ".join(init_kwargs) + ", **kwargs)")
 
     return "\n".join(lines)

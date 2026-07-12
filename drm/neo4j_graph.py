@@ -7,8 +7,9 @@ with FK validation, cascade delete, and WeakNode parent propagation.
 from neo4j import GraphDatabase
 from neo4j.exceptions import ConstraintError, TransactionError
 from . import Node, Relation, WeakRelation
-from typing import Any, Dict, List, Optional, Set, Tuple, Union
+from typing import Any, Callable, Dict, List, Optional, Set, Tuple, Union
 from tqdm import tqdm
+import threading
 import warnings
 
 
@@ -61,6 +62,9 @@ class Neo4jGraph:
         # FK index: neo4j_id → set of (other_id, rel_type, direction)
         # direction: "out" = edge starts here, "in" = edge ends here
         self._fk_index: Dict[int, Set[Tuple[int, str, str]]] = {}
+        # Propagation initialization tracking
+        self._propagation_initialized: bool = False
+        self._propagation_lock: threading.Lock = threading.Lock()
 
     # ------------------------------------------------------------------
     # Public API: CRUD operations
@@ -577,6 +581,223 @@ class Neo4jGraph:
                 converted[key] = _convert_neo4j_value(value)
             records.append(converted)
         return records
+
+    # ------------------------------------------------------------------
+    # Transactional group creation
+    # ------------------------------------------------------------------
+
+    def create_group(
+        self,
+        strong_node: Node,
+        weak_nodes: Optional[List[Node]] = None,
+        weak_relations: Optional[List[Relation]] = None,
+        **kwargs: Any,
+    ) -> int:
+        """Create a strong node together with its WeakNodes and WeakRelations
+        atomically using a Neo4j transaction.
+
+        All operations run inside a single ``begin_transaction``.
+        If any step fails the transaction is rolled back.
+
+        Args:
+            strong_node: The root (non-weak) node of the group.
+            weak_nodes: Optional list of WeakNode instances.
+            weak_relations: Optional list of WeakRelation instances.
+
+        Returns:
+            The Neo4j internal id of the ``strong_node``.
+
+        Raises:
+            RuntimeError: If any part of the group creation fails.
+        """
+        session = self._session
+
+        def _create_group_tx(tx: Any) -> int:
+            # 1. Create the strong node
+            pk, attributes = strong_node.attributes
+            props = attributes if pk is None else {**pk, **attributes}
+            labels = "" if strong_node.labels == "" else ":" + ":".join(strong_node.labels)
+
+            result = tx.run(
+                "CREATE (a" + labels + ") SET a = $prop_dict RETURN id(a) AS id",
+                prop_dict=props,
+            ).value("id")[0]
+            strong_node["neo4j_id"] = result
+
+            # 2. Create weak nodes and their parent relations
+            if weak_nodes:
+                for wn in weak_nodes:
+                    wn_pk, wn_attrs = wn.attributes
+                    wn_props = wn_attrs if wn_pk is None else {**wn_pk, **wn_attrs}
+                    wn_labels = "" if wn.labels == "" else ":" + ":".join(wn.labels)
+
+                    wn_result = tx.run(
+                        "CREATE (a" + wn_labels + ") SET a = $prop_dict RETURN id(a) AS id",
+                        prop_dict=wn_props,
+                    ).value("id")[0]
+                    wn["neo4j_id"] = wn_result
+
+                    # Create the WeakRelation edge from strong_node to weak node
+                    rel_type = wn.get("parent_relation", "HAS_CHILD")
+                    tx.run(
+                        "MATCH (a) WHERE id(a) = $parent_id "
+                        "MATCH (b) WHERE id(b) = $child_id "
+                        "CREATE (a)-[r:" + rel_type + "]->(b) "
+                        "SET r._propagate = TRUE, r.parent_relation = $rel_type",
+                        parent_id=strong_node["neo4j_id"],
+                        child_id=wn_result,
+                        rel_type=rel_type,
+                    )
+
+            # 3. Create additional weak relations
+            if weak_relations:
+                for wr in weak_relations:
+                    wr_src = wr["src"]
+                    wr_dst = wr["dst"]
+                    wr_type = wr["type"]
+                    wr_attrs = wr["attributes"] or {}
+
+                    src_id = wr_src.get("neo4j_id")
+                    dst_id = wr_dst.get("neo4j_id")
+
+                    # Resolve by neo4j_id if available, otherwise by PK
+                    if src_id is not None and dst_id is not None:
+                        tx.run(
+                            "MATCH (a) WHERE id(a) = $src "
+                            "MATCH (b) WHERE id(b) = $dst "
+                            "CREATE (a)-[r:" + wr_type + "]->(b)",
+                            src=src_id,
+                            dst=dst_id,
+                        )
+                    else:
+                        # Fallback: resolve by PK
+                        src_pk = wr_src.get("pk", {})
+                        dst_pk = wr_dst.get("pk", {})
+                        src_label = wr_src.get("main_label", "Node")
+                        dst_label = wr_dst.get("main_label", "Node")
+                        query = (
+                            "MATCH (a:" + src_label + ") WHERE "
+                            + _generate_where_cond("a", src_pk)
+                            + " MATCH (b:" + dst_label + ") WHERE "
+                            + _generate_where_cond("b", dst_pk)
+                            + " CREATE (a)-[r:" + wr_type + "]->(b)"
+                        )
+                        if wr_attrs:
+                            query += " SET r = $prop_dict"
+                            tx.run(query, prop_dict=wr_attrs)
+                        else:
+                            tx.run(query)
+
+            # 4. Mark the strong node as having its weak children initialized.
+            tx.run(
+                "MATCH (a) WHERE id(a) = $nid SET a._weak_init_done = TRUE",
+                nid=result,
+            )
+
+            return result
+
+        try:
+            return session.write_transaction(_create_group_tx)
+        except ConstraintError as err:
+            raise RuntimeError("Duplicate key: " + err.message) from err
+        except TransactionError as err:
+            raise RuntimeError("Transaction failed: " + str(err)) from err
+
+    # ------------------------------------------------------------------
+    # Propagation property initialization
+    # ------------------------------------------------------------------
+
+    def init_propagation(
+        self,
+        background: bool = False,
+        progress_callback: Optional[Callable[[int, int], None]] = None,
+    ) -> bool:
+        """Scan the backend graph and initialize propagation properties.
+
+        See GraphStore.init_propagation for details.
+        """
+        with self._propagation_lock:
+            if self._propagation_initialized:
+                return False
+            self._propagation_initialized = True
+
+        def _run():
+            session = self._session
+
+            # Step 1: Find strong nodes whose weak children have NOT been
+            # initialized yet (_weak_init_done is NULL or FALSE).
+            # Skip those that already have it set — create_group() marks
+            # it automatically because the edges already carry _propagate=True.
+            result = session.run(
+                "MATCH (n) WHERE n._weak_init_done IS NULL OR n._weak_init_done = FALSE "
+                "RETURN id(n) AS nid"
+            )
+            pending_strong_ids = {record["nid"] for record in result}
+
+            # Step 2: Mark all nodes that are children of a _propagate edge,
+            # but only if their parent is in the pending set.
+            if pending_strong_ids:
+                placeholders = ", ".join(f"$p{i}" for i in range(len(pending_strong_ids)))
+                query = (
+                    "MATCH (a)-[r]->(b) WHERE r._propagate = TRUE "
+                    f"AND id(a) IN [{placeholders}] "
+                    "RETURN DISTINCT id(b) AS child_id, id(a) AS parent_id"
+                )
+                child_result = session.run(
+                    query,
+                    **{f"p{i}": nid for i, nid in enumerate(pending_strong_ids)},
+                )
+                child_ids = {record["child_id"] for record in child_result}
+
+                for nid in child_ids:
+                    session.run(
+                        "MATCH (n) WHERE id(n) = $nid SET n.is_weak = TRUE, n._propagate = TRUE",
+                        nid=nid,
+                    )
+
+                # Also set parent_relation on the edges
+                for record in child_result:
+                    parent_id = record["parent_id"]
+                    child_id = record["child_id"]
+                    session.run(
+                        "MATCH (a)-[r]->(b) "
+                        "WHERE id(a) = $parent AND id(b) = $child "
+                        "AND r._propagate = TRUE "
+                        "SET r.parent_relation = type(r)",
+                        parent=parent_id,
+                        child=child_id,
+                    )
+
+                # Mark the parent as initialized
+                for nid in pending_strong_ids:
+                    session.run(
+                        "MATCH (n) WHERE id(n) = $nid SET n._weak_init_done = TRUE",
+                        nid=nid,
+                    )
+            else:
+                child_ids = set()
+
+            # Step 3: Mark all edges from WeakNodes that have _propagate
+            # (for edges that weren't caught by the parent-child scan above)
+            session.run(
+                "MATCH (a)-[r]->(b) WHERE b.is_weak = TRUE AND r._propagate IS NULL "
+                "SET r._propagate = TRUE"
+            )
+
+            # Step 4: Count nodes for progress
+            count_result = session.run("MATCH (n) RETURN count(n) AS total")
+            total = count_result.single()["total"]
+
+            if progress_callback:
+                progress_callback(total, total)
+
+        if background:
+            thread = threading.Thread(target=_run, daemon=True)
+            thread.start()
+            return True
+        else:
+            _run()
+            return True
 
     # ------------------------------------------------------------------
     # Public API: lifecycle
