@@ -9,11 +9,15 @@ document representation with Neo4j and an in-memory NetworkX backend.
    :caption: Contents:
 
    tutorials/index
-   api/base
    api/neo4j_graph
    api/networkx_graph
    api/rdf_schema
    api/schema_gen
+
+.. toctree::
+   :hidden:
+
+   api/base
 
 Features
 --------
