@@ -10,100 +10,39 @@ open the notebook in Google Colab, Kaggle, or a local Jupyter server.
 Getting Started
 ---------------
 
-Start here for a minimal end-to-end graph workflow:
+Minimal end-to-end graph workflows:
 
-.. toctree::
-   :maxdepth: 1
-
-   notebooks/getting_started/intro_basics
-   notebooks/getting_started/querying_and_filtering
+notebooks/getting_started/intro_basics
+notebooks/getting_started/querying_and_filtering
 
 Demos
 -----
 
 Step-by-step demonstrations covering core features:
 
-.. toctree::
-   :maxdepth: 1
-
-   notebooks/demos/delete_strategies
-   notebooks/demos/propagation_demo
-   notebooks/demos/ric_o_demo
-   notebooks/demos/ric_o_networkx_demo
-   notebooks/demos/vector_search
+notebooks/demos/delete_strategies
+notebooks/demos/propagation_demo
+notebooks/demos/ric_o_demo
+notebooks/demos/ric_o_networkx_demo
+notebooks/demos/vector_search
 
 Interactive
 -----------
 
 Hands-on explorations with Jupyter widgets:
 
-.. toctree::
-   :maxdepth: 1
-
-   notebooks/interactive/weaknodes
+notebooks/interactive/weaknodes
 
 Dataset Examples
 ----------------
 
-The tutorials below are grouped by dataset so you can compare how the same
-graph loads in the in-memory backend and in Neo4j.
+Datasets loaded into both NetworkXGraph and Neo4jGraph:
 
-Karate Club
-~~~~~~~~~~~
-
-Classic social network benchmark from Zachary's karate club study. It has 34
-members and is commonly used for community detection examples.
-
-.. toctree::
-   :maxdepth: 1
-
-   notebooks/datasets/karate_club
-
-Bibliographic references
-~~~~~~~~~~~~~~~~~~~~~~~~
-
-OpenAlex-based example with paper, author, and citation relationships. If
-network access is limited, the notebook falls back to a bundled sample so the
-example still runs.
-
-.. toctree::
-   :maxdepth: 1
-
-   notebooks/datasets/bibliography_openalex
-
-Movies
-~~~~~~
-
-Small movie-domain graph with movies, genres, and ``IN_GENRE`` relations.
-The loader uses a public sample API and ships with an offline fallback.
-
-.. toctree::
-   :maxdepth: 1
-
-   notebooks/datasets/movies
-
-Game of Thrones
-~~~~~~~~~~~~~~~
-
-Character/house graph built from a public Thrones API. It also includes an
-offline fallback so the example remains usable without network access.
-
-.. toctree::
-   :maxdepth: 1
-
-   notebooks/datasets/game_of_thrones
-
-Generating classes from OWL/RDF
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-Generate Python entity classes from an RDF/OWL ontology (e.g. RiC-O).
-The pipeline downloads the ontology, converts it to DRM YAML, and generates
-``Node``, ``WeakNode``, ``Relation``, and ``WeakRelation`` subclasses.
-
-.. toctree::
-   :maxdepth: 1
-
-   notebooks/datasets/generating_classes_from_owl
+notebooks/datasets/karate_club
+notebooks/datasets/bibliography_openalex
+notebooks/datasets/movies
+notebooks/datasets/game_of_thrones
+notebooks/datasets/generating_classes_from_owl
 
 Notes
 -----

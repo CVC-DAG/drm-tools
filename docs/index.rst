@@ -5,10 +5,22 @@ Document Representation Model (DRM) is a Python library for graph-based
 document representation with Neo4j and an in-memory NetworkX backend.
 
 .. toctree::
-   :maxdepth: 2
+   :maxdepth: 1
    :caption: Contents:
 
-   tutorials/index
+   tutorials/notebooks/getting_started/intro_basics
+   tutorials/notebooks/getting_started/querying_and_filtering
+   tutorials/notebooks/demos/delete_strategies
+   tutorials/notebooks/demos/propagation_demo
+   tutorials/notebooks/demos/ric_o_demo
+   tutorials/notebooks/demos/ric_o_networkx_demo
+   tutorials/notebooks/demos/vector_search
+   tutorials/notebooks/interactive/weaknodes
+   tutorials/notebooks/datasets/karate_club
+   tutorials/notebooks/datasets/bibliography_openalex
+   tutorials/notebooks/datasets/movies
+   tutorials/notebooks/datasets/game_of_thrones
+   tutorials/notebooks/datasets/generating_classes_from_owl
    api/base
    api/neo4j_graph
    api/networkx_graph
