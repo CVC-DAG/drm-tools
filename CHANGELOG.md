@@ -5,6 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.1.0a2] - 2026-07-11
+
+### Changed
+
+- **PyPI metadata** — Cleaned up `setup.py`: proper author string, single author email, SPDX license identifier, `project_urls` for docs/source/tracker, `package_dir` fix, improved keywords, updated classifier to `Development Status :: 4 - Beta`, `OS Independent`
+
 ## [1.1.0a1] - 2026-07-11
 
 ### Added
