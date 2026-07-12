@@ -1045,6 +1045,18 @@ class Neo4jGraph:
                 id = self._create_node(self._tx, node)
                 _trasa += "(2) crea  el node "
 
+            # If _create_node returned None (ConstraintError caught silently),
+            # fall back to a lookup by label + PK to retrieve the existing
+            # node's Neo4j internal id.  Without this, weak nodes whose parent
+            # was just inserted would have neo4j_id=None and the subsequent
+            # insertRelation FK check would fail.
+            if id is None:
+                id = self._check_node(
+                    self._tx, node["main_label"], node["pk_attributes"]
+                )
+                if id is not None:
+                    _trasa += "(3) recupera el node existent "
+
             node["neo4j_id"] = id
 
             # Si el node tenia pk=None explícit, assignem l'ID generat com a PK
