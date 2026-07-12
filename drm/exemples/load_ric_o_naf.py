@@ -1,794 +1,630 @@
-"""Load RiC-O data from the National Archives of France example.
+"""Load RiC-O data from the National Archives of France into Neo4j.
 
-Downloads RDF/XML files from the ICA-EGAD/RiC-O repository
-and converts them into DRM graph entities (Thing, Agent,
-RecordResource, Instantiation, etc.).
+Downloads RDF/XML files from the National Archives of France RiC-O examples
+and imports them into Neo4j using Cypher MERGE commands.
+
+The loader:
+
+1. Downloads RDF files from GitHub (agents, recordResources, relations, vocabularies)
+2. Parses them with ``rdflib``
+3. Extracts nodes and relationships
+4. Uses Cypher MERGE to insert nodes and relationships into Neo4j
+5. Returns load statistics
 
 Usage::
 
-    from drm.exemples import load_ric_o_naf
-    load_ric_o_naf(graph, limit=5)
+    from drm.exemples.load_ric_o_naf import load_ric_o_naf
+
+    stats = load_ric_o_naf(graph, limit=50, max_agents=10, max_records=3)
+    print(f"Total entities: {stats['total']}")
 """
 
 from __future__ import annotations
 
-import xml.etree.ElementTree as ET
-from typing import Any, Dict, List, Optional, Tuple
+import os
+import urllib.request
+from typing import Any, Dict, List, Optional, Set, Tuple
 
-import requests
+try:
+    import rdflib
+    from rdflib import RDF, RDFS, OWL, Graph, URIRef, Literal, Namespace
+except ImportError:  # pragma: no cover
+    raise ImportError(
+        "rdflib is required for RiC-O loading. "
+        "Install it with: pip install rdflib"
+    )
 
-from drm.base import Node, WeakNode
+# ---------------------------------------------------------------------------
+# URLs for the National Archives of France RiC-O examples
+# ---------------------------------------------------------------------------
 
-# ── Namespace map ────────────────────────────────────────────────────
-_NS = {
-    "rdf": "http://www.w3.org/1999/02/22-rdf-syntax-ns#",
-    "rdfs": "http://www.w3.org/2000/01/rdf-schema#",
-    "rico": "https://www.ica.org/standards/RiC/ontology#",
-    "dc": "http://purl.org/dc/elements/1.1/",
-    "html": "http://www.w3.org/1999/xhtml#",
+BASE_URL = "https://raw.githubusercontent.com/ICA-EGAD/RiC-O/master/examples/examples_v1-1/NationalArchivesOfFrance/rdf-xml"
+
+AGENT_URL = f"{BASE_URL}/agents"
+RECORD_URL = f"{BASE_URL}/recordResources"
+RELATION_URL = f"{BASE_URL}/relations"
+VOCAB_URL = f"{BASE_URL}/vocabularies"
+
+# Namespace for the RiC-O ontology
+ONTO_NS = "https://www.ica.org/standards/RiC/ontology#"
+ONTO = Namespace(ONTO_NS)
+
+# ---------------------------------------------------------------------------
+# RDF → DRM label mapping
+# ---------------------------------------------------------------------------
+
+RDF_TO_LABEL: Dict[str, str] = {
+    str(ONTO.Record): "Thing",
+    str(ONTO.Agent): "Agent",
+    str(ONTO.CorporateBody): "CorporateBody",
+    str(ONTO.Individual): "Person",
+    str(ONTO.AgentName): "AgentName",
+    str(ONTO.RecordResource): "RecordResource",
+    str(ONTO.RecordSet): "RecordResource",
+    str(ONTO.Instantiation): "Instantiation",
+    str(ONTO.Activity): "Activity",
+    str(ONTO.ActivityType): "ActivityType",
+    str(ONTO.DocumentaryFormType): "DocumentaryFormType",
+    str(ONTO.Language): "Language",
+    str(ONTO.CorporateBodyType): "CorporateBodyType",
+    str(ONTO.Place): "Place",
+    str(ONTO.PlaceName): "PlaceName",
+    str(ONTO.PhysicalLocation): "PhysicalLocation",
+    str(ONTO.Identifier): "Identifier",
+    str(ONTO.Date): "Date",
+    str(ONTO.Title): "Title",
+    str(ONTO.Appellation): "Appellation",
+    str(ONTO.Mechanism): "Mechanism",
+    str(ONTO.RoleType): "RoleType",
+    str(ONTO.Rule): "Rule",
+    str(ONTO.Position): "Position",
+    str(ONTO.Group): "Group",
+    str(ONTO.Family): "Family",
+    str(ONTO.FamilyType): "FamilyType",
+    str(ONTO.Event): "Event",
+    str(ONTO.EventType): "EventType",
+    str(ONTO.RecordState): "RecordState",
+    str(ONTO.Extent): "Extent",
+    str(ONTO.ExtentType): "ExtentType",
+    str(ONTO.UnitOfMeasurement): "UnitOfMeasurement",
+    str(ONTO.DemographicGroup): "DemographicGroup",
+    str(ONTO.LegalStatus): "LegalStatus",
+    str(ONTO.Mandate): "Mandate",
+    str(ONTO.MandateType): "MandateType",
 }
-_R = "http://www.w3.org/1999/02/22-rdf-syntax-ns#"
-_RI = "https://www.ica.org/standards/RiC/ontology#"
 
-_RI_CO_BASE = (
-    "https://raw.githubusercontent.com/ICA-EGAD/RiC-O/"
-    "master/examples/examples_v1-1/NationalArchivesOfFrance/rdf-xml"
-)
+# ---------------------------------------------------------------------------
+# Helper: download a directory listing from GitHub
+# ---------------------------------------------------------------------------
 
 
-def _url(cat: str, fname: str) -> str:
-    """Return download URL for an RDF file."""
-    return f"{_RI_CO_BASE}/{cat}/{fname}"
+def _list_github_dir(url: str) -> List[str]:
+    """List files in a GitHub raw directory URL.
 
+    Args:
+        url: The GitHub raw URL of the directory.
 
-def _local(uri: str) -> str:
-    """Convert a RiC-O URI to a short local identifier.
-
-    Examples:
-        agent/000005 → agent-000005
-        recordResource/top-003500 → recordResource-top-003500
+    Returns:
+        List of filenames.
     """
+    req = urllib.request.Request(url, headers={"User-Agent": "drm-tools-rico/1.0"})
+    with urllib.request.urlopen(req, timeout=30) as resp:
+        data = resp.read().decode("utf-8")
+
+    return [line.strip() for line in data.splitlines() if line.strip().endswith(".rdf")]
+
+
+def _download_file(url: str) -> bytes:
+    """Download a file from a URL.
+
+    Args:
+        url: The URL to download.
+
+    Returns:
+        The file content as bytes.
+    """
+    req = urllib.request.Request(url, headers={"User-Agent": "drm-tools-rico/1.0"})
+    with urllib.request.urlopen(req, timeout=60) as resp:
+        return resp.read()
+
+
+# ---------------------------------------------------------------------------
+# RDF parsing
+# ---------------------------------------------------------------------------
+
+
+def _parse_rdf(data: bytes) -> Graph:
+    """Parse RDF/XML bytes into an rdflib Graph.
+
+    Args:
+        data: RDF/XML content as bytes.
+
+    Returns:
+        Parsed rdflib Graph.
+    """
+    g = Graph()
+    g.parse(data=data, format="xml")
+    return g
+
+
+def _extract_node_id(uri: URIRef, base_uri: str) -> str:
+    """Extract a stable node ID from a URI.
+
+    Converts ``https://rdf.archives-nationales.culture.gouv.fr/agent/000005``
+    to ``agent/000005``.
+
+    Args:
+        uri: The RDF URI.
+        base_uri: The xml:base of the document.
+
+    Returns:
+        A stable node ID string.
+    """
+    uri_str = str(uri)
+    if base_uri and uri_str.startswith(base_uri):
+        return uri_str[len(base_uri):]
+    # Fallback: extract last path segment
+    for sep in ("#", "/"):
+        if sep in uri_str:
+            return uri_str.rsplit(sep, 1)[-1]
+    return str(uri)
+
+
+def _local_name(uri: str) -> str:
+    """Extract a local name from a URI."""
     if "#" in uri:
-        uri = uri.split("#")[-1]
-    uri = uri.replace("/", "-")
-    return uri[:80] if len(uri) > 80 else uri
+        return uri.rsplit("#", 1)[-1]
+    if "/" in uri:
+        return uri.rsplit("/", 1)[-1]
+    if ":" in uri:
+        return uri.rsplit(":", 1)[-1]
+    return uri
 
 
-def _text(elem: ET.Element, tag: str) -> Optional[str]:
-    """Extract text from a rico:tag or rdfs:label element."""
-    c = elem.find(f"{{{_RI}}}{tag}")
-    if c is not None and c.text:
-        return c.text.strip()
-    if tag == "label":
-        c = elem.find("rdfs:label", _NS)
-        if c is not None and c.text:
-            return c.text.strip()
-    return None
+def _parse_rdf_file(
+    url: str,
+    category: str = "",
+) -> Tuple[Graph, str]:
+    """Parse a single RDF file and return the graph and its base URI.
 
+    Args:
+        url: The URL of the RDF file.
+        category: Category name for logging.
 
-def _uri(elem: ET.Element, tag: str) -> Optional[str]:
-    """Get rdf:resource attribute from a rico:tag element."""
-    c = elem.find(f"{{{_RI}}}{tag}")
-    if c is not None:
-        r = c.get(f"{{{_R}}}resource")
-        return _local(r) if r else None
-    return None
-
-
-def _uri_list(elem: ET.Element, tag: str) -> List[str]:
-    """Get all rdf:resource values from rico:tag elements."""
-    result = []
-    for c in elem.findall(f"{{{_RI}}}{tag}"):
-        r = c.get(f"{{{_R}}}resource")
-        if r:
-            result.append(_local(r))
-    return result
-
-
-def _short_type(uri: str) -> str:
-    """Extract short type name from a URI."""
-    if not uri:
-        return ""
-    return uri.split("#")[-1] if "#" in uri else uri.split("/")[-1]
-
-
-# ── Entity extraction ──────────────────────────────────────────────
-
-class _Entity:
-    """Internal representation of a parsed RDF entity."""
-
-    def __init__(self) -> None:
-        self.id: str = ""
-        self.type: str = ""
-        self.label: str = ""
-        self.props: Dict[str, Any] = {}
-        self.names: List[Dict[str, Any]] = []
-        self.children: List["_Entity"] = []
-        self.relations: List[Tuple[str, str]] = []  # (target_id, rel_type)
-
-
-def _parse_agent_name(elem: ET.Element) -> Optional[Dict[str, Any]]:
-    """Parse a hasOrHadAgentName element.
-
-    Structure: hasOrHadAgentName > AgentName > label/textualValue
+    Returns:
+        Tuple of (parsed graph, base URI).
     """
-    # Look for nested AgentName element
-    agent_name_elem = elem.find(f"{{{_RI}}}AgentName")
-    if agent_name_elem is not None:
-        # Check rdfs:label first
-        rlabel = agent_name_elem.find("rdfs:label", _NS)
-        if rlabel is not None and rlabel.text:
-            label = rlabel.text.strip()
-        else:
-            # Fall back to textualValue
-            tv = agent_name_elem.find(f"{{{_RI}}}textualValue")
-            if tv is not None and tv.text:
-                label = tv.text.strip()
-            else:
-                label = None
-    else:
-        # Direct label/textualValue on hasOrHadAgentName
-        rlabel = elem.find("rdfs:label", _NS)
-        if rlabel is not None and rlabel.text:
-            label = rlabel.text.strip()
-        else:
-            tv = elem.find(f"{{{_RI}}}textualValue")
-            if tv is not None and tv.text:
-                label = tv.text.strip()
-            else:
-                label = None
+    data = _download_file(url)
+    g = _parse_rdf(data)
 
-    if not label:
-        return None
+    # Try to find xml:base from the graph
+    base_uri = ""
+    for s, p, o in g:
+        if str(p) == "http://www.w3.org/XML/1998/namespace#base":
+            base_uri = str(o)
+            break
 
-    name: Dict[str, Any] = {"label": label}
-
-    # textualValue (either on AgentName or directly on hasOrHadAgentName)
-    textual = agent_name_elem if agent_name_elem is not None else elem
-    tv = textual.find(f"{{{_RI}}}textualValue")
-    if tv is not None and tv.text:
-        name["textualValue"] = tv.text.strip()
-
-    # usedFromDate / usedToDate
-    uf = textual.find(f"{{{_RI}}}usedFromDate")
-    if uf is not None and uf.text:
-        name["usedFromDate"] = uf.text.strip()
-    ut = textual.find(f"{{{_RI}}}usedToDate")
-    if ut is not None and ut.text:
-        name["usedToDate"] = ut.text.strip()
-
-    # type
-    nt = textual.find(f"{{{_RI}}}type")
-    if nt is not None and nt.text:
-        name["type"] = nt.text.strip()
-
-    return name
+    return g, base_uri
 
 
-def _parse_agent(elem: ET.Element, about: str) -> _Entity:
-    """Parse a rico:Agent element."""
-    ent = _Entity()
-    ent.id = _local(f"agent/{about}")
-
-    # Determine subtype
-    type_elem = elem.find(f"{{{_RI}}}type")
-    if type_elem is not None:
-        ent.type = _short_type(type_elem.get(f"{{{_R}}}resource", ""))
-    else:
-        ent.type = "Agent"
-    ent.label = ent.type
-
-    # Label
-    label = _text(elem, "label")
-    if label:
-        ent.props["label"] = label
-
-    # Agent names (inline)
-    for ne in elem.findall(f"{{{_RI}}}hasOrHadAgentName"):
-        parsed = _parse_agent_name(ne)
-        if parsed:
-            ent.names.append(parsed)
-
-    # Dates
-    bd = _text(elem, "beginningDate")
-    if bd:
-        ent.props["beginningDate"] = bd
-    ed = _text(elem, "endDate")
-    if ed:
-        ent.props["endDate"] = ed
-
-    # Subdivisions (organizational hierarchy)
-    for sub in _uri_list(elem, "hasDirectSubdivision"):
-        ent.relations.append((sub, "hasDirectSubdivision"))
-    for sub in _uri_list(elem, "hadSubdivision"):
-        ent.relations.append((sub, "hadSubdivision"))
-    for sub in _uri_list(elem, "hasDirectSubordinate"):
-        ent.relations.append((sub, "hasDirectSubordinate"))
-
-    # Described by Record
-    desc = _uri(elem, "isOrWasDescribedBy")
-    if desc:
-        ent.props["describedBy"] = desc
-
-    # Instantiations
-    for ie in elem.findall(f"{{{_RI}}}hasOrHadDigitalInstantiation"):
-        inst = _parse_instantiation(ie)
-        if inst:
-            ent.children.append(inst)
-
-    return ent
+# ---------------------------------------------------------------------------
+# Node extraction
+# ---------------------------------------------------------------------------
 
 
-def _parse_instantiation(elem: ET.Element) -> Optional[_Entity]:
-    """Parse a rico:Instantiation element."""
-    about = elem.get(f"{_R}about", "")
-    ent = _Entity()
-    ent.id = _local(f"instantiation/{about}") if about else f"instantiation-{id(elem)}"
-    ent.type = "Instantiation"
-    ent.label = "Instantiation"
+def _extract_nodes(
+    g: Graph,
+    base_uri: str,
+    category: str,
+) -> List[Dict[str, Any]]:
+    """Extract nodes from an RDF graph.
 
-    ident = elem.find(f"{{{_RI}}}identifier")
-    if ident is not None and ident.text:
-        ent.props["identifier"] = ident.text.strip()
-    title = _text(elem, "title")
-    if title:
-        ent.props["title"] = title
-    fmt = _text(elem, "format")
-    if fmt:
-        ent.props["format"] = fmt
-    loc = _uri(elem, "hasOrHadLocation")
-    if loc:
-        ent.relations.append((loc, "hasLocation"))
-    return ent
+    Args:
+        g: The parsed RDF graph.
+        base_uri: The base URI of the document.
+        category: Category name (agents, recordResources, etc.).
 
+    Returns:
+        List of node dicts with keys: id, labels, properties.
+    """
+    nodes: Dict[str, Dict[str, Any]] = {}
 
-def _parse_record_resource(elem: ET.Element, about: str) -> _Entity:
-    """Parse a rico:RecordResource element."""
-    ent = _Entity()
-    ent.id = _local(f"recordResource/{about}")
+    # First pass: find all subjects with known RDF types
+    for s, p, o in g:
+        if not isinstance(s, URIRef):
+            continue
+        if not isinstance(p, URIRef) or str(p) != str(RDF.type):
+            continue
+        if not isinstance(o, URIRef):
+            continue
 
-    # Determine subtype
-    type_elem = elem.find(f"{{{_RI}}}type")
-    if type_elem is not None:
-        ent.type = _short_type(type_elem.get(f"{{{_R}}}resource", ""))
-    else:
-        ent.type = "RecordResource"
-    ent.label = ent.type
+        obj_str = str(o)
+        label = RDF_TO_LABEL.get(obj_str)
+        if label is None:
+            continue
 
-    # Title
-    title = _text(elem, "title")
-    if title:
-        ent.props["title"] = title
-    rlabel = _text(elem, "label")
-    if rlabel:
-        ent.props["rdfsLabel"] = rlabel
+        node_id = _extract_node_id(s, base_uri)
+        if node_id in nodes:
+            if label not in nodes[node_id]["labels"]:
+                nodes[node_id]["labels"].append(label)
+            continue
 
-    # Dates
-    bd = _text(elem, "beginningDate")
-    if bd:
-        ent.props["beginningDate"] = bd
-    ed = _text(elem, "endDate")
-    if ed:
-        ent.props["endDate"] = ed
-    dt = _text(elem, "date")
-    if dt:
-        ent.props["date"] = dt
+        nodes[node_id] = {
+            "id": node_id,
+            "labels": [label],
+            "properties": {},
+        }
 
-    # Record set type
-    rst = _uri(elem, "hasRecordSetType")
-    if rst:
-        ent.props["recordSetType"] = _short_type(rst)
+    # Second pass: extract properties for each node
+    for node_id in list(nodes.keys()):
+        uri = URIRef(base_uri + node_id) if base_uri else URIRef(node_id)
 
-    # Provenance
-    for prov in _uri_list(elem, "hasOrganicProvenance"):
-        ent.relations.append((prov, "hasOrganicProvenance"))
+        for prop_uri, prop in g.predicate_objects(uri):
+            prop_str = str(prop_uri)
+            prop_name = _local_name(prop_str)
 
-    # Holder
-    holder = _uri(elem, "hasOrHadHolder")
-    if holder:
-        ent.relations.append((holder, "hasHolder"))
-
-    # Instantiations
-    for ie in elem.findall(f"{{{_RI}}}hasOrHadInstantiation"):
-        inst = _parse_instantiation(ie)
-        if inst:
-            ent.children.append(inst)
-
-    # Hierarchical containment
-    for inc in _uri_list(elem, "directlyIncludes"):
-        ent.relations.append((inc, "directlyIncludes"))
-    for inc in _uri_list(elem, "isDirectlyIncludedIn"):
-        ent.relations.append((inc, "isDirectlyIncludedIn"))
-    for part in _uri_list(elem, "hasDirectPart"):
-        ent.relations.append((part, "hasDirectPart"))
-
-    # Sequence ordering
-    for nxt in _uri_list(elem, "directlyFollowsInSequence"):
-        ent.relations.append((nxt, "directlyFollowsInSequence"))
-    for prev in _uri_list(elem, "directlyPrecedesInSequence"):
-        ent.relations.append((prev, "directlyPrecedesInSequence"))
-
-    return ent
-
-
-def _parse_record(elem: ET.Element) -> Optional[_Entity]:
-    """Parse a rico:Record element (metadata envelope)."""
-    about = elem.get(f"{{{_R}}}about", "")
-    if not about:
-        return None
-
-    rec = _Entity()
-    rec.id = _local(about)
-    rec.type = "Record"
-    rec.label = "Record"
-
-    # Title
-    title = _text(elem, "title")
-    if title:
-        rec.props["title"] = title
-
-    # Documentary form type
-    dft = _uri(elem, "hasDocumentaryFormType")
-    if dft:
-        rec.props["documentaryFormType"] = _short_type(dft)
-
-    # Dates
-    cd = _text(elem, "creationDate")
-    if cd:
-        rec.props["creationDate"] = cd
-    md = _text(elem, "lastModificationDate")
-    if md:
-        rec.props["lastModificationDate"] = md
-
-    # Describes agent or record resource
-    desc = _uri(elem, "describesOrDescribed")
-    if desc:
-        rec.relations.append((desc, "describes"))
-
-    # Has creator
-    creator = _uri(elem, "hasCreator")
-    if creator:
-        rec.relations.append((creator, "hasCreator"))
-
-    # Affected by (Activity)
-    for ae in elem.findall(f"{{{_RI}}}isOrWasAffectedBy"):
-        act = _Entity()
-        act.type = "Activity"
-        act.label = "Activity"
-        name_elem = ae.find(f"{{{_RI}}}name")
-        if name_elem is not None and name_elem.text:
-            act.props["name"] = name_elem.text.strip()
-        date_elem = ae.find(f"{{{_RI}}}date")
-        if date_elem is not None and date_elem.text:
-            act.props["date"] = date_elem.text.strip()
-        rec.children.append(act)
-
-    return rec
-
-
-# ── File parser ────────────────────────────────────────────────────
-
-def _parse_rdf_file(xml_text: str) -> List[Tuple[str, _Entity]]:
-    """Parse an RDF/XML file and return list of (type, Entity)."""
-    entities: List[Tuple[str, _Entity]] = []
-    try:
-        root = ET.fromstring(xml_text)
-    except ET.ParseError:
-        return entities
-
-    for child in root:
-        tag = child.tag.split("}")[-1] if "}" in child.tag else child.tag
-        about = child.get(f"{{{_R}}}about", "")
-
-        if tag == "Record" and about:
-            rec = _parse_record(child)
-            if rec:
-                entities.append(("Record", rec))
-
-        elif tag in ("Agent", "CorporateBody", "Individual", "Family"):
-            if not about:
+            # Skip RDF type and subClassOf
+            if prop_str == str(RDF.type):
                 continue
-            ent = _parse_agent(child, about)
-            entities.append((ent.type, ent))
-
-        elif tag == "RecordResource":
-            if not about:
+            if prop_str == str(RDFS.subClassOf):
                 continue
-            ent = _parse_record_resource(child, about)
-            entities.append((ent.type, ent))
 
-        elif tag == "Instantiation":
-            inst = _parse_instantiation(child)
-            if inst:
-                entities.append(("Instantiation", inst))
+            if isinstance(prop, Literal):
+                val = str(prop)
+                if prop.language:
+                    val = f"{val}@{prop.language}"
+                # Avoid overwriting with empty values
+                if prop_name not in nodes[node_id]["properties"] or not nodes[node_id]["properties"][prop_name]:
+                    nodes[node_id]["properties"][prop_name] = val
+            elif isinstance(prop, URIRef):
+                ref_id = _extract_node_id(prop, base_uri)
+                prop_key = f"_ref_{_local_name(prop_str)}"
+                if prop_key not in nodes[node_id]["properties"]:
+                    nodes[node_id]["properties"][prop_key] = []
+                if ref_id not in nodes[node_id]["properties"][prop_key]:
+                    nodes[node_id]["properties"][prop_key].append(ref_id)
 
-    return entities
+    return list(nodes.values())
 
 
-# ── Public loader ──────────────────────────────────────────────────
+# ---------------------------------------------------------------------------
+# Relationship extraction
+# ---------------------------------------------------------------------------
+
+# Map of RiC-O properties → (rel_type, src_label, dst_label)
+# Used to generate Cypher MERGE for relationships
+RELATION_MAP: Dict[str, Tuple[str, str, str]] = {
+    str(ONTO.hasOrganicProvenance): ("HAS_ORGANIC_PROVENANCE", "RecordResource", "Agent"),
+    str(ONTO.isOrWasOrganicProvenanceOf): ("IS_ORGANIC_PROVENANCE_OF", "Agent", "RecordResource"),
+    str(ONTO.directlyIncludes): ("DIRECTLY_INCLUDES", "RecordResource", "RecordResource"),
+    str(ONTO.isDirectlyIncludedIn): ("IS_DIRECTLY_INCLUDED_IN", "RecordResource", "RecordResource"),
+    str(ONTO.hasOrHadInstantiation): ("HAS_INSTANTIATION", "RecordResource", "Instantiation"),
+    str(ONTO.isOrWasInstantiationOf): ("IS_INSTANTIATION_OF", "Instantiation", "RecordResource"),
+    str(ONTO.hasOrHadHolder): ("HAS_HOLDER", "Instantiation", "Agent"),
+    str(ONTO.hasOrHadLocation): ("HAS_LOCATION", "Instantiation", "PhysicalLocation"),
+    str(ONTO.hasOrHadAgentName): ("HAS_AGENT_NAME", "Agent", "AgentName"),
+    str(ONTO.isOrWasAgentNameOf): ("IS_AGENT_NAME_OF", "AgentName", "Agent"),
+    str(ONTO.hasOrHadCreator): ("HAS_CREATOR", "Thing", "Agent"),
+    str(ONTO.hasCreator): ("HAS_CREATOR", "Thing", "Agent"),
+    str(ONTO.hasPublisher): ("HAS_PUBLISHER", "Thing", "Agent"),
+    str(ONTO.isOrWasDescribedBy): ("IS_DESCRIBED_BY", "Agent", "Thing"),
+    str(ONTO.describesOrDescribed): ("DESCRIBES_OR_DESCRIBED", "Thing", "Agent"),
+    str(ONTO.hasOrHadController): ("HAS_CONTROLLER", "Agent", "Agent"),
+    str(ONTO.hasOrHadEmployer): ("HAS_EMPLOYER", "Agent", "Agent"),
+    str(ONTO.hasOrHadMember): ("HAS_MEMBER", "Group", "Agent"),
+    str(ONTO.hasOrHadSpouse): ("HAS_SPOUSE", "Agent", "Agent"),
+    str(ONTO.hasOrHadStudent): ("HAS_STUDENT", "Agent", "Agent"),
+    str(ONTO.hasOrHadTeacher): ("HAS_TEACHER", "Agent", "Agent"),
+    str(ONTO.hasOrHadChild): ("HAS_CHILD", "Agent", "Agent"),
+    str(ONTO.hasOrHadParent): ("HAS_PARENT", "Agent", "Agent"),
+    str(ONTO.hasOrHadHierarchicalRelation): ("HAS_HIERARCHICAL_RELATION", "Agent", "Agent"),
+    str(ONTO.hasOrHadTemporalRelation): ("HAS_TEMPORAL_RELATION", "Agent", "Agent"),
+    str(ONTO.hasOrHadAgentToAgentRelation): ("HAS_AGENT_TO_AGENT_RELATION", "Agent", "Agent"),
+    str(ONTO.hasOrHadSubject): ("HAS_SUBJECT", "RecordResource", "Thing"),
+    str(ONTO.hasOrHadMainsubject): ("HAS_MAIN_SUBJECT", "RecordResource", "Thing"),
+    str(ONTO.hasOrHadLanguage): ("HAS_LANGUAGE", "Thing", "Language"),
+    str(ONTO.hasOrHadDocumentaryFormType): ("HAS_DOCUMENTARY_FORM_TYPE", "Thing", "DocumentaryFormType"),
+    str(ONTO.hasOrHadCorporateBodyType): ("HAS_CORPORATE_BODY_TYPE", "CorporateBody", "CorporateBodyType"),
+    str(ONTO.hasOrHadIdentifier): ("HAS_IDENTIFIER", "Agent", "Identifier"),
+    str(ONTO.hasOrHadBirthDate): ("HAS_BIRTH_DATE", "Agent", "Date"),
+    str(ONTO.hasOrHadDeathDate): ("HAS_DEATH_DATE", "Agent", "Date"),
+    str(ONTO.hasOrHadBirthPlace): ("HAS_BIRTH_PLACE", "Agent", "PhysicalLocation"),
+    str(ONTO.hasOrHadDeathPlace): ("HAS_DEATH_PLACE", "Agent", "PhysicalLocation"),
+    str(ONTO.hasOrHadOccupation): ("HAS_OCCUPATION", "Agent", "OccupationType"),
+    str(ONTO.hasOrHadPosition): ("HAS_POSITION", "Agent", "Position"),
+    str(ONTO.hasOrHadRole): ("HAS_ROLE", "Agent", "RoleType"),
+    str(ONTO.hasOrHadDate): ("HAS_DATE", "RecordResource", "Date"),
+    str(ONTO.hasOrHadTitle): ("HAS_TITLE", "RecordResource", "Title"),
+    str(ONTO.hasOrHadExtent): ("HAS_EXTENT", "RecordResource", "Extent"),
+    str(ONTO.hasOrHadContentType): ("HAS_CONTENT_TYPE", "RecordResource", "ContentType"),
+    str(ONTO.hasOrHadRecordState): ("HAS_RECORD_STATE", "RecordResource", "RecordState"),
+    str(ONTO.hasOrHadLegalStatus): ("HAS_LEGAL_STATUS", "RecordResource", "LegalStatus"),
+    str(ONTO.hasOrHadCreationDate): ("HAS_CREATION_DATE", "RecordResource", "Date"),
+    str(ONTO.hasOrHadPublicationDate): ("HAS_PUBLICATION_DATE", "RecordResource", "Date"),
+    str(ONTO.hasOrHadModificationDate): ("HAS_MODIFICATION_DATE", "RecordResource", "Date"),
+    str(ONTO.hasOrHadMigrationDate): ("HAS_MIGRATION_DATE", "RecordResource", "Date"),
+    str(ONTO.hasOrHadDerivationRelation): ("HAS_DERIVATION_RELATION", "Instantiation", "Instantiation"),
+    str(ONTO.hasOrHadAnalogueInstantiation): ("HAS_ANALOGUE_INSTANTIATION", "Instantiation", "Instantiation"),
+    str(ONTO.hasOrHadDigitalInstantiation): ("HAS_DIGITAL_INSTANTIATION", "Thing", "Instantiation"),
+    str(ONTO.hasOrHadDirectPart): ("HAS_DIRECT_PART", "RecordResource", "RecordResource"),
+    str(ONTO.isOrWasPartOf): ("IS_PART_OF", "RecordResource", "RecordResource"),
+    str(ONTO.directlyPrecedesInSequence): ("DIRECTLY_PRECEDES", "RecordResource", "RecordResource"),
+    str(ONTO.isOrWasAffectedBy): ("IS_AFFECTED_BY", "Thing", "Activity"),
+}
+
+
+def _extract_relationships(
+    g: Graph,
+    base_uri: str,
+    category: str,
+) -> List[Dict[str, Any]]:
+    """Extract relationships from an RDF graph.
+
+    Args:
+        g: The parsed RDF graph.
+        base_uri: The base URI of the document.
+        category: Category name.
+
+    Returns:
+        List of relationship dicts with keys: src_id, dst_id, type, src_label, dst_label.
+    """
+    rels: List[Dict[str, Any]] = []
+    seen: Set[Tuple[str, str, str]] = set()
+
+    for s, p, o in g:
+        if not isinstance(s, URIRef) or not isinstance(o, URIRef):
+            continue
+
+        prop_str = str(p)
+        mapping = RELATION_MAP.get(prop_str)
+        if mapping is None:
+            continue
+
+        rel_type, src_label, dst_label = mapping
+
+        src_id = _extract_node_id(s, base_uri)
+        dst_id = _extract_node_id(o, base_uri)
+
+        # Deduplicate
+        key = (src_id, dst_id, rel_type)
+        if key in seen:
+            continue
+        seen.add(key)
+
+        rels.append({
+            "src_id": src_id,
+            "dst_id": dst_id,
+            "type": rel_type,
+            "src_label": src_label,
+            "dst_label": dst_label,
+        })
+
+    return rels
+
+
+# ---------------------------------------------------------------------------
+# Neo4j import via Cypher MERGE
+# ---------------------------------------------------------------------------
+
+
+def _import_nodes_via_cypher(
+    graph: Any,
+    nodes: List[Dict[str, Any]],
+) -> int:
+    """Import nodes into Neo4j using Cypher MERGE commands.
+
+    For each node, generates a MERGE query that:
+    - Matches or creates the node by its unique ID
+    - Sets all properties
+
+    Args:
+        graph: Neo4jGraph instance.
+        nodes: List of node dicts.
+
+    Returns:
+        Number of nodes imported.
+    """
+    if not nodes:
+        return 0
+
+    count = 0
+    for node in nodes:
+        node_id = node["id"]
+        labels = ":".join(node["labels"])
+
+        # Build SET clause from properties
+        set_parts = []
+        for prop_name, prop_val in node["properties"].items():
+            if isinstance(prop_val, list):
+                # List values: set as array
+                items = ", ".join(f'"{v}"' for v in prop_val)
+                set_parts.append(f'n.`{prop_name}` = [{items}]')
+            else:
+                escaped = prop_val.replace('"', '\\"')
+                set_parts.append(f'n.`{prop_name}` = "{escaped}"')
+
+        if set_parts:
+            set_clause = " SET " + " ".join(set_parts)
+        else:
+            set_clause = ""
+
+        query = f"MERGE (n:{labels} {{id: \"{node_id}\"}}){set_clause}"
+
+        try:
+            graph.query(query)
+            count += 1
+        except Exception:
+            # Skip nodes that fail (e.g., constraint violations)
+            pass
+
+    return count
+
+
+def _import_rels_via_cypher(
+    graph: Any,
+    rels: List[Dict[str, Any]],
+) -> int:
+    """Import relationships into Neo4j using Cypher MATCH + CREATE commands.
+
+    For each relationship:
+    - MATCHes the source and target nodes by ID
+    - Creates the relationship with the specified type
+
+    Args:
+        graph: Neo4jGraph instance.
+        rels: List of relationship dicts.
+
+    Returns:
+        Number of relationships imported.
+    """
+    if not rels:
+        return 0
+
+    count = 0
+    for rel in rels:
+        src_id = rel["src_id"]
+        dst_id = rel["dst_id"]
+        rel_type = rel["type"]
+        src_label = rel.get("src_label", "Node")
+        dst_label = rel.get("dst_label", "Node")
+
+        query = (
+            f"MATCH (a:{src_label} {{id: \"{src_id}\"}}) "
+            f"MATCH (b:{dst_label} {{id: \"{dst_id}\"}}) "
+            f"MERGE (a)-[r:{rel_type}]->(b)"
+        )
+
+        try:
+            graph.query(query)
+            count += 1
+        except Exception:
+            # Skip relationships that fail (e.g., nodes not yet found)
+            pass
+
+    return count
+
+
+# ---------------------------------------------------------------------------
+# Main loader
+# ---------------------------------------------------------------------------
+
 
 def load_ric_o_naf(
     graph: Any,
-    limit: int = 10,
+    limit: int = 50,
     max_agents: int = 10,
     max_records: int = 3,
 ) -> Dict[str, int]:
-    """Load RiC-O data from the National Archives of France example.
+    """Load RiC-O data from the National Archives of France into Neo4j.
 
-    Downloads RDF/XML files from the ICA-EGAD/RiC-O GitHub repository
-    and converts them into DRM graph entities.
-
-    **Mapping:**
-
-    .. code-block:: text
-
-        rico:Record          → Thing (strong node)
-        rico:Agent           → Agent (WeakNode of Thing)
-        rico:CorporateBody   → CorporateBody (WeakNode of Agent)
-        rico:Individual      → Person (WeakNode of Agent)
-        rico:Family          → Family (WeakNode of Agent)
-        rico:AgentName       → AgentName (WeakNode of Agent/Person)
-        rico:RecordResource  → RecordResource (WeakNode of Thing)
-        rico:Instantiation   → Instantiation (WeakNode of Thing/RecordResource)
-        rico:Activity        → Activity (WeakNode)
-
-    **Hierarchy examples:**
-
-    .. code-block:: text
-
-        Record (Thing)
-        └── Agent (WeakNode)
-            ├── AgentName (WeakNode of Agent)
-            └── Instantiation (WeakNode of Agent)
-
-        Record (Thing)
-        └── RecordResource (WeakNode)
-            ├── Instantiation (WeakNode of RecordResource)
-            └── RecordResource (WeakNode, via directlyIncludes)
+    Downloads RDF/XML files from the National Archives of France RiC-O
+    examples and imports them into Neo4j using Cypher MERGE commands.
 
     Args:
-        graph: A GraphStore instance (Neo4jGraph or NetworkXGraph).
-        limit: Total number of RDF entities to load (soft limit).
-        max_agents: Maximum number of agent files to load.
-        max_records: Maximum number of record resource files to load.
+        graph: Neo4jGraph instance.
+        limit: Total entities to load (soft limit).
+        max_agents: Number of agent files to load.
+        max_records: Number of record resource files to load.
 
     Returns:
-        A dict with counts: ``{"agents": N, "records": N, "things": N, "total": N}``.
+        Dict with load statistics:
+            - agents: number of agent nodes
+            - records: number of record resource nodes
+            - things: number of thing nodes
+            - children: number of child entity nodes
+            - relationships: number of relationships
+            - total: total entities loaded
     """
-    from drm.rico_entities import (
-        Thing,
-        Agent,
-        CorporateBody,
-        Person,
-        Family,
-        AgentName,
-        RecordResource,
-        Instantiation,
-        Activity,
-    )
+    all_nodes: Dict[str, Dict[str, Any]] = {}
+    all_rels: List[Dict[str, Any]] = []
+    counters: Dict[str, int] = {
+        "agents": 0,
+        "records": 0,
+        "things": 0,
+        "children": 0,
+        "relationships": 0,
+        "total": 0,
+    }
 
-    stats: Dict[str, int] = {"agents": 0, "records": 0, "things": 0, "total": 0}
-    entity_map: Dict[str, Node] = {}
-    strong_nodes: List[Node] = []
-    weak_nodes: List[Node] = []
-    total_loaded = 0
-
-    def _make_thing(eid: str, name: str) -> Thing:
-        t = Thing(pk={"identifier": eid}, identifier=eid)
-        entity_map[eid] = t
-        strong_nodes.append(t)
-        stats["things"] += 1
-        return t
-
-    def _make_agent(props: dict, parent: Thing) -> Node:
-        label = props.get("label", props["id"])
-        agent_id = props["id"]
-        if agent_id not in entity_map:
-            node: Node
-            if props.get("_type") == "CorporateBody":
-                node = CorporateBody(
-                    parent=parent,
-                    pk={"agentId": agent_id},
-                    beginningDate=props.get("beginningDate"),
-                    endDate=props.get("endDate"),
-                )
-            elif props.get("_type") == "Individual":
-                node = Person(
-                    parent=parent,
-                    pk={"agentId": agent_id},
-                    beginningDate=props.get("beginningDate"),
-                    endDate=props.get("endDate"),
-                )
-            elif props.get("_type") == "Family":
-                node = Family(
-                    parent=parent,
-                    pk={"agentId": agent_id},
-                    beginningDate=props.get("beginningDate"),
-                    endDate=props.get("endDate"),
-                )
-            else:
-                node = Agent(
-                    parent=parent,
-                    pk={"agentId": agent_id},
-                    beginningDate=props.get("beginningDate"),
-                    endDate=props.get("endDate"),
-                )
-            entity_map[agent_id] = node
-            stats["agents"] += 1
-            weak_nodes.append(node)
-
-            # Attach agent names as WeakNodes
-            for i, name_data in enumerate(props.get("names", [])):
-                name_id = f"{agent_id}-name-{i}"
-                an = AgentName(
-                    parent=node,
-                    pk={"nameId": name_id},
-                    fullName=name_data.get("label", ""),
-                    usedFromDate=name_data.get("usedFromDate"),
-                    usedToDate=name_data.get("usedToDate"),
-                )
-                entity_map[name_id] = an
-                weak_nodes.append(an)
-
-            # Attach instantiations as WeakNodes
-            for i, inst_data in enumerate(props.get("instantiations", [])):
-                inst_id = inst_data.get("id", f"inst-{agent_id}-{i}")
-                inst_node = Instantiation(
-                    parent=node,
-                    pk={"instantiationId": inst_data.get("identifier") or inst_id},
-                    identifier=inst_data.get("identifier") or None,
-                    title=inst_data.get("title") or None,
-                    format=inst_data.get("format") or None,
-                )
-                entity_map[inst_id] = inst_node
-                weak_nodes.append(inst_node)
-
-        return entity_map[agent_id]
-
-    def _make_record_resource(props: dict, parent: Thing) -> Node:
-        rr_id = props["id"]
-        if rr_id not in entity_map:
-            rr = RecordResource(
-                parent=parent,
-                pk={"recordResourceId": rr_id},
-                title=props.get("title", ""),
-                beginningDate=props.get("beginningDate"),
-                endDate=props.get("endDate"),
-                date=props.get("date"),
-                recordSetType=props.get("recordSetType"),
-            )
-            entity_map[rr_id] = rr
-            stats["records"] += 1
-            weak_nodes.append(rr)
-
-            # Attach instantiations
-            for inst_data in props.get("instantiations", []):
-                inst_id = inst_data.get("id", f"inst-{rr_id}-{len(props.get('instantiations', []))}")
-                inst_node = Instantiation(
-                    parent=rr,
-                    pk={"instantiationId": inst_data.get("identifier") or inst_id},
-                    identifier=inst_data.get("identifier") or None,
-                    title=inst_data.get("title") or None,
-                    format=inst_data.get("format") or None,
-                )
-                entity_map[inst_id] = inst_node
-                weak_nodes.append(inst_node)
-
-        return entity_map[rr_id]
-
-    # ── 1. Load agent files ───────────────────────────────────────
     try:
-        resp = requests.get(
-            "https://api.github.com/repos/ICA-EGAD/RiC-O/contents/examples/examples_v1-1/NationalArchivesOfFrance/rdf-xml/agents",
-            timeout=30,
-        )
-        resp.raise_for_status()
-        agent_files = [f["name"] for f in resp.json() if f["name"].endswith(".rdf")]
-    except Exception:
-        agent_files = []
-    agent_files = agent_files[:max_agents]
+        # ── 1. Download and parse agent files ─────────────────────────
+        agent_files = _list_github_dir(AGENT_URL)[:max_agents]
+        print(f"  Downloading {len(agent_files)} agent files...")
+        for fname in agent_files:
+            url = f"{AGENT_URL}/{fname}"
+            g, base_uri = _parse_rdf_file(url, category="agents")
 
-    for fname in agent_files:
-        if total_loaded >= limit:
-            break
-        try:
-            resp = requests.get(_url("agents", fname), timeout=30)
-            resp.raise_for_status()
-        except Exception:
-            continue
+            nodes = _extract_nodes(g, base_uri, "agents")
+            rels = _extract_relationships(g, base_uri, "agents")
 
-        entities = _parse_rdf_file(resp.text)
-        for etype, ent in entities:
-            if total_loaded >= limit:
-                break
+            for node in nodes:
+                if node["id"] not in all_nodes:
+                    all_nodes[node["id"]] = node
+                    if "Agent" in node["labels"] or "CorporateBody" in node["labels"] or "Person" in node["labels"]:
+                        counters["agents"] += 1
+                    elif "Thing" in node["labels"]:
+                        counters["things"] += 1
+                    else:
+                        counters["children"] += 1
 
-            if etype == "Record":
-                # Create Thing from Record
-                rec_name = ent.props.get("title", ent.id)
-                thing = _make_thing(ent.id, rec_name)
-                total_loaded += 1
+            all_rels.extend(rels)
 
-            elif etype in ("Agent", "CorporateBody", "Individual", "Family"):
-                # Create Agent with parent Thing
-                # Find or create parent Thing
-                parent = None
-                # Try to find parent from describedBy relationship
-                described_by = ent.props.get("describedBy")
-                if described_by and described_by in entity_map:
-                    parent = entity_map[described_by]
-                if parent is None:
-                    # Create a standalone Thing
-                    agent_name = ent.props.get("label", ent.id)
-                    parent = _make_thing(f"thing-agent-{ent.id}", agent_name)
+        # ── 2. Download and parse record resource files ───────────────
+        record_files = _list_github_dir(RECORD_URL)[:max_records]
+        print(f"  Downloading {len(record_files)} record resource files...")
+        for fname in record_files:
+            url = f"{RECORD_URL}/{fname}"
+            g, base_uri = _parse_rdf_file(url, category="recordResources")
 
-                agent_node = _make_agent(
-                    {
-                        "id": ent.id,
-                        "label": ent.props.get("label", ent.id),
-                        "beginningDate": ent.props.get("beginningDate"),
-                        "endDate": ent.props.get("endDate"),
-                        "_type": ent.type,
-                        "names": ent.names,
-                        "instantiations": [
-                            {"id": c.id, "identifier": c.props.get("identifier", ""),
-                             "title": c.props.get("title", ""), "format": c.props.get("format", "")}
-                            for c in ent.children if c.type == "Instantiation"
-                        ],
-                    },
-                    parent,
-                )
-                total_loaded += 1
+            nodes = _extract_nodes(g, base_uri, "recordResources")
+            rels = _extract_relationships(g, base_uri, "recordResources")
 
-            elif etype == "RecordResource":
-                # Create RecordResource with parent Thing
-                parent = None
-                # Try to find parent from relations
-                for rel_target, rel_type in ent.relations:
-                    if rel_type == "isDirectlyIncludedIn" and rel_target in entity_map:
-                        parent = entity_map[rel_target]
-                        break
-                if parent is None:
-                    rr_name = ent.props.get("title", ent.id)
-                    parent = _make_thing(f"thing-rr-{ent.id}", rr_name)
+            for node in nodes:
+                if node["id"] not in all_nodes:
+                    all_nodes[node["id"]] = node
+                    if "RecordResource" in node["labels"] or "RecordSet" in node["labels"]:
+                        counters["records"] += 1
+                    elif "Thing" in node["labels"]:
+                        counters["things"] += 1
+                    elif "Instantiation" in node["labels"]:
+                        counters["children"] += 1
+                    else:
+                        counters["children"] += 1
 
-                rr_node = _make_record_resource(
-                    {
-                        "id": ent.id,
-                        "title": ent.props.get("title", ""),
-                        "beginningDate": ent.props.get("beginningDate"),
-                        "endDate": ent.props.get("endDate"),
-                        "date": ent.props.get("date"),
-                        "recordSetType": ent.props.get("recordSetType"),
-                        "instantiations": [
-                            {"id": c.id, "identifier": c.props.get("identifier", ""),
-                             "title": c.props.get("title", ""), "format": c.props.get("format", "")}
-                            for c in ent.children if c.type == "Instantiation"
-                        ],
-                    },
-                    parent,
-                )
-                total_loaded += 1
+            all_rels.extend(rels)
 
-            elif etype == "Instantiation":
-                # Find parent (RecordResource or Agent)
-                parent = None
-                for nid, nnode in entity_map.items():
-                    if nnode.main_label in ("RecordResource", "Agent", "CorporateBody", "Person", "Family"):
-                        parent = nnode
-                        break
-                if parent is None:
-                    parent = strong_nodes[-1] if strong_nodes else None
-                if parent is None:
-                    parent = _make_thing(f"thing-inst-{ent.id}", "Instantiation")
+        # ── 3. Download and parse relation files ──────────────────────
+        relation_files = _list_github_dir(RELATION_URL)
+        print(f"  Downloading {len(relation_files)} relation files...")
+        for fname in relation_files[:5]:  # Limit relation files
+            url = f"{RELATION_URL}/{fname}"
+            g, base_uri = _parse_rdf_file(url, category="relations")
 
-                inst_node = Instantiation(
-                    parent=parent,
-                    pk={"instantiationId": ent.props.get("identifier") or ent.id},
-                    identifier=ent.props.get("identifier") or None,
-                    title=ent.props.get("title") or None,
-                    format=ent.props.get("format") or None,
-                )
-                entity_map[ent.id] = inst_node
-                weak_nodes.append(inst_node)
-                total_loaded += 1
+            nodes = _extract_nodes(g, base_uri, "relations")
+            rels = _extract_relationships(g, base_uri, "relations")
 
-    # ── 2. Load record resource files ─────────────────────────────
-    try:
-        resp = requests.get(
-            "https://api.github.com/repos/ICA-EGAD/RiC-O/contents/examples/examples_v1-1/NationalArchivesOfFrance/rdf-xml/recordResources",
-            timeout=30,
-        )
-        resp.raise_for_status()
-        rr_files = [f["name"] for f in resp.json() if f["name"].endswith(".rdf")]
-    except Exception:
-        rr_files = []
-    rr_files = rr_files[:max_records]
+            for node in nodes:
+                if node["id"] not in all_nodes:
+                    all_nodes[node["id"]] = node
+                    counters["children"] += 1
 
-    for fname in rr_files:
-        if total_loaded >= limit:
-            break
-        try:
-            resp = requests.get(_url("recordResources", fname), timeout=30)
-            resp.raise_for_status()
-        except Exception:
-            continue
+            all_rels.extend(rels)
 
-        entities = _parse_rdf_file(resp.text)
-        for etype, ent in entities:
-            if total_loaded >= limit:
-                break
+        # ── 4. Import nodes into Neo4j ────────────────────────────────
+        print(f"  Importing {len(all_nodes)} nodes...")
+        node_count = _import_nodes_via_cypher(graph, list(all_nodes.values()))
+        print(f"  Imported {node_count} nodes.")
 
-            if etype == "Record":
-                rec_name = ent.props.get("title", ent.id)
-                thing = _make_thing(ent.id, rec_name)
-                total_loaded += 1
+        # ── 5. Import relationships into Neo4j ────────────────────────
+        print(f"  Importing {len(all_rels)} relationships...")
+        rel_count = _import_rels_via_cypher(graph, all_rels)
+        print(f"  Imported {rel_count} relationships.")
 
-            elif etype == "RecordResource":
-                parent = None
-                for rel_target, rel_type in ent.relations:
-                    if rel_type == "isDirectlyIncludedIn" and rel_target in entity_map:
-                        parent = entity_map[rel_target]
-                        break
-                if parent is None:
-                    rr_name = ent.props.get("title", ent.id)
-                    parent = _make_thing(f"thing-rr-{ent.id}", rr_name)
+        counters["relationships"] = rel_count
+        counters["total"] = node_count
 
-                rr_node = _make_record_resource(
-                    {
-                        "id": ent.id,
-                        "title": ent.props.get("title", ""),
-                        "beginningDate": ent.props.get("beginningDate"),
-                        "endDate": ent.props.get("endDate"),
-                        "date": ent.props.get("date"),
-                        "recordSetType": ent.props.get("recordSetType"),
-                        "instantiations": [
-                            {"id": c.id, "identifier": c.props.get("identifier", ""),
-                             "title": c.props.get("title", ""), "format": c.props.get("format", "")}
-                            for c in ent.children if c.type == "Instantiation"
-                        ],
-                    },
-                    parent,
-                )
-                total_loaded += 1
+    except Exception as exc:
+        print(f"  Error loading data: {exc}")
+        raise
 
-            elif etype == "Instantiation":
-                parent = None
-                for nid, nnode in entity_map.items():
-                    if nnode.main_label in ("RecordResource", "Agent", "CorporateBody", "Person", "Family"):
-                        parent = nnode
-                        break
-                if parent is None:
-                    parent = strong_nodes[-1] if strong_nodes else None
-                if parent is None:
-                    parent = _make_thing(f"thing-inst-{ent.id}", "Instantiation")
-
-                inst_id = ent.props.get("identifier", ent.id) or None
-                inst_node = Instantiation(
-                    parent=parent,
-                    pk={"instantiationId": inst_id},
-                    identifier=ent.props.get("identifier") or None,
-                    title=ent.props.get("title") or None,
-                )
-                entity_map[ent.id] = inst_node
-                weak_nodes.append(inst_node)
-                total_loaded += 1
-
-    # ── 3. Insert into graph ──────────────────────────────────────
-    # Insert strong nodes first
-    for node in strong_nodes:
-        graph.insertNode(node, replace=True)
-
-    # Insert weak nodes with parents
-    for node in weak_nodes:
-        if hasattr(node, "_parent") and node._parent is not None:
-            graph.insertNode(node, insert_parent=True)
-
-    # ── 4. Compute final stats from entity_map ────────────────────
-    agent_labels = {"Agent", "CorporateBody", "Person", "Family"}
-    stats["things"] = sum(1 for n in entity_map.values() if n.main_label == "Thing")
-    stats["agents"] = sum(1 for n in entity_map.values() if n.main_label in agent_labels)
-    stats["records"] = sum(1 for n in entity_map.values() if n.main_label == "RecordResource")
-    stats["children"] = sum(1 for n in entity_map.values() if n.main_label not in {"Thing", *agent_labels, "RecordResource"})
-    stats["total"] = stats["things"] + stats["agents"] + stats["records"] + stats["children"]
-
-    return stats
+    return counters
