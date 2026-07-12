@@ -403,6 +403,78 @@ class TestNetworkXGraph(unittest.TestCase):
         self.assertEqual(graph.checkNode(node), node.neo4j_id)
         graph.close()
 
+    # -- GET SUBDOCUMENTS --
+
+    @pytest.mark.integration
+    def test_contract_get_subdocuments_simple(self) -> None:
+        """get_subdocuments: un node fort amb un WeakNode fill."""
+        graph = self._make_graph()
+        parent = Node(pk={"id": 1}, main_label="Document")
+        child = WeakNode(parent=parent, pk={"section": "intro"}, main_label="Section")
+        graph.insertNode(parent, replace=True)
+        graph.insertNode(child, insert_parent=True)
+        result = graph.get_subdocuments(parent)
+        self.assertEqual(len(result), 1)
+        self.assertEqual(result[0]["label"], "Section")
+        self.assertEqual(result[0]["pk"]["section"], "intro")
+        graph.close()
+
+    @pytest.mark.integration
+    def test_contract_get_subdocuments_nested(self) -> None:
+        """get_subdocuments: cadena Document → Section → Page."""
+        graph = self._make_graph()
+        doc = Node(pk={"id": 1}, main_label="Document")
+        section = WeakNode(parent=doc, pk={"section": "intro"}, main_label="Section")
+        page = WeakNode(parent=section, pk={"page": 1}, main_label="Page")
+        graph.insertNode(doc, replace=True)
+        graph.insertNode(section, insert_parent=True)
+        graph.insertNode(page, insert_parent=True)
+        result = graph.get_subdocuments(doc)
+        labels = {r["label"] for r in result}
+        self.assertIn("Section", labels)
+        self.assertIn("Page", labels)
+        graph.close()
+
+    @pytest.mark.integration
+    def test_contract_get_subdocuments_empty(self) -> None:
+        """get_subdocuments: node sense WeakNodes retorna []."""
+        graph = self._make_graph()
+        node = Node(pk={"id": 1}, main_label="Document")
+        graph.insertNode(node, replace=True)
+        result = graph.get_subdocuments(node)
+        self.assertEqual(result, [])
+        graph.close()
+
+    @pytest.mark.integration
+    def test_contract_get_subdocuments_no_propagate(self) -> None:
+        """get_subdocuments: relacions sense _propagate no es segueixen."""
+        graph = self._make_graph()
+        parent = Node(pk={"id": 1}, main_label="Document")
+        child = Node(pk={"id": 2}, main_label="Section")  # no es WeakNode
+        graph.insertNode(parent, replace=True)
+        graph.insertNode(child, replace=True)
+        graph.insertRelation(Relation(parent, child, "HAS_SECTION"))
+        # L'aresta no té _propagate=True → no s'ha de seguir
+        result = graph.get_subdocuments(parent)
+        self.assertEqual(result, [])
+        graph.close()
+
+    @pytest.mark.integration
+    def test_contract_get_subdocuments_multiple_children(self) -> None:
+        """get_subdocuments: un pare amb múltiples fills."""
+        graph = self._make_graph()
+        parent = Node(pk={"id": 1}, main_label="Document")
+        child1 = WeakNode(parent=parent, pk={"section": "intro"}, main_label="Section")
+        child2 = WeakNode(parent=parent, pk={"section": "conclusion"}, main_label="Section")
+        graph.insertNode(parent, replace=True)
+        graph.insertNode(child1, insert_parent=True)
+        graph.insertNode(child2, insert_parent=True)
+        result = graph.get_subdocuments(parent)
+        self.assertEqual(len(result), 2)
+        sections = {r["pk"]["section"] for r in result}
+        self.assertEqual(sections, {"intro", "conclusion"})
+        graph.close()
+
 
 class TestNeo4jGraph(unittest.TestCase):
     """Contract tests for Neo4jGraph.
@@ -791,5 +863,77 @@ class TestNeo4jGraph(unittest.TestCase):
         self.assertIsNotNone(child_id)
         self.assertNotEqual(parent_id, child_id)
         self.assertEqual(len(graph.get_node_ids()), 2)
+        graph.close()
+
+    # -- GET SUBDOCUMENTS --
+
+    @pytest.mark.slow
+    def test_contract_get_subdocuments_simple(self) -> None:
+        """get_subdocuments: un node fort amb un WeakNode fill."""
+        graph = self._make_graph()
+        parent = Node(pk={"id": 1}, main_label="Document")
+        child = WeakNode(parent=parent, pk={"section": "intro"}, main_label="Section")
+        graph.insertNode(parent, replace=True)
+        graph.insertNode(child, insert_parent=True)
+        result = graph.get_subdocuments(parent)
+        self.assertEqual(len(result), 1)
+        self.assertEqual(result[0]["label"], "Section")
+        self.assertEqual(result[0]["pk"]["section"], "intro")
+        graph.close()
+
+    @pytest.mark.slow
+    def test_contract_get_subdocuments_nested(self) -> None:
+        """get_subdocuments: cadena Document → Section → Page."""
+        graph = self._make_graph()
+        doc = Node(pk={"id": 1}, main_label="Document")
+        section = WeakNode(parent=doc, pk={"section": "intro"}, main_label="Section")
+        page = WeakNode(parent=section, pk={"page": 1}, main_label="Page")
+        graph.insertNode(doc, replace=True)
+        graph.insertNode(section, insert_parent=True)
+        graph.insertNode(page, insert_parent=True)
+        result = graph.get_subdocuments(doc)
+        labels = {r["label"] for r in result}
+        self.assertIn("Section", labels)
+        self.assertIn("Page", labels)
+        graph.close()
+
+    @pytest.mark.slow
+    def test_contract_get_subdocuments_empty(self) -> None:
+        """get_subdocuments: node sense WeakNodes retorna []."""
+        graph = self._make_graph()
+        node = Node(pk={"id": 1}, main_label="Document")
+        graph.insertNode(node, replace=True)
+        result = graph.get_subdocuments(node)
+        self.assertEqual(result, [])
+        graph.close()
+
+    @pytest.mark.slow
+    def test_contract_get_subdocuments_no_propagate(self) -> None:
+        """get_subdocuments: relacions sense _propagate no es segueixen."""
+        graph = self._make_graph()
+        parent = Node(pk={"id": 1}, main_label="Document")
+        child = Node(pk={"id": 2}, main_label="Section")  # no es WeakNode
+        graph.insertNode(parent, replace=True)
+        graph.insertNode(child, replace=True)
+        graph.insertRelation(Relation(parent, child, "HAS_SECTION"))
+        # L'aresta no té _propagate=True → no s'ha de seguir
+        result = graph.get_subdocuments(parent)
+        self.assertEqual(result, [])
+        graph.close()
+
+    @pytest.mark.slow
+    def test_contract_get_subdocuments_multiple_children(self) -> None:
+        """get_subdocuments: un pare amb múltiples fills."""
+        graph = self._make_graph()
+        parent = Node(pk={"id": 1}, main_label="Document")
+        child1 = WeakNode(parent=parent, pk={"section": "intro"}, main_label="Section")
+        child2 = WeakNode(parent=parent, pk={"section": "conclusion"}, main_label="Section")
+        graph.insertNode(parent, replace=True)
+        graph.insertNode(child1, insert_parent=True)
+        graph.insertNode(child2, insert_parent=True)
+        result = graph.get_subdocuments(parent)
+        self.assertEqual(len(result), 2)
+        sections = {r["pk"]["section"] for r in result}
+        self.assertEqual(sections, {"intro", "conclusion"})
         graph.close()
 

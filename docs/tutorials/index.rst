@@ -30,6 +30,8 @@ Hands-on explorations with interactive widgets and advanced features:
    notebooks/interactive/vector_search
    notebooks/interactive/delete_strategies
    notebooks/interactive/propagation_demo
+   notebooks/interactive/ric_o_demo
+   notebooks/interactive/ric_o_networkx_demo
 
 Dataset Examples
 ----------------

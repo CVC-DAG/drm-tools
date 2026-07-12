@@ -12,6 +12,7 @@ from .networkx_karate import load_karate_club
 from .networkx_bibliografia import load_bibliografia_openalex
 from .neo4j_movies import load_movies_sample
 from .neo4j_got import load_got_characters
+from .load_ric_o_naf import load_ric_o_naf
 from .cli import main
 
 __all__ = [
@@ -19,6 +20,7 @@ __all__ = [
     "load_bibliografia_openalex",
     "load_movies_sample",
     "load_got_characters",
+    "load_ric_o_naf",
     "main",
 ]
 
