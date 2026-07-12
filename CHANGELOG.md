@@ -5,7 +5,7 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [1.1.0] - 2026-07-11
+## [1.1.0a1] - 2026-07-11
 
 ### Added
 
@@ -23,6 +23,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Test organization** — Three test levels with pytest markers: unit (43), integration (215), slow/Neo4j (44) = 302 total.
 - **Tutorial notebooks** — Complete set of Jupyter notebooks organized into `intro/`, `interactive/`, and `datasets/` subdirectories.
 - **API documentation** — Sphinx docs for `rdf_schema` and `schema_gen` modules.
+- **Transactional group creation** (`create_group()`) — Atomically creates a strong node with its WeakNodes and WeakRelations in an isolated transaction. NetworkX uses snapshot/restore rollback; Neo4j uses `session.write_transaction()`.
+- **Lazy background propagation initialization** (`init_propagation()`) — Scans the graph to initialize `is_weak`, `_propagate`, `parent_relation`, and `_dependencies` properties on existing nodes. Supports sync, background thread, and progress callback modes. Idempotent (returns False on second call).
+- **`_weak_init_done` tracking** — Hidden property on strong nodes to mark whether their WeakNodes have been initialized via `create_group()`. Prevents `init_propagation()` from reprocessing already-initialized groups.
+- **`propagate` from YAML** — `schema_gen.py` reads `propagate` flag from weak_relations YAML entries and passes it to WeakRelation constructors in generated code.
+- **Neo4j propagation demo** — `drm/exemples/demo_propagation.py` connects to Neo4j DEV, loads GOT characters, generates YAML + Python classes, initializes propagation, and runs sample queries.
+- **Interactive propagation demo notebook** — `docs/tutorials/notebooks/interactive/propagation_demo.ipynb` mirrors the Python demo as a Jupyter notebook.
 
 ### Changed
 
