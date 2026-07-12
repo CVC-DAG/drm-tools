@@ -10,20 +10,20 @@ They are skipped if the env vars are not set.
 DEFAULT DEV Environment (localhost):
     Host:     localhost (port 7687 by default for bolt)
     User:     neo4j
-    Password: neo4j2026
+    Password: default
     Database: neo4j
 
 Usage:
     # Create .env in the project root with DEV config:
     NEO4J_DEV_URL=bolt://localhost:7687
     NEO4J_DEV_USER=neo4j
-    NEO4J_DEV_PASSWORD=neo4j2026
+    NEO4J_DEV_PASSWORD=default
     NEO4J_DEV_DATABASE=neo4j
 
     # Or use plain config (less recommended):
     NEO4J_URL=bolt://localhost:7687
     NEO4J_USER=neo4j
-    NEO4J_PASSWORD=neo4j2026
+    NEO4J_PASSWORD=default
     NEO4J_DATABASE=neo4j
 
     # Or copy from .env.example and update if needed:
