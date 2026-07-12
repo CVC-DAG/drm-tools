@@ -5,6 +5,21 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.1.0] - 2026-07-13
+
+### Added
+
+- **NetworkX MERGE support** — Full MERGE clause in Cypher executor: node patterns `(n:Label {props})` and edge patterns `(a)-[r:REL]->(b)` with binding resolution from preceding MATCH clauses.
+- **NetworkX SET clause fix** — Now handles backtick-quoted properties (`n.\`prop\``) and space-separated multiple assignments.
+- **NetworkX MATCH binding fusion** — Multiple MATCH clauses correctly merge bindings via cross-product instead of replacing.
+- **RiC-O loader rewrite** — `load_ric_o_naf.py` uses Cypher MERGE instead of CSV import, with proper GitHub API directory listing and exponential backoff retries.
+- **Security** — Real Neo4j passwords removed from notebooks, `.env.example`, and test files.
+
+### Fixed
+
+- **Sphinx warnings** — Added `rdf_schema.rst` and `schema_gen.rst` to toctree; added `:no-index:` for duplicate `DocumentCultural.document_class`.
+- **NetworkX edge MERGE regex** — Fixed pattern to correctly match `(a)-[r:REL]->(b)` format.
+
 ## [1.1.0a3] - 2026-07-11
 
 ### Changed
