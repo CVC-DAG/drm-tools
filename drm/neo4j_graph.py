@@ -1126,17 +1126,13 @@ class Neo4jGraph:
                 id = self._create_node(self._tx, node)
                 _trasa += "(2) crea  el node "
 
-            # If _create_node returned None (ConstraintError caught silently),
-            # fall back to a lookup by label + PK to retrieve the existing
-            # node's Neo4j internal id.  Without this, weak nodes whose parent
-            # was just inserted would have neo4j_id=None and the subsequent
-            # insertRelation FK check would fail.
+            # If _create_node returned None (MERGE also failed), fall back
+            # to a plain lookup by label + PK.
             if id is None:
                 id = self._check_node(
                     self._tx, node["main_label"], node["pk_attributes"]
                 )
                 if id is not None:
-                    node["neo4j_id"] = id
                     _trasa += "(3) recupera el node existent "
 
             node["neo4j_id"] = id
@@ -1302,6 +1298,7 @@ class Neo4jGraph:
         props = attributes if pk is None else {**pk, **attributes}
 
         labels = "" if node.labels == "" else ":" + ":".join(node.labels)
+        main_label = "" if node.main_label == "" else ":" + node.main_label
 
         try:
             result = tx.run(
@@ -1310,9 +1307,35 @@ class Neo4jGraph:
             ).value("id")[0]
             return result
         except ConstraintError as err:
-            print("[ADGT Message]: " + err.message)
-            print("node already inserted")
-            return None
+            # CREATE failed (likely due to constraint on different keys).
+            # Fall back to MERGE to create or find the node.
+            print(f"[ADGT Message]: CREATE failed — falling back to MERGE")
+            print(f"  label: {node.main_label}")
+            print(f"  pk: {pk}")
+            merge_where = _generate_where_cond("a", pk, type="merge")
+            print(f"  merge_where: {merge_where}")
+            merge_query = (
+                "MERGE (a"
+                + main_label
+                + " { "
+                + merge_where
+                + " })"
+                + " ON CREATE SET a"
+                + labels
+                + ", a = $prop_dict"
+                + " ON MATCH SET a"
+                + labels
+                + ", a += $prop_dict"
+                + " RETURN id(a) AS id"
+            )
+            print(f"  merge_query: {merge_query}")
+            try:
+                result = tx.run(merge_query, prop_dict=props).value("id")[0]
+                print(f"  MERGE succeeded: {result}")
+                return result
+            except Exception as merge_err:
+                print(f"[ADGT Message]: MERGE also failed: {merge_err}")
+                return None
 
     @staticmethod
     def _update_node(tx: Any, node: Node) -> int:
