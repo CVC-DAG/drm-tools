@@ -6991,7 +6991,10 @@ class WorkrelationRole(Relation):
         """
         super().__init__(src=src, dst=dst, rel_type="workRelation_role", **kwargs)
 class HasAccumulationrelation(WeakRelation):
-    """Auto-generated weak relation class."""
+    """Auto-generated weak relation class.
+
+    Propagate: True.
+    """
 
     def __init__(self, src: Node, dst: Node, **kwargs: Any) -> None:
         """Initialize a HasAccumulationrelation weak relation.
@@ -6999,11 +7002,15 @@ class HasAccumulationrelation(WeakRelation):
         Args:
             src: Source (parent) node.
             dst: Destination (child) node.
+            propagate: Override the default propagation flag.
             **kwargs: Edge properties.
         """
-        super().__init__(src=src, dst=dst, rel_type="HAS_ACCUMULATIONRELATION", **kwargs)
+        super().__init__(src=src, dst=dst, rel_type="HAS_ACCUMULATIONRELATION", propagate=True, **kwargs)
 class HasActivity(WeakRelation):
-    """Auto-generated weak relation class."""
+    """Auto-generated weak relation class.
+
+    Propagate: True.
+    """
 
     def __init__(self, src: Node, dst: Node, **kwargs: Any) -> None:
         """Initialize a HasActivity weak relation.
@@ -7011,11 +7018,15 @@ class HasActivity(WeakRelation):
         Args:
             src: Source (parent) node.
             dst: Destination (child) node.
+            propagate: Override the default propagation flag.
             **kwargs: Edge properties.
         """
-        super().__init__(src=src, dst=dst, rel_type="HAS_ACTIVITY", **kwargs)
+        super().__init__(src=src, dst=dst, rel_type="HAS_ACTIVITY", propagate=True, **kwargs)
 class HasActivitydocumentationrelation(WeakRelation):
-    """Auto-generated weak relation class."""
+    """Auto-generated weak relation class.
+
+    Propagate: True.
+    """
 
     def __init__(self, src: Node, dst: Node, **kwargs: Any) -> None:
         """Initialize a HasActivitydocumentationrelation weak relation.
@@ -7023,11 +7034,15 @@ class HasActivitydocumentationrelation(WeakRelation):
         Args:
             src: Source (parent) node.
             dst: Destination (child) node.
+            propagate: Override the default propagation flag.
             **kwargs: Edge properties.
         """
-        super().__init__(src=src, dst=dst, rel_type="HAS_ACTIVITYDOCUMENTATIONRELATION", **kwargs)
+        super().__init__(src=src, dst=dst, rel_type="HAS_ACTIVITYDOCUMENTATIONRELATION", propagate=True, **kwargs)
 class HasActivitytype(WeakRelation):
-    """Auto-generated weak relation class."""
+    """Auto-generated weak relation class.
+
+    Propagate: True.
+    """
 
     def __init__(self, src: Node, dst: Node, **kwargs: Any) -> None:
         """Initialize a HasActivitytype weak relation.
@@ -7035,11 +7050,15 @@ class HasActivitytype(WeakRelation):
         Args:
             src: Source (parent) node.
             dst: Destination (child) node.
+            propagate: Override the default propagation flag.
             **kwargs: Edge properties.
         """
-        super().__init__(src=src, dst=dst, rel_type="HAS_ACTIVITYTYPE", **kwargs)
+        super().__init__(src=src, dst=dst, rel_type="HAS_ACTIVITYTYPE", propagate=True, **kwargs)
 class HasAgent(WeakRelation):
-    """Auto-generated weak relation class."""
+    """Auto-generated weak relation class.
+
+    Propagate: True.
+    """
 
     def __init__(self, src: Node, dst: Node, **kwargs: Any) -> None:
         """Initialize a HasAgent weak relation.
@@ -7047,11 +7066,15 @@ class HasAgent(WeakRelation):
         Args:
             src: Source (parent) node.
             dst: Destination (child) node.
+            propagate: Override the default propagation flag.
             **kwargs: Edge properties.
         """
-        super().__init__(src=src, dst=dst, rel_type="HAS_AGENT", **kwargs)
+        super().__init__(src=src, dst=dst, rel_type="HAS_AGENT", propagate=True, **kwargs)
 class HasAgentcontrolrelation(WeakRelation):
-    """Auto-generated weak relation class."""
+    """Auto-generated weak relation class.
+
+    Propagate: True.
+    """
 
     def __init__(self, src: Node, dst: Node, **kwargs: Any) -> None:
         """Initialize a HasAgentcontrolrelation weak relation.
@@ -7059,11 +7082,15 @@ class HasAgentcontrolrelation(WeakRelation):
         Args:
             src: Source (parent) node.
             dst: Destination (child) node.
+            propagate: Override the default propagation flag.
             **kwargs: Edge properties.
         """
-        super().__init__(src=src, dst=dst, rel_type="HAS_AGENTCONTROLRELATION", **kwargs)
+        super().__init__(src=src, dst=dst, rel_type="HAS_AGENTCONTROLRELATION", propagate=True, **kwargs)
 class HasAgenthierarchicalrelation(WeakRelation):
-    """Auto-generated weak relation class."""
+    """Auto-generated weak relation class.
+
+    Propagate: True.
+    """
 
     def __init__(self, src: Node, dst: Node, **kwargs: Any) -> None:
         """Initialize a HasAgenthierarchicalrelation weak relation.
@@ -7071,11 +7098,15 @@ class HasAgenthierarchicalrelation(WeakRelation):
         Args:
             src: Source (parent) node.
             dst: Destination (child) node.
+            propagate: Override the default propagation flag.
             **kwargs: Edge properties.
         """
-        super().__init__(src=src, dst=dst, rel_type="HAS_AGENTHIERARCHICALRELATION", **kwargs)
+        super().__init__(src=src, dst=dst, rel_type="HAS_AGENTHIERARCHICALRELATION", propagate=True, **kwargs)
 class HasAgentname(WeakRelation):
-    """Auto-generated weak relation class."""
+    """Auto-generated weak relation class.
+
+    Propagate: True.
+    """
 
     def __init__(self, src: Node, dst: Node, **kwargs: Any) -> None:
         """Initialize a HasAgentname weak relation.
@@ -7083,11 +7114,15 @@ class HasAgentname(WeakRelation):
         Args:
             src: Source (parent) node.
             dst: Destination (child) node.
+            propagate: Override the default propagation flag.
             **kwargs: Edge properties.
         """
-        super().__init__(src=src, dst=dst, rel_type="HAS_AGENTNAME", **kwargs)
+        super().__init__(src=src, dst=dst, rel_type="HAS_AGENTNAME", propagate=True, **kwargs)
 class HasAgenttemporalrelation(WeakRelation):
-    """Auto-generated weak relation class."""
+    """Auto-generated weak relation class.
+
+    Propagate: True.
+    """
 
     def __init__(self, src: Node, dst: Node, **kwargs: Any) -> None:
         """Initialize a HasAgenttemporalrelation weak relation.
@@ -7095,11 +7130,15 @@ class HasAgenttemporalrelation(WeakRelation):
         Args:
             src: Source (parent) node.
             dst: Destination (child) node.
+            propagate: Override the default propagation flag.
             **kwargs: Edge properties.
         """
-        super().__init__(src=src, dst=dst, rel_type="HAS_AGENTTEMPORALRELATION", **kwargs)
+        super().__init__(src=src, dst=dst, rel_type="HAS_AGENTTEMPORALRELATION", propagate=True, **kwargs)
 class HasAgenttoagentrelation(WeakRelation):
-    """Auto-generated weak relation class."""
+    """Auto-generated weak relation class.
+
+    Propagate: True.
+    """
 
     def __init__(self, src: Node, dst: Node, **kwargs: Any) -> None:
         """Initialize a HasAgenttoagentrelation weak relation.
@@ -7107,11 +7146,15 @@ class HasAgenttoagentrelation(WeakRelation):
         Args:
             src: Source (parent) node.
             dst: Destination (child) node.
+            propagate: Override the default propagation flag.
             **kwargs: Edge properties.
         """
-        super().__init__(src=src, dst=dst, rel_type="HAS_AGENTTOAGENTRELATION", **kwargs)
+        super().__init__(src=src, dst=dst, rel_type="HAS_AGENTTOAGENTRELATION", propagate=True, **kwargs)
 class HasAppellation(WeakRelation):
-    """Auto-generated weak relation class."""
+    """Auto-generated weak relation class.
+
+    Propagate: True.
+    """
 
     def __init__(self, src: Node, dst: Node, **kwargs: Any) -> None:
         """Initialize a HasAppellation weak relation.
@@ -7119,11 +7162,15 @@ class HasAppellation(WeakRelation):
         Args:
             src: Source (parent) node.
             dst: Destination (child) node.
+            propagate: Override the default propagation flag.
             **kwargs: Edge properties.
         """
-        super().__init__(src=src, dst=dst, rel_type="HAS_APPELLATION", **kwargs)
+        super().__init__(src=src, dst=dst, rel_type="HAS_APPELLATION", propagate=True, **kwargs)
 class HasAppellationrelation(WeakRelation):
-    """Auto-generated weak relation class."""
+    """Auto-generated weak relation class.
+
+    Propagate: True.
+    """
 
     def __init__(self, src: Node, dst: Node, **kwargs: Any) -> None:
         """Initialize a HasAppellationrelation weak relation.
@@ -7131,11 +7178,15 @@ class HasAppellationrelation(WeakRelation):
         Args:
             src: Source (parent) node.
             dst: Destination (child) node.
+            propagate: Override the default propagation flag.
             **kwargs: Edge properties.
         """
-        super().__init__(src=src, dst=dst, rel_type="HAS_APPELLATIONRELATION", **kwargs)
+        super().__init__(src=src, dst=dst, rel_type="HAS_APPELLATIONRELATION", propagate=True, **kwargs)
 class HasAuthorityrelation(WeakRelation):
-    """Auto-generated weak relation class."""
+    """Auto-generated weak relation class.
+
+    Propagate: True.
+    """
 
     def __init__(self, src: Node, dst: Node, **kwargs: Any) -> None:
         """Initialize a HasAuthorityrelation weak relation.
@@ -7143,11 +7194,15 @@ class HasAuthorityrelation(WeakRelation):
         Args:
             src: Source (parent) node.
             dst: Destination (child) node.
+            propagate: Override the default propagation flag.
             **kwargs: Edge properties.
         """
-        super().__init__(src=src, dst=dst, rel_type="HAS_AUTHORITYRELATION", **kwargs)
+        super().__init__(src=src, dst=dst, rel_type="HAS_AUTHORITYRELATION", propagate=True, **kwargs)
 class HasAuthorshiprelation(WeakRelation):
-    """Auto-generated weak relation class."""
+    """Auto-generated weak relation class.
+
+    Propagate: True.
+    """
 
     def __init__(self, src: Node, dst: Node, **kwargs: Any) -> None:
         """Initialize a HasAuthorshiprelation weak relation.
@@ -7155,11 +7210,15 @@ class HasAuthorshiprelation(WeakRelation):
         Args:
             src: Source (parent) node.
             dst: Destination (child) node.
+            propagate: Override the default propagation flag.
             **kwargs: Edge properties.
         """
-        super().__init__(src=src, dst=dst, rel_type="HAS_AUTHORSHIPRELATION", **kwargs)
+        super().__init__(src=src, dst=dst, rel_type="HAS_AUTHORSHIPRELATION", propagate=True, **kwargs)
 class HasCarrierextent(WeakRelation):
-    """Auto-generated weak relation class."""
+    """Auto-generated weak relation class.
+
+    Propagate: True.
+    """
 
     def __init__(self, src: Node, dst: Node, **kwargs: Any) -> None:
         """Initialize a HasCarrierextent weak relation.
@@ -7167,11 +7226,15 @@ class HasCarrierextent(WeakRelation):
         Args:
             src: Source (parent) node.
             dst: Destination (child) node.
+            propagate: Override the default propagation flag.
             **kwargs: Edge properties.
         """
-        super().__init__(src=src, dst=dst, rel_type="HAS_CARRIEREXTENT", **kwargs)
+        super().__init__(src=src, dst=dst, rel_type="HAS_CARRIEREXTENT", propagate=True, **kwargs)
 class HasCarriertype(WeakRelation):
-    """Auto-generated weak relation class."""
+    """Auto-generated weak relation class.
+
+    Propagate: True.
+    """
 
     def __init__(self, src: Node, dst: Node, **kwargs: Any) -> None:
         """Initialize a HasCarriertype weak relation.
@@ -7179,11 +7242,15 @@ class HasCarriertype(WeakRelation):
         Args:
             src: Source (parent) node.
             dst: Destination (child) node.
+            propagate: Override the default propagation flag.
             **kwargs: Edge properties.
         """
-        super().__init__(src=src, dst=dst, rel_type="HAS_CARRIERTYPE", **kwargs)
+        super().__init__(src=src, dst=dst, rel_type="HAS_CARRIERTYPE", propagate=True, **kwargs)
 class HasChildrelation(WeakRelation):
-    """Auto-generated weak relation class."""
+    """Auto-generated weak relation class.
+
+    Propagate: True.
+    """
 
     def __init__(self, src: Node, dst: Node, **kwargs: Any) -> None:
         """Initialize a HasChildrelation weak relation.
@@ -7191,11 +7258,15 @@ class HasChildrelation(WeakRelation):
         Args:
             src: Source (parent) node.
             dst: Destination (child) node.
+            propagate: Override the default propagation flag.
             **kwargs: Edge properties.
         """
-        super().__init__(src=src, dst=dst, rel_type="HAS_CHILDRELATION", **kwargs)
+        super().__init__(src=src, dst=dst, rel_type="HAS_CHILDRELATION", propagate=True, **kwargs)
 class HasConcept(WeakRelation):
-    """Auto-generated weak relation class."""
+    """Auto-generated weak relation class.
+
+    Propagate: True.
+    """
 
     def __init__(self, src: Node, dst: Node, **kwargs: Any) -> None:
         """Initialize a HasConcept weak relation.
@@ -7203,11 +7274,15 @@ class HasConcept(WeakRelation):
         Args:
             src: Source (parent) node.
             dst: Destination (child) node.
+            propagate: Override the default propagation flag.
             **kwargs: Edge properties.
         """
-        super().__init__(src=src, dst=dst, rel_type="HAS_CONCEPT", **kwargs)
+        super().__init__(src=src, dst=dst, rel_type="HAS_CONCEPT", propagate=True, **kwargs)
 class HasContenttype(WeakRelation):
-    """Auto-generated weak relation class."""
+    """Auto-generated weak relation class.
+
+    Propagate: True.
+    """
 
     def __init__(self, src: Node, dst: Node, **kwargs: Any) -> None:
         """Initialize a HasContenttype weak relation.
@@ -7215,11 +7290,15 @@ class HasContenttype(WeakRelation):
         Args:
             src: Source (parent) node.
             dst: Destination (child) node.
+            propagate: Override the default propagation flag.
             **kwargs: Edge properties.
         """
-        super().__init__(src=src, dst=dst, rel_type="HAS_CONTENTTYPE", **kwargs)
+        super().__init__(src=src, dst=dst, rel_type="HAS_CONTENTTYPE", propagate=True, **kwargs)
 class HasCoordinates(WeakRelation):
-    """Auto-generated weak relation class."""
+    """Auto-generated weak relation class.
+
+    Propagate: True.
+    """
 
     def __init__(self, src: Node, dst: Node, **kwargs: Any) -> None:
         """Initialize a HasCoordinates weak relation.
@@ -7227,11 +7306,15 @@ class HasCoordinates(WeakRelation):
         Args:
             src: Source (parent) node.
             dst: Destination (child) node.
+            propagate: Override the default propagation flag.
             **kwargs: Edge properties.
         """
-        super().__init__(src=src, dst=dst, rel_type="HAS_COORDINATES", **kwargs)
+        super().__init__(src=src, dst=dst, rel_type="HAS_COORDINATES", propagate=True, **kwargs)
 class HasCorporatebody(WeakRelation):
-    """Auto-generated weak relation class."""
+    """Auto-generated weak relation class.
+
+    Propagate: True.
+    """
 
     def __init__(self, src: Node, dst: Node, **kwargs: Any) -> None:
         """Initialize a HasCorporatebody weak relation.
@@ -7239,11 +7322,15 @@ class HasCorporatebody(WeakRelation):
         Args:
             src: Source (parent) node.
             dst: Destination (child) node.
+            propagate: Override the default propagation flag.
             **kwargs: Edge properties.
         """
-        super().__init__(src=src, dst=dst, rel_type="HAS_CORPORATEBODY", **kwargs)
+        super().__init__(src=src, dst=dst, rel_type="HAS_CORPORATEBODY", propagate=True, **kwargs)
 class HasCorporatebodytype(WeakRelation):
-    """Auto-generated weak relation class."""
+    """Auto-generated weak relation class.
+
+    Propagate: True.
+    """
 
     def __init__(self, src: Node, dst: Node, **kwargs: Any) -> None:
         """Initialize a HasCorporatebodytype weak relation.
@@ -7251,11 +7338,15 @@ class HasCorporatebodytype(WeakRelation):
         Args:
             src: Source (parent) node.
             dst: Destination (child) node.
+            propagate: Override the default propagation flag.
             **kwargs: Edge properties.
         """
-        super().__init__(src=src, dst=dst, rel_type="HAS_CORPORATEBODYTYPE", **kwargs)
+        super().__init__(src=src, dst=dst, rel_type="HAS_CORPORATEBODYTYPE", propagate=True, **kwargs)
 class HasCorrespondencerelation(WeakRelation):
-    """Auto-generated weak relation class."""
+    """Auto-generated weak relation class.
+
+    Propagate: True.
+    """
 
     def __init__(self, src: Node, dst: Node, **kwargs: Any) -> None:
         """Initialize a HasCorrespondencerelation weak relation.
@@ -7263,11 +7354,15 @@ class HasCorrespondencerelation(WeakRelation):
         Args:
             src: Source (parent) node.
             dst: Destination (child) node.
+            propagate: Override the default propagation flag.
             **kwargs: Edge properties.
         """
-        super().__init__(src=src, dst=dst, rel_type="HAS_CORRESPONDENCERELATION", **kwargs)
+        super().__init__(src=src, dst=dst, rel_type="HAS_CORRESPONDENCERELATION", propagate=True, **kwargs)
 class HasCreationrelation(WeakRelation):
-    """Auto-generated weak relation class."""
+    """Auto-generated weak relation class.
+
+    Propagate: True.
+    """
 
     def __init__(self, src: Node, dst: Node, **kwargs: Any) -> None:
         """Initialize a HasCreationrelation weak relation.
@@ -7275,11 +7370,15 @@ class HasCreationrelation(WeakRelation):
         Args:
             src: Source (parent) node.
             dst: Destination (child) node.
+            propagate: Override the default propagation flag.
             **kwargs: Edge properties.
         """
-        super().__init__(src=src, dst=dst, rel_type="HAS_CREATIONRELATION", **kwargs)
+        super().__init__(src=src, dst=dst, rel_type="HAS_CREATIONRELATION", propagate=True, **kwargs)
 class HasDate(WeakRelation):
-    """Auto-generated weak relation class."""
+    """Auto-generated weak relation class.
+
+    Propagate: True.
+    """
 
     def __init__(self, src: Node, dst: Node, **kwargs: Any) -> None:
         """Initialize a HasDate weak relation.
@@ -7287,11 +7386,15 @@ class HasDate(WeakRelation):
         Args:
             src: Source (parent) node.
             dst: Destination (child) node.
+            propagate: Override the default propagation flag.
             **kwargs: Edge properties.
         """
-        super().__init__(src=src, dst=dst, rel_type="HAS_DATE", **kwargs)
+        super().__init__(src=src, dst=dst, rel_type="HAS_DATE", propagate=True, **kwargs)
 class HasDatetype(WeakRelation):
-    """Auto-generated weak relation class."""
+    """Auto-generated weak relation class.
+
+    Propagate: True.
+    """
 
     def __init__(self, src: Node, dst: Node, **kwargs: Any) -> None:
         """Initialize a HasDatetype weak relation.
@@ -7299,11 +7402,15 @@ class HasDatetype(WeakRelation):
         Args:
             src: Source (parent) node.
             dst: Destination (child) node.
+            propagate: Override the default propagation flag.
             **kwargs: Edge properties.
         """
-        super().__init__(src=src, dst=dst, rel_type="HAS_DATETYPE", **kwargs)
+        super().__init__(src=src, dst=dst, rel_type="HAS_DATETYPE", propagate=True, **kwargs)
 class HasDemographicgroup(WeakRelation):
-    """Auto-generated weak relation class."""
+    """Auto-generated weak relation class.
+
+    Propagate: True.
+    """
 
     def __init__(self, src: Node, dst: Node, **kwargs: Any) -> None:
         """Initialize a HasDemographicgroup weak relation.
@@ -7311,11 +7418,15 @@ class HasDemographicgroup(WeakRelation):
         Args:
             src: Source (parent) node.
             dst: Destination (child) node.
+            propagate: Override the default propagation flag.
             **kwargs: Edge properties.
         """
-        super().__init__(src=src, dst=dst, rel_type="HAS_DEMOGRAPHICGROUP", **kwargs)
+        super().__init__(src=src, dst=dst, rel_type="HAS_DEMOGRAPHICGROUP", propagate=True, **kwargs)
 class HasDerivationrelation(WeakRelation):
-    """Auto-generated weak relation class."""
+    """Auto-generated weak relation class.
+
+    Propagate: True.
+    """
 
     def __init__(self, src: Node, dst: Node, **kwargs: Any) -> None:
         """Initialize a HasDerivationrelation weak relation.
@@ -7323,11 +7434,15 @@ class HasDerivationrelation(WeakRelation):
         Args:
             src: Source (parent) node.
             dst: Destination (child) node.
+            propagate: Override the default propagation flag.
             **kwargs: Edge properties.
         """
-        super().__init__(src=src, dst=dst, rel_type="HAS_DERIVATIONRELATION", **kwargs)
+        super().__init__(src=src, dst=dst, rel_type="HAS_DERIVATIONRELATION", propagate=True, **kwargs)
 class HasDescendancerelation(WeakRelation):
-    """Auto-generated weak relation class."""
+    """Auto-generated weak relation class.
+
+    Propagate: True.
+    """
 
     def __init__(self, src: Node, dst: Node, **kwargs: Any) -> None:
         """Initialize a HasDescendancerelation weak relation.
@@ -7335,11 +7450,15 @@ class HasDescendancerelation(WeakRelation):
         Args:
             src: Source (parent) node.
             dst: Destination (child) node.
+            propagate: Override the default propagation flag.
             **kwargs: Edge properties.
         """
-        super().__init__(src=src, dst=dst, rel_type="HAS_DESCENDANCERELATION", **kwargs)
+        super().__init__(src=src, dst=dst, rel_type="HAS_DESCENDANCERELATION", propagate=True, **kwargs)
 class HasDocumentaryformtype(WeakRelation):
-    """Auto-generated weak relation class."""
+    """Auto-generated weak relation class.
+
+    Propagate: True.
+    """
 
     def __init__(self, src: Node, dst: Node, **kwargs: Any) -> None:
         """Initialize a HasDocumentaryformtype weak relation.
@@ -7347,11 +7466,15 @@ class HasDocumentaryformtype(WeakRelation):
         Args:
             src: Source (parent) node.
             dst: Destination (child) node.
+            propagate: Override the default propagation flag.
             **kwargs: Edge properties.
         """
-        super().__init__(src=src, dst=dst, rel_type="HAS_DOCUMENTARYFORMTYPE", **kwargs)
+        super().__init__(src=src, dst=dst, rel_type="HAS_DOCUMENTARYFORMTYPE", propagate=True, **kwargs)
 class HasEvent(WeakRelation):
-    """Auto-generated weak relation class."""
+    """Auto-generated weak relation class.
+
+    Propagate: True.
+    """
 
     def __init__(self, src: Node, dst: Node, **kwargs: Any) -> None:
         """Initialize a HasEvent weak relation.
@@ -7359,11 +7482,15 @@ class HasEvent(WeakRelation):
         Args:
             src: Source (parent) node.
             dst: Destination (child) node.
+            propagate: Override the default propagation flag.
             **kwargs: Edge properties.
         """
-        super().__init__(src=src, dst=dst, rel_type="HAS_EVENT", **kwargs)
+        super().__init__(src=src, dst=dst, rel_type="HAS_EVENT", propagate=True, **kwargs)
 class HasEventrelation(WeakRelation):
-    """Auto-generated weak relation class."""
+    """Auto-generated weak relation class.
+
+    Propagate: True.
+    """
 
     def __init__(self, src: Node, dst: Node, **kwargs: Any) -> None:
         """Initialize a HasEventrelation weak relation.
@@ -7371,11 +7498,15 @@ class HasEventrelation(WeakRelation):
         Args:
             src: Source (parent) node.
             dst: Destination (child) node.
+            propagate: Override the default propagation flag.
             **kwargs: Edge properties.
         """
-        super().__init__(src=src, dst=dst, rel_type="HAS_EVENTRELATION", **kwargs)
+        super().__init__(src=src, dst=dst, rel_type="HAS_EVENTRELATION", propagate=True, **kwargs)
 class HasEventtype(WeakRelation):
-    """Auto-generated weak relation class."""
+    """Auto-generated weak relation class.
+
+    Propagate: True.
+    """
 
     def __init__(self, src: Node, dst: Node, **kwargs: Any) -> None:
         """Initialize a HasEventtype weak relation.
@@ -7383,11 +7514,15 @@ class HasEventtype(WeakRelation):
         Args:
             src: Source (parent) node.
             dst: Destination (child) node.
+            propagate: Override the default propagation flag.
             **kwargs: Edge properties.
         """
-        super().__init__(src=src, dst=dst, rel_type="HAS_EVENTTYPE", **kwargs)
+        super().__init__(src=src, dst=dst, rel_type="HAS_EVENTTYPE", propagate=True, **kwargs)
 class HasExtent(WeakRelation):
-    """Auto-generated weak relation class."""
+    """Auto-generated weak relation class.
+
+    Propagate: True.
+    """
 
     def __init__(self, src: Node, dst: Node, **kwargs: Any) -> None:
         """Initialize a HasExtent weak relation.
@@ -7395,11 +7530,15 @@ class HasExtent(WeakRelation):
         Args:
             src: Source (parent) node.
             dst: Destination (child) node.
+            propagate: Override the default propagation flag.
             **kwargs: Edge properties.
         """
-        super().__init__(src=src, dst=dst, rel_type="HAS_EXTENT", **kwargs)
+        super().__init__(src=src, dst=dst, rel_type="HAS_EXTENT", propagate=True, **kwargs)
 class HasExtenttype(WeakRelation):
-    """Auto-generated weak relation class."""
+    """Auto-generated weak relation class.
+
+    Propagate: True.
+    """
 
     def __init__(self, src: Node, dst: Node, **kwargs: Any) -> None:
         """Initialize a HasExtenttype weak relation.
@@ -7407,11 +7546,15 @@ class HasExtenttype(WeakRelation):
         Args:
             src: Source (parent) node.
             dst: Destination (child) node.
+            propagate: Override the default propagation flag.
             **kwargs: Edge properties.
         """
-        super().__init__(src=src, dst=dst, rel_type="HAS_EXTENTTYPE", **kwargs)
+        super().__init__(src=src, dst=dst, rel_type="HAS_EXTENTTYPE", propagate=True, **kwargs)
 class HasFamily(WeakRelation):
-    """Auto-generated weak relation class."""
+    """Auto-generated weak relation class.
+
+    Propagate: True.
+    """
 
     def __init__(self, src: Node, dst: Node, **kwargs: Any) -> None:
         """Initialize a HasFamily weak relation.
@@ -7419,11 +7562,15 @@ class HasFamily(WeakRelation):
         Args:
             src: Source (parent) node.
             dst: Destination (child) node.
+            propagate: Override the default propagation flag.
             **kwargs: Edge properties.
         """
-        super().__init__(src=src, dst=dst, rel_type="HAS_FAMILY", **kwargs)
+        super().__init__(src=src, dst=dst, rel_type="HAS_FAMILY", propagate=True, **kwargs)
 class HasFamilyrelation(WeakRelation):
-    """Auto-generated weak relation class."""
+    """Auto-generated weak relation class.
+
+    Propagate: True.
+    """
 
     def __init__(self, src: Node, dst: Node, **kwargs: Any) -> None:
         """Initialize a HasFamilyrelation weak relation.
@@ -7431,11 +7578,15 @@ class HasFamilyrelation(WeakRelation):
         Args:
             src: Source (parent) node.
             dst: Destination (child) node.
+            propagate: Override the default propagation flag.
             **kwargs: Edge properties.
         """
-        super().__init__(src=src, dst=dst, rel_type="HAS_FAMILYRELATION", **kwargs)
+        super().__init__(src=src, dst=dst, rel_type="HAS_FAMILYRELATION", propagate=True, **kwargs)
 class HasFamilytype(WeakRelation):
-    """Auto-generated weak relation class."""
+    """Auto-generated weak relation class.
+
+    Propagate: True.
+    """
 
     def __init__(self, src: Node, dst: Node, **kwargs: Any) -> None:
         """Initialize a HasFamilytype weak relation.
@@ -7443,11 +7594,15 @@ class HasFamilytype(WeakRelation):
         Args:
             src: Source (parent) node.
             dst: Destination (child) node.
+            propagate: Override the default propagation flag.
             **kwargs: Edge properties.
         """
-        super().__init__(src=src, dst=dst, rel_type="HAS_FAMILYTYPE", **kwargs)
+        super().__init__(src=src, dst=dst, rel_type="HAS_FAMILYTYPE", propagate=True, **kwargs)
 class HasFunctionalequivalencerelation(WeakRelation):
-    """Auto-generated weak relation class."""
+    """Auto-generated weak relation class.
+
+    Propagate: True.
+    """
 
     def __init__(self, src: Node, dst: Node, **kwargs: Any) -> None:
         """Initialize a HasFunctionalequivalencerelation weak relation.
@@ -7455,11 +7610,15 @@ class HasFunctionalequivalencerelation(WeakRelation):
         Args:
             src: Source (parent) node.
             dst: Destination (child) node.
+            propagate: Override the default propagation flag.
             **kwargs: Edge properties.
         """
-        super().__init__(src=src, dst=dst, rel_type="HAS_FUNCTIONALEQUIVALENCERELATION", **kwargs)
+        super().__init__(src=src, dst=dst, rel_type="HAS_FUNCTIONALEQUIVALENCERELATION", propagate=True, **kwargs)
 class HasGroup(WeakRelation):
-    """Auto-generated weak relation class."""
+    """Auto-generated weak relation class.
+
+    Propagate: True.
+    """
 
     def __init__(self, src: Node, dst: Node, **kwargs: Any) -> None:
         """Initialize a HasGroup weak relation.
@@ -7467,11 +7626,15 @@ class HasGroup(WeakRelation):
         Args:
             src: Source (parent) node.
             dst: Destination (child) node.
+            propagate: Override the default propagation flag.
             **kwargs: Edge properties.
         """
-        super().__init__(src=src, dst=dst, rel_type="HAS_GROUP", **kwargs)
+        super().__init__(src=src, dst=dst, rel_type="HAS_GROUP", propagate=True, **kwargs)
 class HasGroupsubdivisionrelation(WeakRelation):
-    """Auto-generated weak relation class."""
+    """Auto-generated weak relation class.
+
+    Propagate: True.
+    """
 
     def __init__(self, src: Node, dst: Node, **kwargs: Any) -> None:
         """Initialize a HasGroupsubdivisionrelation weak relation.
@@ -7479,11 +7642,15 @@ class HasGroupsubdivisionrelation(WeakRelation):
         Args:
             src: Source (parent) node.
             dst: Destination (child) node.
+            propagate: Override the default propagation flag.
             **kwargs: Edge properties.
         """
-        super().__init__(src=src, dst=dst, rel_type="HAS_GROUPSUBDIVISIONRELATION", **kwargs)
+        super().__init__(src=src, dst=dst, rel_type="HAS_GROUPSUBDIVISIONRELATION", propagate=True, **kwargs)
 class HasIdentifier(WeakRelation):
-    """Auto-generated weak relation class."""
+    """Auto-generated weak relation class.
+
+    Propagate: True.
+    """
 
     def __init__(self, src: Node, dst: Node, **kwargs: Any) -> None:
         """Initialize a HasIdentifier weak relation.
@@ -7491,11 +7658,15 @@ class HasIdentifier(WeakRelation):
         Args:
             src: Source (parent) node.
             dst: Destination (child) node.
+            propagate: Override the default propagation flag.
             **kwargs: Edge properties.
         """
-        super().__init__(src=src, dst=dst, rel_type="HAS_IDENTIFIER", **kwargs)
+        super().__init__(src=src, dst=dst, rel_type="HAS_IDENTIFIER", propagate=True, **kwargs)
 class HasIdentifiertype(WeakRelation):
-    """Auto-generated weak relation class."""
+    """Auto-generated weak relation class.
+
+    Propagate: True.
+    """
 
     def __init__(self, src: Node, dst: Node, **kwargs: Any) -> None:
         """Initialize a HasIdentifiertype weak relation.
@@ -7503,11 +7674,15 @@ class HasIdentifiertype(WeakRelation):
         Args:
             src: Source (parent) node.
             dst: Destination (child) node.
+            propagate: Override the default propagation flag.
             **kwargs: Edge properties.
         """
-        super().__init__(src=src, dst=dst, rel_type="HAS_IDENTIFIERTYPE", **kwargs)
+        super().__init__(src=src, dst=dst, rel_type="HAS_IDENTIFIERTYPE", propagate=True, **kwargs)
 class HasInstantiation(WeakRelation):
-    """Auto-generated weak relation class."""
+    """Auto-generated weak relation class.
+
+    Propagate: True.
+    """
 
     def __init__(self, src: Node, dst: Node, **kwargs: Any) -> None:
         """Initialize a HasInstantiation weak relation.
@@ -7515,11 +7690,15 @@ class HasInstantiation(WeakRelation):
         Args:
             src: Source (parent) node.
             dst: Destination (child) node.
+            propagate: Override the default propagation flag.
             **kwargs: Edge properties.
         """
-        super().__init__(src=src, dst=dst, rel_type="HAS_INSTANTIATION", **kwargs)
+        super().__init__(src=src, dst=dst, rel_type="HAS_INSTANTIATION", propagate=True, **kwargs)
 class HasInstantiationextent(WeakRelation):
-    """Auto-generated weak relation class."""
+    """Auto-generated weak relation class.
+
+    Propagate: True.
+    """
 
     def __init__(self, src: Node, dst: Node, **kwargs: Any) -> None:
         """Initialize a HasInstantiationextent weak relation.
@@ -7527,11 +7706,15 @@ class HasInstantiationextent(WeakRelation):
         Args:
             src: Source (parent) node.
             dst: Destination (child) node.
+            propagate: Override the default propagation flag.
             **kwargs: Edge properties.
         """
-        super().__init__(src=src, dst=dst, rel_type="HAS_INSTANTIATIONEXTENT", **kwargs)
+        super().__init__(src=src, dst=dst, rel_type="HAS_INSTANTIATIONEXTENT", propagate=True, **kwargs)
 class HasInstantiationtoinstantiationrelation(WeakRelation):
-    """Auto-generated weak relation class."""
+    """Auto-generated weak relation class.
+
+    Propagate: True.
+    """
 
     def __init__(self, src: Node, dst: Node, **kwargs: Any) -> None:
         """Initialize a HasInstantiationtoinstantiationrelation weak relation.
@@ -7539,11 +7722,15 @@ class HasInstantiationtoinstantiationrelation(WeakRelation):
         Args:
             src: Source (parent) node.
             dst: Destination (child) node.
+            propagate: Override the default propagation flag.
             **kwargs: Edge properties.
         """
-        super().__init__(src=src, dst=dst, rel_type="HAS_INSTANTIATIONTOINSTANTIATIONRELATION", **kwargs)
+        super().__init__(src=src, dst=dst, rel_type="HAS_INSTANTIATIONTOINSTANTIATIONRELATION", propagate=True, **kwargs)
 class HasIntellectualpropertyrightsrelation(WeakRelation):
-    """Auto-generated weak relation class."""
+    """Auto-generated weak relation class.
+
+    Propagate: True.
+    """
 
     def __init__(self, src: Node, dst: Node, **kwargs: Any) -> None:
         """Initialize a HasIntellectualpropertyrightsrelation weak relation.
@@ -7551,11 +7738,15 @@ class HasIntellectualpropertyrightsrelation(WeakRelation):
         Args:
             src: Source (parent) node.
             dst: Destination (child) node.
+            propagate: Override the default propagation flag.
             **kwargs: Edge properties.
         """
-        super().__init__(src=src, dst=dst, rel_type="HAS_INTELLECTUALPROPERTYRIGHTSRELATION", **kwargs)
+        super().__init__(src=src, dst=dst, rel_type="HAS_INTELLECTUALPROPERTYRIGHTSRELATION", propagate=True, **kwargs)
 class HasKnowingofrelation(WeakRelation):
-    """Auto-generated weak relation class."""
+    """Auto-generated weak relation class.
+
+    Propagate: True.
+    """
 
     def __init__(self, src: Node, dst: Node, **kwargs: Any) -> None:
         """Initialize a HasKnowingofrelation weak relation.
@@ -7563,11 +7754,15 @@ class HasKnowingofrelation(WeakRelation):
         Args:
             src: Source (parent) node.
             dst: Destination (child) node.
+            propagate: Override the default propagation flag.
             **kwargs: Edge properties.
         """
-        super().__init__(src=src, dst=dst, rel_type="HAS_KNOWINGOFRELATION", **kwargs)
+        super().__init__(src=src, dst=dst, rel_type="HAS_KNOWINGOFRELATION", propagate=True, **kwargs)
 class HasKnowingrelation(WeakRelation):
-    """Auto-generated weak relation class."""
+    """Auto-generated weak relation class.
+
+    Propagate: True.
+    """
 
     def __init__(self, src: Node, dst: Node, **kwargs: Any) -> None:
         """Initialize a HasKnowingrelation weak relation.
@@ -7575,11 +7770,15 @@ class HasKnowingrelation(WeakRelation):
         Args:
             src: Source (parent) node.
             dst: Destination (child) node.
+            propagate: Override the default propagation flag.
             **kwargs: Edge properties.
         """
-        super().__init__(src=src, dst=dst, rel_type="HAS_KNOWINGRELATION", **kwargs)
+        super().__init__(src=src, dst=dst, rel_type="HAS_KNOWINGRELATION", propagate=True, **kwargs)
 class HasLanguage(WeakRelation):
-    """Auto-generated weak relation class."""
+    """Auto-generated weak relation class.
+
+    Propagate: True.
+    """
 
     def __init__(self, src: Node, dst: Node, **kwargs: Any) -> None:
         """Initialize a HasLanguage weak relation.
@@ -7587,11 +7786,15 @@ class HasLanguage(WeakRelation):
         Args:
             src: Source (parent) node.
             dst: Destination (child) node.
+            propagate: Override the default propagation flag.
             **kwargs: Edge properties.
         """
-        super().__init__(src=src, dst=dst, rel_type="HAS_LANGUAGE", **kwargs)
+        super().__init__(src=src, dst=dst, rel_type="HAS_LANGUAGE", propagate=True, **kwargs)
 class HasLeadershiprelation(WeakRelation):
-    """Auto-generated weak relation class."""
+    """Auto-generated weak relation class.
+
+    Propagate: True.
+    """
 
     def __init__(self, src: Node, dst: Node, **kwargs: Any) -> None:
         """Initialize a HasLeadershiprelation weak relation.
@@ -7599,11 +7802,15 @@ class HasLeadershiprelation(WeakRelation):
         Args:
             src: Source (parent) node.
             dst: Destination (child) node.
+            propagate: Override the default propagation flag.
             **kwargs: Edge properties.
         """
-        super().__init__(src=src, dst=dst, rel_type="HAS_LEADERSHIPRELATION", **kwargs)
+        super().__init__(src=src, dst=dst, rel_type="HAS_LEADERSHIPRELATION", propagate=True, **kwargs)
 class HasLegalstatus(WeakRelation):
-    """Auto-generated weak relation class."""
+    """Auto-generated weak relation class.
+
+    Propagate: True.
+    """
 
     def __init__(self, src: Node, dst: Node, **kwargs: Any) -> None:
         """Initialize a HasLegalstatus weak relation.
@@ -7611,11 +7818,15 @@ class HasLegalstatus(WeakRelation):
         Args:
             src: Source (parent) node.
             dst: Destination (child) node.
+            propagate: Override the default propagation flag.
             **kwargs: Edge properties.
         """
-        super().__init__(src=src, dst=dst, rel_type="HAS_LEGALSTATUS", **kwargs)
+        super().__init__(src=src, dst=dst, rel_type="HAS_LEGALSTATUS", propagate=True, **kwargs)
 class HasManagementrelation(WeakRelation):
-    """Auto-generated weak relation class."""
+    """Auto-generated weak relation class.
+
+    Propagate: True.
+    """
 
     def __init__(self, src: Node, dst: Node, **kwargs: Any) -> None:
         """Initialize a HasManagementrelation weak relation.
@@ -7623,11 +7834,15 @@ class HasManagementrelation(WeakRelation):
         Args:
             src: Source (parent) node.
             dst: Destination (child) node.
+            propagate: Override the default propagation flag.
             **kwargs: Edge properties.
         """
-        super().__init__(src=src, dst=dst, rel_type="HAS_MANAGEMENTRELATION", **kwargs)
+        super().__init__(src=src, dst=dst, rel_type="HAS_MANAGEMENTRELATION", propagate=True, **kwargs)
 class HasMandate(WeakRelation):
-    """Auto-generated weak relation class."""
+    """Auto-generated weak relation class.
+
+    Propagate: True.
+    """
 
     def __init__(self, src: Node, dst: Node, **kwargs: Any) -> None:
         """Initialize a HasMandate weak relation.
@@ -7635,11 +7850,15 @@ class HasMandate(WeakRelation):
         Args:
             src: Source (parent) node.
             dst: Destination (child) node.
+            propagate: Override the default propagation flag.
             **kwargs: Edge properties.
         """
-        super().__init__(src=src, dst=dst, rel_type="HAS_MANDATE", **kwargs)
+        super().__init__(src=src, dst=dst, rel_type="HAS_MANDATE", propagate=True, **kwargs)
 class HasMandaterelation(WeakRelation):
-    """Auto-generated weak relation class."""
+    """Auto-generated weak relation class.
+
+    Propagate: True.
+    """
 
     def __init__(self, src: Node, dst: Node, **kwargs: Any) -> None:
         """Initialize a HasMandaterelation weak relation.
@@ -7647,11 +7866,15 @@ class HasMandaterelation(WeakRelation):
         Args:
             src: Source (parent) node.
             dst: Destination (child) node.
+            propagate: Override the default propagation flag.
             **kwargs: Edge properties.
         """
-        super().__init__(src=src, dst=dst, rel_type="HAS_MANDATERELATION", **kwargs)
+        super().__init__(src=src, dst=dst, rel_type="HAS_MANDATERELATION", propagate=True, **kwargs)
 class HasMandatetype(WeakRelation):
-    """Auto-generated weak relation class."""
+    """Auto-generated weak relation class.
+
+    Propagate: True.
+    """
 
     def __init__(self, src: Node, dst: Node, **kwargs: Any) -> None:
         """Initialize a HasMandatetype weak relation.
@@ -7659,11 +7882,15 @@ class HasMandatetype(WeakRelation):
         Args:
             src: Source (parent) node.
             dst: Destination (child) node.
+            propagate: Override the default propagation flag.
             **kwargs: Edge properties.
         """
-        super().__init__(src=src, dst=dst, rel_type="HAS_MANDATETYPE", **kwargs)
+        super().__init__(src=src, dst=dst, rel_type="HAS_MANDATETYPE", propagate=True, **kwargs)
 class HasMechanism(WeakRelation):
-    """Auto-generated weak relation class."""
+    """Auto-generated weak relation class.
+
+    Propagate: True.
+    """
 
     def __init__(self, src: Node, dst: Node, **kwargs: Any) -> None:
         """Initialize a HasMechanism weak relation.
@@ -7671,11 +7898,15 @@ class HasMechanism(WeakRelation):
         Args:
             src: Source (parent) node.
             dst: Destination (child) node.
+            propagate: Override the default propagation flag.
             **kwargs: Edge properties.
         """
-        super().__init__(src=src, dst=dst, rel_type="HAS_MECHANISM", **kwargs)
+        super().__init__(src=src, dst=dst, rel_type="HAS_MECHANISM", propagate=True, **kwargs)
 class HasMembershiprelation(WeakRelation):
-    """Auto-generated weak relation class."""
+    """Auto-generated weak relation class.
+
+    Propagate: True.
+    """
 
     def __init__(self, src: Node, dst: Node, **kwargs: Any) -> None:
         """Initialize a HasMembershiprelation weak relation.
@@ -7683,11 +7914,15 @@ class HasMembershiprelation(WeakRelation):
         Args:
             src: Source (parent) node.
             dst: Destination (child) node.
+            propagate: Override the default propagation flag.
             **kwargs: Edge properties.
         """
-        super().__init__(src=src, dst=dst, rel_type="HAS_MEMBERSHIPRELATION", **kwargs)
+        super().__init__(src=src, dst=dst, rel_type="HAS_MEMBERSHIPRELATION", propagate=True, **kwargs)
 class HasMigrationrelation(WeakRelation):
-    """Auto-generated weak relation class."""
+    """Auto-generated weak relation class.
+
+    Propagate: True.
+    """
 
     def __init__(self, src: Node, dst: Node, **kwargs: Any) -> None:
         """Initialize a HasMigrationrelation weak relation.
@@ -7695,11 +7930,15 @@ class HasMigrationrelation(WeakRelation):
         Args:
             src: Source (parent) node.
             dst: Destination (child) node.
+            propagate: Override the default propagation flag.
             **kwargs: Edge properties.
         """
-        super().__init__(src=src, dst=dst, rel_type="HAS_MIGRATIONRELATION", **kwargs)
+        super().__init__(src=src, dst=dst, rel_type="HAS_MIGRATIONRELATION", propagate=True, **kwargs)
 class HasName(WeakRelation):
-    """Auto-generated weak relation class."""
+    """Auto-generated weak relation class.
+
+    Propagate: True.
+    """
 
     def __init__(self, src: Node, dst: Node, **kwargs: Any) -> None:
         """Initialize a HasName weak relation.
@@ -7707,11 +7946,15 @@ class HasName(WeakRelation):
         Args:
             src: Source (parent) node.
             dst: Destination (child) node.
+            propagate: Override the default propagation flag.
             **kwargs: Edge properties.
         """
-        super().__init__(src=src, dst=dst, rel_type="HAS_NAME", **kwargs)
+        super().__init__(src=src, dst=dst, rel_type="HAS_NAME", propagate=True, **kwargs)
 class HasOccupationtype(WeakRelation):
-    """Auto-generated weak relation class."""
+    """Auto-generated weak relation class.
+
+    Propagate: True.
+    """
 
     def __init__(self, src: Node, dst: Node, **kwargs: Any) -> None:
         """Initialize a HasOccupationtype weak relation.
@@ -7719,11 +7962,15 @@ class HasOccupationtype(WeakRelation):
         Args:
             src: Source (parent) node.
             dst: Destination (child) node.
+            propagate: Override the default propagation flag.
             **kwargs: Edge properties.
         """
-        super().__init__(src=src, dst=dst, rel_type="HAS_OCCUPATIONTYPE", **kwargs)
+        super().__init__(src=src, dst=dst, rel_type="HAS_OCCUPATIONTYPE", propagate=True, **kwargs)
 class HasOrganicorfunctionalprovenancerelation(WeakRelation):
-    """Auto-generated weak relation class."""
+    """Auto-generated weak relation class.
+
+    Propagate: True.
+    """
 
     def __init__(self, src: Node, dst: Node, **kwargs: Any) -> None:
         """Initialize a HasOrganicorfunctionalprovenancerelation weak relation.
@@ -7731,11 +7978,15 @@ class HasOrganicorfunctionalprovenancerelation(WeakRelation):
         Args:
             src: Source (parent) node.
             dst: Destination (child) node.
+            propagate: Override the default propagation flag.
             **kwargs: Edge properties.
         """
-        super().__init__(src=src, dst=dst, rel_type="HAS_ORGANICORFUNCTIONALPROVENANCERELATION", **kwargs)
+        super().__init__(src=src, dst=dst, rel_type="HAS_ORGANICORFUNCTIONALPROVENANCERELATION", propagate=True, **kwargs)
 class HasOrganicprovenancerelation(WeakRelation):
-    """Auto-generated weak relation class."""
+    """Auto-generated weak relation class.
+
+    Propagate: True.
+    """
 
     def __init__(self, src: Node, dst: Node, **kwargs: Any) -> None:
         """Initialize a HasOrganicprovenancerelation weak relation.
@@ -7743,11 +7994,15 @@ class HasOrganicprovenancerelation(WeakRelation):
         Args:
             src: Source (parent) node.
             dst: Destination (child) node.
+            propagate: Override the default propagation flag.
             **kwargs: Edge properties.
         """
-        super().__init__(src=src, dst=dst, rel_type="HAS_ORGANICPROVENANCERELATION", **kwargs)
+        super().__init__(src=src, dst=dst, rel_type="HAS_ORGANICPROVENANCERELATION", propagate=True, **kwargs)
 class HasOwnershiprelation(WeakRelation):
-    """Auto-generated weak relation class."""
+    """Auto-generated weak relation class.
+
+    Propagate: True.
+    """
 
     def __init__(self, src: Node, dst: Node, **kwargs: Any) -> None:
         """Initialize a HasOwnershiprelation weak relation.
@@ -7755,11 +8010,15 @@ class HasOwnershiprelation(WeakRelation):
         Args:
             src: Source (parent) node.
             dst: Destination (child) node.
+            propagate: Override the default propagation flag.
             **kwargs: Edge properties.
         """
-        super().__init__(src=src, dst=dst, rel_type="HAS_OWNERSHIPRELATION", **kwargs)
+        super().__init__(src=src, dst=dst, rel_type="HAS_OWNERSHIPRELATION", propagate=True, **kwargs)
 class HasPerformancerelation(WeakRelation):
-    """Auto-generated weak relation class."""
+    """Auto-generated weak relation class.
+
+    Propagate: True.
+    """
 
     def __init__(self, src: Node, dst: Node, **kwargs: Any) -> None:
         """Initialize a HasPerformancerelation weak relation.
@@ -7767,11 +8026,15 @@ class HasPerformancerelation(WeakRelation):
         Args:
             src: Source (parent) node.
             dst: Destination (child) node.
+            propagate: Override the default propagation flag.
             **kwargs: Edge properties.
         """
-        super().__init__(src=src, dst=dst, rel_type="HAS_PERFORMANCERELATION", **kwargs)
+        super().__init__(src=src, dst=dst, rel_type="HAS_PERFORMANCERELATION", propagate=True, **kwargs)
 class HasPerson(WeakRelation):
-    """Auto-generated weak relation class."""
+    """Auto-generated weak relation class.
+
+    Propagate: True.
+    """
 
     def __init__(self, src: Node, dst: Node, **kwargs: Any) -> None:
         """Initialize a HasPerson weak relation.
@@ -7779,11 +8042,15 @@ class HasPerson(WeakRelation):
         Args:
             src: Source (parent) node.
             dst: Destination (child) node.
+            propagate: Override the default propagation flag.
             **kwargs: Edge properties.
         """
-        super().__init__(src=src, dst=dst, rel_type="HAS_PERSON", **kwargs)
+        super().__init__(src=src, dst=dst, rel_type="HAS_PERSON", propagate=True, **kwargs)
 class HasPhysicallocation(WeakRelation):
-    """Auto-generated weak relation class."""
+    """Auto-generated weak relation class.
+
+    Propagate: True.
+    """
 
     def __init__(self, src: Node, dst: Node, **kwargs: Any) -> None:
         """Initialize a HasPhysicallocation weak relation.
@@ -7791,11 +8058,15 @@ class HasPhysicallocation(WeakRelation):
         Args:
             src: Source (parent) node.
             dst: Destination (child) node.
+            propagate: Override the default propagation flag.
             **kwargs: Edge properties.
         """
-        super().__init__(src=src, dst=dst, rel_type="HAS_PHYSICALLOCATION", **kwargs)
+        super().__init__(src=src, dst=dst, rel_type="HAS_PHYSICALLOCATION", propagate=True, **kwargs)
 class HasPlace(WeakRelation):
-    """Auto-generated weak relation class."""
+    """Auto-generated weak relation class.
+
+    Propagate: True.
+    """
 
     def __init__(self, src: Node, dst: Node, **kwargs: Any) -> None:
         """Initialize a HasPlace weak relation.
@@ -7803,11 +8074,15 @@ class HasPlace(WeakRelation):
         Args:
             src: Source (parent) node.
             dst: Destination (child) node.
+            propagate: Override the default propagation flag.
             **kwargs: Edge properties.
         """
-        super().__init__(src=src, dst=dst, rel_type="HAS_PLACE", **kwargs)
+        super().__init__(src=src, dst=dst, rel_type="HAS_PLACE", propagate=True, **kwargs)
 class HasPlacename(WeakRelation):
-    """Auto-generated weak relation class."""
+    """Auto-generated weak relation class.
+
+    Propagate: True.
+    """
 
     def __init__(self, src: Node, dst: Node, **kwargs: Any) -> None:
         """Initialize a HasPlacename weak relation.
@@ -7815,11 +8090,15 @@ class HasPlacename(WeakRelation):
         Args:
             src: Source (parent) node.
             dst: Destination (child) node.
+            propagate: Override the default propagation flag.
             **kwargs: Edge properties.
         """
-        super().__init__(src=src, dst=dst, rel_type="HAS_PLACENAME", **kwargs)
+        super().__init__(src=src, dst=dst, rel_type="HAS_PLACENAME", propagate=True, **kwargs)
 class HasPlacerelation(WeakRelation):
-    """Auto-generated weak relation class."""
+    """Auto-generated weak relation class.
+
+    Propagate: True.
+    """
 
     def __init__(self, src: Node, dst: Node, **kwargs: Any) -> None:
         """Initialize a HasPlacerelation weak relation.
@@ -7827,11 +8106,15 @@ class HasPlacerelation(WeakRelation):
         Args:
             src: Source (parent) node.
             dst: Destination (child) node.
+            propagate: Override the default propagation flag.
             **kwargs: Edge properties.
         """
-        super().__init__(src=src, dst=dst, rel_type="HAS_PLACERELATION", **kwargs)
+        super().__init__(src=src, dst=dst, rel_type="HAS_PLACERELATION", propagate=True, **kwargs)
 class HasPlacetype(WeakRelation):
-    """Auto-generated weak relation class."""
+    """Auto-generated weak relation class.
+
+    Propagate: True.
+    """
 
     def __init__(self, src: Node, dst: Node, **kwargs: Any) -> None:
         """Initialize a HasPlacetype weak relation.
@@ -7839,11 +8122,15 @@ class HasPlacetype(WeakRelation):
         Args:
             src: Source (parent) node.
             dst: Destination (child) node.
+            propagate: Override the default propagation flag.
             **kwargs: Edge properties.
         """
-        super().__init__(src=src, dst=dst, rel_type="HAS_PLACETYPE", **kwargs)
+        super().__init__(src=src, dst=dst, rel_type="HAS_PLACETYPE", propagate=True, **kwargs)
 class HasPosition(WeakRelation):
-    """Auto-generated weak relation class."""
+    """Auto-generated weak relation class.
+
+    Propagate: True.
+    """
 
     def __init__(self, src: Node, dst: Node, **kwargs: Any) -> None:
         """Initialize a HasPosition weak relation.
@@ -7851,11 +8138,15 @@ class HasPosition(WeakRelation):
         Args:
             src: Source (parent) node.
             dst: Destination (child) node.
+            propagate: Override the default propagation flag.
             **kwargs: Edge properties.
         """
-        super().__init__(src=src, dst=dst, rel_type="HAS_POSITION", **kwargs)
+        super().__init__(src=src, dst=dst, rel_type="HAS_POSITION", propagate=True, **kwargs)
 class HasPositionholdingrelation(WeakRelation):
-    """Auto-generated weak relation class."""
+    """Auto-generated weak relation class.
+
+    Propagate: True.
+    """
 
     def __init__(self, src: Node, dst: Node, **kwargs: Any) -> None:
         """Initialize a HasPositionholdingrelation weak relation.
@@ -7863,11 +8154,15 @@ class HasPositionholdingrelation(WeakRelation):
         Args:
             src: Source (parent) node.
             dst: Destination (child) node.
+            propagate: Override the default propagation flag.
             **kwargs: Edge properties.
         """
-        super().__init__(src=src, dst=dst, rel_type="HAS_POSITIONHOLDINGRELATION", **kwargs)
+        super().__init__(src=src, dst=dst, rel_type="HAS_POSITIONHOLDINGRELATION", propagate=True, **kwargs)
 class HasPositiontogrouprelation(WeakRelation):
-    """Auto-generated weak relation class."""
+    """Auto-generated weak relation class.
+
+    Propagate: True.
+    """
 
     def __init__(self, src: Node, dst: Node, **kwargs: Any) -> None:
         """Initialize a HasPositiontogrouprelation weak relation.
@@ -7875,11 +8170,15 @@ class HasPositiontogrouprelation(WeakRelation):
         Args:
             src: Source (parent) node.
             dst: Destination (child) node.
+            propagate: Override the default propagation flag.
             **kwargs: Edge properties.
         """
-        super().__init__(src=src, dst=dst, rel_type="HAS_POSITIONTOGROUPRELATION", **kwargs)
+        super().__init__(src=src, dst=dst, rel_type="HAS_POSITIONTOGROUPRELATION", propagate=True, **kwargs)
 class HasProductiontechniquetype(WeakRelation):
-    """Auto-generated weak relation class."""
+    """Auto-generated weak relation class.
+
+    Propagate: True.
+    """
 
     def __init__(self, src: Node, dst: Node, **kwargs: Any) -> None:
         """Initialize a HasProductiontechniquetype weak relation.
@@ -7887,11 +8186,15 @@ class HasProductiontechniquetype(WeakRelation):
         Args:
             src: Source (parent) node.
             dst: Destination (child) node.
+            propagate: Override the default propagation flag.
             **kwargs: Edge properties.
         """
-        super().__init__(src=src, dst=dst, rel_type="HAS_PRODUCTIONTECHNIQUETYPE", **kwargs)
+        super().__init__(src=src, dst=dst, rel_type="HAS_PRODUCTIONTECHNIQUETYPE", propagate=True, **kwargs)
 class HasProxy(WeakRelation):
-    """Auto-generated weak relation class."""
+    """Auto-generated weak relation class.
+
+    Propagate: True.
+    """
 
     def __init__(self, src: Node, dst: Node, **kwargs: Any) -> None:
         """Initialize a HasProxy weak relation.
@@ -7899,11 +8202,15 @@ class HasProxy(WeakRelation):
         Args:
             src: Source (parent) node.
             dst: Destination (child) node.
+            propagate: Override the default propagation flag.
             **kwargs: Edge properties.
         """
-        super().__init__(src=src, dst=dst, rel_type="HAS_PROXY", **kwargs)
+        super().__init__(src=src, dst=dst, rel_type="HAS_PROXY", propagate=True, **kwargs)
 class HasRecord(WeakRelation):
-    """Auto-generated weak relation class."""
+    """Auto-generated weak relation class.
+
+    Propagate: True.
+    """
 
     def __init__(self, src: Node, dst: Node, **kwargs: Any) -> None:
         """Initialize a HasRecord weak relation.
@@ -7911,11 +8218,15 @@ class HasRecord(WeakRelation):
         Args:
             src: Source (parent) node.
             dst: Destination (child) node.
+            propagate: Override the default propagation flag.
             **kwargs: Edge properties.
         """
-        super().__init__(src=src, dst=dst, rel_type="HAS_RECORD", **kwargs)
+        super().__init__(src=src, dst=dst, rel_type="HAS_RECORD", propagate=True, **kwargs)
 class HasRecordpart(WeakRelation):
-    """Auto-generated weak relation class."""
+    """Auto-generated weak relation class.
+
+    Propagate: True.
+    """
 
     def __init__(self, src: Node, dst: Node, **kwargs: Any) -> None:
         """Initialize a HasRecordpart weak relation.
@@ -7923,11 +8234,15 @@ class HasRecordpart(WeakRelation):
         Args:
             src: Source (parent) node.
             dst: Destination (child) node.
+            propagate: Override the default propagation flag.
             **kwargs: Edge properties.
         """
-        super().__init__(src=src, dst=dst, rel_type="HAS_RECORDPART", **kwargs)
+        super().__init__(src=src, dst=dst, rel_type="HAS_RECORDPART", propagate=True, **kwargs)
 class HasRecordresource(WeakRelation):
-    """Auto-generated weak relation class."""
+    """Auto-generated weak relation class.
+
+    Propagate: True.
+    """
 
     def __init__(self, src: Node, dst: Node, **kwargs: Any) -> None:
         """Initialize a HasRecordresource weak relation.
@@ -7935,11 +8250,15 @@ class HasRecordresource(WeakRelation):
         Args:
             src: Source (parent) node.
             dst: Destination (child) node.
+            propagate: Override the default propagation flag.
             **kwargs: Edge properties.
         """
-        super().__init__(src=src, dst=dst, rel_type="HAS_RECORDRESOURCE", **kwargs)
+        super().__init__(src=src, dst=dst, rel_type="HAS_RECORDRESOURCE", propagate=True, **kwargs)
 class HasRecordresourceextent(WeakRelation):
-    """Auto-generated weak relation class."""
+    """Auto-generated weak relation class.
+
+    Propagate: True.
+    """
 
     def __init__(self, src: Node, dst: Node, **kwargs: Any) -> None:
         """Initialize a HasRecordresourceextent weak relation.
@@ -7947,11 +8266,15 @@ class HasRecordresourceextent(WeakRelation):
         Args:
             src: Source (parent) node.
             dst: Destination (child) node.
+            propagate: Override the default propagation flag.
             **kwargs: Edge properties.
         """
-        super().__init__(src=src, dst=dst, rel_type="HAS_RECORDRESOURCEEXTENT", **kwargs)
+        super().__init__(src=src, dst=dst, rel_type="HAS_RECORDRESOURCEEXTENT", propagate=True, **kwargs)
 class HasRecordresourcegeneticrelation(WeakRelation):
-    """Auto-generated weak relation class."""
+    """Auto-generated weak relation class.
+
+    Propagate: True.
+    """
 
     def __init__(self, src: Node, dst: Node, **kwargs: Any) -> None:
         """Initialize a HasRecordresourcegeneticrelation weak relation.
@@ -7959,11 +8282,15 @@ class HasRecordresourcegeneticrelation(WeakRelation):
         Args:
             src: Source (parent) node.
             dst: Destination (child) node.
+            propagate: Override the default propagation flag.
             **kwargs: Edge properties.
         """
-        super().__init__(src=src, dst=dst, rel_type="HAS_RECORDRESOURCEGENETICRELATION", **kwargs)
+        super().__init__(src=src, dst=dst, rel_type="HAS_RECORDRESOURCEGENETICRELATION", propagate=True, **kwargs)
 class HasRecordresourceholdingrelation(WeakRelation):
-    """Auto-generated weak relation class."""
+    """Auto-generated weak relation class.
+
+    Propagate: True.
+    """
 
     def __init__(self, src: Node, dst: Node, **kwargs: Any) -> None:
         """Initialize a HasRecordresourceholdingrelation weak relation.
@@ -7971,11 +8298,15 @@ class HasRecordresourceholdingrelation(WeakRelation):
         Args:
             src: Source (parent) node.
             dst: Destination (child) node.
+            propagate: Override the default propagation flag.
             **kwargs: Edge properties.
         """
-        super().__init__(src=src, dst=dst, rel_type="HAS_RECORDRESOURCEHOLDINGRELATION", **kwargs)
+        super().__init__(src=src, dst=dst, rel_type="HAS_RECORDRESOURCEHOLDINGRELATION", propagate=True, **kwargs)
 class HasRecordresourcetoinstantiationrelation(WeakRelation):
-    """Auto-generated weak relation class."""
+    """Auto-generated weak relation class.
+
+    Propagate: True.
+    """
 
     def __init__(self, src: Node, dst: Node, **kwargs: Any) -> None:
         """Initialize a HasRecordresourcetoinstantiationrelation weak relation.
@@ -7983,11 +8314,15 @@ class HasRecordresourcetoinstantiationrelation(WeakRelation):
         Args:
             src: Source (parent) node.
             dst: Destination (child) node.
+            propagate: Override the default propagation flag.
             **kwargs: Edge properties.
         """
-        super().__init__(src=src, dst=dst, rel_type="HAS_RECORDRESOURCETOINSTANTIATIONRELATION", **kwargs)
+        super().__init__(src=src, dst=dst, rel_type="HAS_RECORDRESOURCETOINSTANTIATIONRELATION", propagate=True, **kwargs)
 class HasRecordresourcetorecordresourcerelation(WeakRelation):
-    """Auto-generated weak relation class."""
+    """Auto-generated weak relation class.
+
+    Propagate: True.
+    """
 
     def __init__(self, src: Node, dst: Node, **kwargs: Any) -> None:
         """Initialize a HasRecordresourcetorecordresourcerelation weak relation.
@@ -7995,11 +8330,15 @@ class HasRecordresourcetorecordresourcerelation(WeakRelation):
         Args:
             src: Source (parent) node.
             dst: Destination (child) node.
+            propagate: Override the default propagation flag.
             **kwargs: Edge properties.
         """
-        super().__init__(src=src, dst=dst, rel_type="HAS_RECORDRESOURCETORECORDRESOURCERELATION", **kwargs)
+        super().__init__(src=src, dst=dst, rel_type="HAS_RECORDRESOURCETORECORDRESOURCERELATION", propagate=True, **kwargs)
 class HasRecordset(WeakRelation):
-    """Auto-generated weak relation class."""
+    """Auto-generated weak relation class.
+
+    Propagate: True.
+    """
 
     def __init__(self, src: Node, dst: Node, **kwargs: Any) -> None:
         """Initialize a HasRecordset weak relation.
@@ -8007,11 +8346,15 @@ class HasRecordset(WeakRelation):
         Args:
             src: Source (parent) node.
             dst: Destination (child) node.
+            propagate: Override the default propagation flag.
             **kwargs: Edge properties.
         """
-        super().__init__(src=src, dst=dst, rel_type="HAS_RECORDSET", **kwargs)
+        super().__init__(src=src, dst=dst, rel_type="HAS_RECORDSET", propagate=True, **kwargs)
 class HasRecordsettype(WeakRelation):
-    """Auto-generated weak relation class."""
+    """Auto-generated weak relation class.
+
+    Propagate: True.
+    """
 
     def __init__(self, src: Node, dst: Node, **kwargs: Any) -> None:
         """Initialize a HasRecordsettype weak relation.
@@ -8019,11 +8362,15 @@ class HasRecordsettype(WeakRelation):
         Args:
             src: Source (parent) node.
             dst: Destination (child) node.
+            propagate: Override the default propagation flag.
             **kwargs: Edge properties.
         """
-        super().__init__(src=src, dst=dst, rel_type="HAS_RECORDSETTYPE", **kwargs)
+        super().__init__(src=src, dst=dst, rel_type="HAS_RECORDSETTYPE", propagate=True, **kwargs)
 class HasRecordstate(WeakRelation):
-    """Auto-generated weak relation class."""
+    """Auto-generated weak relation class.
+
+    Propagate: True.
+    """
 
     def __init__(self, src: Node, dst: Node, **kwargs: Any) -> None:
         """Initialize a HasRecordstate weak relation.
@@ -8031,11 +8378,15 @@ class HasRecordstate(WeakRelation):
         Args:
             src: Source (parent) node.
             dst: Destination (child) node.
+            propagate: Override the default propagation flag.
             **kwargs: Edge properties.
         """
-        super().__init__(src=src, dst=dst, rel_type="HAS_RECORDSTATE", **kwargs)
+        super().__init__(src=src, dst=dst, rel_type="HAS_RECORDSTATE", propagate=True, **kwargs)
 class HasRelation(WeakRelation):
-    """Auto-generated weak relation class."""
+    """Auto-generated weak relation class.
+
+    Propagate: True.
+    """
 
     def __init__(self, src: Node, dst: Node, **kwargs: Any) -> None:
         """Initialize a HasRelation weak relation.
@@ -8043,11 +8394,15 @@ class HasRelation(WeakRelation):
         Args:
             src: Source (parent) node.
             dst: Destination (child) node.
+            propagate: Override the default propagation flag.
             **kwargs: Edge properties.
         """
-        super().__init__(src=src, dst=dst, rel_type="HAS_RELATION", **kwargs)
+        super().__init__(src=src, dst=dst, rel_type="HAS_RELATION", propagate=True, **kwargs)
 class HasRepresentationtype(WeakRelation):
-    """Auto-generated weak relation class."""
+    """Auto-generated weak relation class.
+
+    Propagate: True.
+    """
 
     def __init__(self, src: Node, dst: Node, **kwargs: Any) -> None:
         """Initialize a HasRepresentationtype weak relation.
@@ -8055,11 +8410,15 @@ class HasRepresentationtype(WeakRelation):
         Args:
             src: Source (parent) node.
             dst: Destination (child) node.
+            propagate: Override the default propagation flag.
             **kwargs: Edge properties.
         """
-        super().__init__(src=src, dst=dst, rel_type="HAS_REPRESENTATIONTYPE", **kwargs)
+        super().__init__(src=src, dst=dst, rel_type="HAS_REPRESENTATIONTYPE", propagate=True, **kwargs)
 class HasRoletype(WeakRelation):
-    """Auto-generated weak relation class."""
+    """Auto-generated weak relation class.
+
+    Propagate: True.
+    """
 
     def __init__(self, src: Node, dst: Node, **kwargs: Any) -> None:
         """Initialize a HasRoletype weak relation.
@@ -8067,11 +8426,15 @@ class HasRoletype(WeakRelation):
         Args:
             src: Source (parent) node.
             dst: Destination (child) node.
+            propagate: Override the default propagation flag.
             **kwargs: Edge properties.
         """
-        super().__init__(src=src, dst=dst, rel_type="HAS_ROLETYPE", **kwargs)
+        super().__init__(src=src, dst=dst, rel_type="HAS_ROLETYPE", propagate=True, **kwargs)
 class HasRule(WeakRelation):
-    """Auto-generated weak relation class."""
+    """Auto-generated weak relation class.
+
+    Propagate: True.
+    """
 
     def __init__(self, src: Node, dst: Node, **kwargs: Any) -> None:
         """Initialize a HasRule weak relation.
@@ -8079,11 +8442,15 @@ class HasRule(WeakRelation):
         Args:
             src: Source (parent) node.
             dst: Destination (child) node.
+            propagate: Override the default propagation flag.
             **kwargs: Edge properties.
         """
-        super().__init__(src=src, dst=dst, rel_type="HAS_RULE", **kwargs)
+        super().__init__(src=src, dst=dst, rel_type="HAS_RULE", propagate=True, **kwargs)
 class HasRulerelation(WeakRelation):
-    """Auto-generated weak relation class."""
+    """Auto-generated weak relation class.
+
+    Propagate: True.
+    """
 
     def __init__(self, src: Node, dst: Node, **kwargs: Any) -> None:
         """Initialize a HasRulerelation weak relation.
@@ -8091,11 +8458,15 @@ class HasRulerelation(WeakRelation):
         Args:
             src: Source (parent) node.
             dst: Destination (child) node.
+            propagate: Override the default propagation flag.
             **kwargs: Edge properties.
         """
-        super().__init__(src=src, dst=dst, rel_type="HAS_RULERELATION", **kwargs)
+        super().__init__(src=src, dst=dst, rel_type="HAS_RULERELATION", propagate=True, **kwargs)
 class HasRuletype(WeakRelation):
-    """Auto-generated weak relation class."""
+    """Auto-generated weak relation class.
+
+    Propagate: True.
+    """
 
     def __init__(self, src: Node, dst: Node, **kwargs: Any) -> None:
         """Initialize a HasRuletype weak relation.
@@ -8103,11 +8474,15 @@ class HasRuletype(WeakRelation):
         Args:
             src: Source (parent) node.
             dst: Destination (child) node.
+            propagate: Override the default propagation flag.
             **kwargs: Edge properties.
         """
-        super().__init__(src=src, dst=dst, rel_type="HAS_RULETYPE", **kwargs)
+        super().__init__(src=src, dst=dst, rel_type="HAS_RULETYPE", propagate=True, **kwargs)
 class HasSequentialrelation(WeakRelation):
-    """Auto-generated weak relation class."""
+    """Auto-generated weak relation class.
+
+    Propagate: True.
+    """
 
     def __init__(self, src: Node, dst: Node, **kwargs: Any) -> None:
         """Initialize a HasSequentialrelation weak relation.
@@ -8115,11 +8490,15 @@ class HasSequentialrelation(WeakRelation):
         Args:
             src: Source (parent) node.
             dst: Destination (child) node.
+            propagate: Override the default propagation flag.
             **kwargs: Edge properties.
         """
-        super().__init__(src=src, dst=dst, rel_type="HAS_SEQUENTIALRELATION", **kwargs)
+        super().__init__(src=src, dst=dst, rel_type="HAS_SEQUENTIALRELATION", propagate=True, **kwargs)
 class HasSiblingrelation(WeakRelation):
-    """Auto-generated weak relation class."""
+    """Auto-generated weak relation class.
+
+    Propagate: True.
+    """
 
     def __init__(self, src: Node, dst: Node, **kwargs: Any) -> None:
         """Initialize a HasSiblingrelation weak relation.
@@ -8127,11 +8506,15 @@ class HasSiblingrelation(WeakRelation):
         Args:
             src: Source (parent) node.
             dst: Destination (child) node.
+            propagate: Override the default propagation flag.
             **kwargs: Edge properties.
         """
-        super().__init__(src=src, dst=dst, rel_type="HAS_SIBLINGRELATION", **kwargs)
+        super().__init__(src=src, dst=dst, rel_type="HAS_SIBLINGRELATION", propagate=True, **kwargs)
 class HasSpouserelation(WeakRelation):
-    """Auto-generated weak relation class."""
+    """Auto-generated weak relation class.
+
+    Propagate: True.
+    """
 
     def __init__(self, src: Node, dst: Node, **kwargs: Any) -> None:
         """Initialize a HasSpouserelation weak relation.
@@ -8139,11 +8522,15 @@ class HasSpouserelation(WeakRelation):
         Args:
             src: Source (parent) node.
             dst: Destination (child) node.
+            propagate: Override the default propagation flag.
             **kwargs: Edge properties.
         """
-        super().__init__(src=src, dst=dst, rel_type="HAS_SPOUSERELATION", **kwargs)
+        super().__init__(src=src, dst=dst, rel_type="HAS_SPOUSERELATION", propagate=True, **kwargs)
 class HasStudyatrelation(WeakRelation):
-    """Auto-generated weak relation class."""
+    """Auto-generated weak relation class.
+
+    Propagate: True.
+    """
 
     def __init__(self, src: Node, dst: Node, **kwargs: Any) -> None:
         """Initialize a HasStudyatrelation weak relation.
@@ -8151,11 +8538,15 @@ class HasStudyatrelation(WeakRelation):
         Args:
             src: Source (parent) node.
             dst: Destination (child) node.
+            propagate: Override the default propagation flag.
             **kwargs: Edge properties.
         """
-        super().__init__(src=src, dst=dst, rel_type="HAS_STUDYATRELATION", **kwargs)
+        super().__init__(src=src, dst=dst, rel_type="HAS_STUDYATRELATION", propagate=True, **kwargs)
 class HasTeachingrelation(WeakRelation):
-    """Auto-generated weak relation class."""
+    """Auto-generated weak relation class.
+
+    Propagate: True.
+    """
 
     def __init__(self, src: Node, dst: Node, **kwargs: Any) -> None:
         """Initialize a HasTeachingrelation weak relation.
@@ -8163,11 +8554,15 @@ class HasTeachingrelation(WeakRelation):
         Args:
             src: Source (parent) node.
             dst: Destination (child) node.
+            propagate: Override the default propagation flag.
             **kwargs: Edge properties.
         """
-        super().__init__(src=src, dst=dst, rel_type="HAS_TEACHINGRELATION", **kwargs)
+        super().__init__(src=src, dst=dst, rel_type="HAS_TEACHINGRELATION", propagate=True, **kwargs)
 class HasTemporalrelation(WeakRelation):
-    """Auto-generated weak relation class."""
+    """Auto-generated weak relation class.
+
+    Propagate: True.
+    """
 
     def __init__(self, src: Node, dst: Node, **kwargs: Any) -> None:
         """Initialize a HasTemporalrelation weak relation.
@@ -8175,11 +8570,15 @@ class HasTemporalrelation(WeakRelation):
         Args:
             src: Source (parent) node.
             dst: Destination (child) node.
+            propagate: Override the default propagation flag.
             **kwargs: Edge properties.
         """
-        super().__init__(src=src, dst=dst, rel_type="HAS_TEMPORALRELATION", **kwargs)
+        super().__init__(src=src, dst=dst, rel_type="HAS_TEMPORALRELATION", propagate=True, **kwargs)
 class HasTitle(WeakRelation):
-    """Auto-generated weak relation class."""
+    """Auto-generated weak relation class.
+
+    Propagate: True.
+    """
 
     def __init__(self, src: Node, dst: Node, **kwargs: Any) -> None:
         """Initialize a HasTitle weak relation.
@@ -8187,11 +8586,15 @@ class HasTitle(WeakRelation):
         Args:
             src: Source (parent) node.
             dst: Destination (child) node.
+            propagate: Override the default propagation flag.
             **kwargs: Edge properties.
         """
-        super().__init__(src=src, dst=dst, rel_type="HAS_TITLE", **kwargs)
+        super().__init__(src=src, dst=dst, rel_type="HAS_TITLE", propagate=True, **kwargs)
 class HasTitletype(WeakRelation):
-    """Auto-generated weak relation class."""
+    """Auto-generated weak relation class.
+
+    Propagate: True.
+    """
 
     def __init__(self, src: Node, dst: Node, **kwargs: Any) -> None:
         """Initialize a HasTitletype weak relation.
@@ -8199,11 +8602,15 @@ class HasTitletype(WeakRelation):
         Args:
             src: Source (parent) node.
             dst: Destination (child) node.
+            propagate: Override the default propagation flag.
             **kwargs: Edge properties.
         """
-        super().__init__(src=src, dst=dst, rel_type="HAS_TITLETYPE", **kwargs)
+        super().__init__(src=src, dst=dst, rel_type="HAS_TITLETYPE", propagate=True, **kwargs)
 class HasType(WeakRelation):
-    """Auto-generated weak relation class."""
+    """Auto-generated weak relation class.
+
+    Propagate: True.
+    """
 
     def __init__(self, src: Node, dst: Node, **kwargs: Any) -> None:
         """Initialize a HasType weak relation.
@@ -8211,11 +8618,15 @@ class HasType(WeakRelation):
         Args:
             src: Source (parent) node.
             dst: Destination (child) node.
+            propagate: Override the default propagation flag.
             **kwargs: Edge properties.
         """
-        super().__init__(src=src, dst=dst, rel_type="HAS_TYPE", **kwargs)
+        super().__init__(src=src, dst=dst, rel_type="HAS_TYPE", propagate=True, **kwargs)
 class HasTyperelation(WeakRelation):
-    """Auto-generated weak relation class."""
+    """Auto-generated weak relation class.
+
+    Propagate: True.
+    """
 
     def __init__(self, src: Node, dst: Node, **kwargs: Any) -> None:
         """Initialize a HasTyperelation weak relation.
@@ -8223,11 +8634,15 @@ class HasTyperelation(WeakRelation):
         Args:
             src: Source (parent) node.
             dst: Destination (child) node.
+            propagate: Override the default propagation flag.
             **kwargs: Edge properties.
         """
-        super().__init__(src=src, dst=dst, rel_type="HAS_TYPERELATION", **kwargs)
+        super().__init__(src=src, dst=dst, rel_type="HAS_TYPERELATION", propagate=True, **kwargs)
 class HasUnitofmeasurement(WeakRelation):
-    """Auto-generated weak relation class."""
+    """Auto-generated weak relation class.
+
+    Propagate: True.
+    """
 
     def __init__(self, src: Node, dst: Node, **kwargs: Any) -> None:
         """Initialize a HasUnitofmeasurement weak relation.
@@ -8235,11 +8650,15 @@ class HasUnitofmeasurement(WeakRelation):
         Args:
             src: Source (parent) node.
             dst: Destination (child) node.
+            propagate: Override the default propagation flag.
             **kwargs: Edge properties.
         """
-        super().__init__(src=src, dst=dst, rel_type="HAS_UNITOFMEASUREMENT", **kwargs)
+        super().__init__(src=src, dst=dst, rel_type="HAS_UNITOFMEASUREMENT", propagate=True, **kwargs)
 class HasWholepartrelation(WeakRelation):
-    """Auto-generated weak relation class."""
+    """Auto-generated weak relation class.
+
+    Propagate: True.
+    """
 
     def __init__(self, src: Node, dst: Node, **kwargs: Any) -> None:
         """Initialize a HasWholepartrelation weak relation.
@@ -8247,11 +8666,15 @@ class HasWholepartrelation(WeakRelation):
         Args:
             src: Source (parent) node.
             dst: Destination (child) node.
+            propagate: Override the default propagation flag.
             **kwargs: Edge properties.
         """
-        super().__init__(src=src, dst=dst, rel_type="HAS_WHOLEPARTRELATION", **kwargs)
+        super().__init__(src=src, dst=dst, rel_type="HAS_WHOLEPARTRELATION", propagate=True, **kwargs)
 class HasWorkrelation(WeakRelation):
-    """Auto-generated weak relation class."""
+    """Auto-generated weak relation class.
+
+    Propagate: True.
+    """
 
     def __init__(self, src: Node, dst: Node, **kwargs: Any) -> None:
         """Initialize a HasWorkrelation weak relation.
@@ -8259,6 +8682,7 @@ class HasWorkrelation(WeakRelation):
         Args:
             src: Source (parent) node.
             dst: Destination (child) node.
+            propagate: Override the default propagation flag.
             **kwargs: Edge properties.
         """
-        super().__init__(src=src, dst=dst, rel_type="HAS_WORKRELATION", **kwargs)
+        super().__init__(src=src, dst=dst, rel_type="HAS_WORKRELATION", propagate=True, **kwargs)
