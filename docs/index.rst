@@ -9,6 +9,7 @@ document representation with Neo4j and an in-memory NetworkX backend.
    :caption: Contents:
 
    tutorials/index
+   api/base
    api/neo4j_graph
    api/networkx_graph
    api/rdf_schema
@@ -17,8 +18,6 @@ document representation with Neo4j and an in-memory NetworkX backend.
 .. toctree::
    :hidden:
 
-   api/base
-   api/drm_entities
    api/drm_entities
 
 Features
