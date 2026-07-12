@@ -164,3 +164,6 @@ cython_debug/
 
 # Connection configuration
 config.jsontest/output/
+
+# Auto-generated schema/entity files
+drm/exemples/generated/
