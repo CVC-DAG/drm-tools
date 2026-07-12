@@ -7,6 +7,6 @@ for ready-made dataset loaders built with these entities.
 
 .. automodule:: drm.drm_entities
    :members:
-   :exclude-members: document_class, assert_on_properties, Individu, IndividuPadro
+   :exclude-members: document_class, assert_on_properties, Individu, IndividuPadro, IndividuFoto, Lloc, LlocPadro, LlocFoto, DocumentCultural, Fons, ActaTemporal, EntitatAmbNom, IndividuAgregat, Atribut, Esdeventiment, Layout, RegioFisica, OCRTranscript, Padro, Fotografia, BOE
    :member-order: bysource
    :show-inheritance:
