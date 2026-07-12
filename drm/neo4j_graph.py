@@ -67,6 +67,25 @@ class Neo4jGraph:
         self._propagation_lock: threading.Lock = threading.Lock()
 
     # ------------------------------------------------------------------
+    # Neo4j driver 5.x+ uses execute_write/execute_read instead of
+    # write_transaction/read_transaction.  Compat shim for both.
+    # ------------------------------------------------------------------
+
+    @staticmethod
+    def _write_transaction(session, func, *args, **kwargs):
+        """Run *func* in a write transaction (compat shim)."""
+        if hasattr(session, "execute_write"):
+            return session.execute_write(func, *args, **kwargs)
+        return session.write_transaction(func, *args, **kwargs)
+
+    @staticmethod
+    def _read_transaction(session, func, *args, **kwargs):
+        """Run *func* in a read transaction (compat shim)."""
+        if hasattr(session, "execute_read"):
+            return session.execute_read(func, *args, **kwargs)
+        return session.read_transaction(func, *args, **kwargs)
+
+    # ------------------------------------------------------------------
     # Public API: CRUD operations
     # ------------------------------------------------------------------
 
@@ -697,7 +716,7 @@ class Neo4jGraph:
             return result
 
         try:
-            return session.execute_write(_create_group_tx)
+            return self._write_transaction(session, _create_group_tx)
         except ConstraintError as err:
             raise RuntimeError("Duplicate key: " + err.message) from err
         except TransactionError as err:
