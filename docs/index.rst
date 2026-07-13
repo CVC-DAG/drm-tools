@@ -38,6 +38,8 @@ and graphical languages (music scores, engineering drawings).
    api/drm_entities
    api/neo4j_graph
    api/networkx_graph
+   api/rdf_schema
+   api/schema_gen
    tutorials/index
 
 Features

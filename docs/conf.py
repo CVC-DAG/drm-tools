@@ -37,12 +37,11 @@ extensions = [
     # "sphinx_autodoc_typehints" — disabled: crashes on dict-inherited descriptors
 ]
 
-# nbsphinx requires pandoc; skip it in CI environments without pandoc
+# nbsphinx requires pandoc; skip it if not available
 if _has_pandoc:
     extensions.append("nbsphinx")
 else:
     nbsphinx_enabled = False
-    # Warn but continue — notebooks will not be rendered
     import warnings
     warnings.warn(
         "nbsphinx disabled: pandoc not found. "
@@ -81,6 +80,9 @@ autodoc_default_options = {
 }
 autodoc_typehints = "description"  # Show types in descriptions, not signatures
 autodoc_typehints_description_target = "all"
+
+# Mock optional dependencies so autodoc doesn't fail on missing neo4j/rdflib
+autodoc_mock_imports = ["neo4j", "rdflib"]
 
 # Intersphinx mapping
 intersphinx_mapping = {
@@ -121,16 +123,38 @@ nbsphinx_execute = "never"
 # - DRM_DOCS_LOCAL_NOTEBOOK_PREFIX, e.g. docs
 docs_github_repo = os.getenv("DRM_DOCS_GITHUB_REPO", "CVC-DAG/drm-tools").strip("/")
 docs_github_ref = os.getenv("DRM_DOCS_GITHUB_REF", "main").strip()
-docs_local_jupyter_base = os.getenv("DRM_DOCS_LOCAL_JUPYTER_BASE", "http://127.0.0.1:8888").rstrip("/")
-docs_local_notebook_prefix = os.getenv("DRM_DOCS_LOCAL_NOTEBOOK_PREFIX", "docs").strip("/")
 
-if docs_local_notebook_prefix:
-    local_notebook_href = (
-        f"{docs_local_jupyter_base}/notebooks/"
-        f"{docs_local_notebook_prefix}/{{{{ env.docname }}}}.ipynb"
+# Local Jupyter base URL — must be set via env var; no default.
+# Examples:
+#   DRM_DOCS_LOCAL_JUPYTER_BASE=http://localhost:8888
+#   DRM_DOCS_LOCAL_JUPYTER_BASE=https://dcc-docencia.uab.cat/user/jupyter-user
+#   DRM_DOCS_LOCAL_JUPYTER_BASE=http://127.0.0.1:8889
+docs_local_jupyter_base = os.getenv("DRM_DOCS_LOCAL_JUPYTER_BASE", "").rstrip("/")
+
+# Notebook path prefix relative to the Jupyter server root.
+# For Jupyter running at repo root: leave empty.
+docs_local_notebook_prefix = os.getenv(
+    "DRM_DOCS_LOCAL_NOTEBOOK_PREFIX", ""
+).strip("/")
+
+if docs_local_jupyter_base:
+    if docs_local_notebook_prefix:
+        local_notebook_href = (
+            f"{docs_local_jupyter_base}/notebooks/"
+            f"{docs_local_notebook_prefix}/{{{{ env.docname }}}}.ipynb"
+        )
+    else:
+        local_notebook_href = f"{docs_local_jupyter_base}/notebooks/{{{{ env.docname }}}}.ipynb"
+    local_notebook_link = (
+        f'      <a href="{local_notebook_href}" target="_blank" '
+        f'rel="noopener noreferrer" '
+        f'style="font-size: 0.9rem; padding: 0.3rem 0.6rem; border: 1px solid #888; '
+        f'border-radius: 4px; text-decoration: none;">'
+        f'Open in Local Jupyter'
+        f'</a>'
     )
 else:
-    local_notebook_href = f"{docs_local_jupyter_base}/notebooks/{{{{ env.docname }}}}.ipynb"
+    local_notebook_link = ""
 
 colab_href = (
     f"https://colab.research.google.com/github/{docs_github_repo}/"
@@ -154,9 +178,7 @@ nbsphinx_prolog = f"""
       <a href="{kaggle_href}" target="_blank" rel="noopener noreferrer">
         <img alt="Open in Kaggle" src="https://kaggle.com/static/images/open-in-kaggle.svg" />
       </a>
-      <a href="{local_notebook_href}" target="_blank" rel="noopener noreferrer" style="font-size: 0.9rem; padding: 0.3rem 0.6rem; border: 1px solid #888; border-radius: 4px; text-decoration: none;">
-        Open in Local Jupyter
-      </a>
+{local_notebook_link}
     </div>
 """
 

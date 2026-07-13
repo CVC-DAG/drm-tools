@@ -11,3 +11,4 @@ See also :mod:`drm.base` for the underlying primitives.
    :members:
    :member-order: bysource
    :show-inheritance:
+   :exclude-members: document_class

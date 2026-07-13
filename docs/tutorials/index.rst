@@ -1,7 +1,9 @@
 Tutorials and Examples
 ======================
 
-This section contains hands-on notebooks rendered directly in the docs.
+This section contains hands-on notebooks. They are rendered in the hosted
+documentation when pandoc is available; otherwise they can be opened directly
+from GitHub or via the links below.
 
 Each dataset notebook shows how to load the same data into both
 ``NetworkXGraph`` and ``Neo4jGraph``. From every notebook page you can also
@@ -12,50 +14,41 @@ Getting Started
 
 Minimal end-to-end graph workflows:
 
-.. toctree::
-
-   notebooks/getting_started/intro_basics
-   notebooks/getting_started/querying_and_filtering
+- `intro_basics <notebooks/getting_started/intro_basics.ipynb>`_
+- `querying_and_filtering <notebooks/getting_started/querying_and_filtering.ipynb>`_
 
 Demos
 -----
 
 Step-by-step demonstrations covering core features:
 
-.. toctree::
-
-   notebooks/demos/delete_strategies
-   notebooks/demos/propagation_demo
-   notebooks/demos/ric_o_demo
-   notebooks/demos/ric_o_networkx_demo
-   notebooks/demos/vector_search
+- `delete_strategies <notebooks/demos/delete_strategies.ipynb>`_
+- `propagation_demo <notebooks/demos/propagation_demo.ipynb>`_
+- `ric_o_demo <notebooks/demos/ric_o_demo.ipynb>`_
+- `ric_o_networkx_demo <notebooks/demos/ric_o_networkx_demo.ipynb>`_
+- `vector_search <notebooks/demos/vector_search.ipynb>`_
 
 Interactive
 -----------
 
 Hands-on explorations with Jupyter widgets:
 
-.. toctree::
-
-   notebooks/interactive/weaknodes
+- `weaknodes <notebooks/interactive/weaknodes.ipynb>`_
 
 Dataset Examples
 ----------------
 
 Datasets loaded into both NetworkXGraph and Neo4jGraph:
 
-.. toctree::
-
-   notebooks/datasets/karate_club
-   notebooks/datasets/bibliography_openalex
-   notebooks/datasets/movies
-   notebooks/datasets/game_of_thrones
-   notebooks/datasets/generating_classes_from_owl
+- `karate_club <notebooks/datasets/karate_club.ipynb>`_
+- `bibliography_openalex <notebooks/datasets/bibliography_openalex.ipynb>`_
+- `movies <notebooks/datasets/movies.ipynb>`_
+- `game_of_thrones <notebooks/datasets/game_of_thrones.ipynb>`_
+- `generating_classes_from_owl <notebooks/datasets/generating_classes_from_owl.ipynb>`_
 
 Notes
 -----
 
-- Notebook pages keep the original ``.ipynb`` download link in the rendered output.
 - Tutorials are configured to use the ``drm-tool`` Jupyter kernel by default.
 - Each tutorial notebook starts with an installation cell that upgrades DRM
   from GitHub and falls back to a local editable install when needed.

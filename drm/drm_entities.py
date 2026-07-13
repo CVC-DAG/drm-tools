@@ -283,10 +283,6 @@ class DocumentCultural(Node):
     This class should not be instantiated directly. Subclasses
     override ``document_class`` to set the appropriate label.
     Automatically appends "DocumentCultural" to alternative labels.
-
-    Attributes:
-        document_class: The Cypher label for this document type.
-            Defaults to "abstract_class".
     """
 
     document_class = "abstract_class"
