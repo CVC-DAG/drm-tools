@@ -9,7 +9,7 @@ AUTHOR = "Oriol Ramos Terrades"
 EMAIL = "oriolrt@cvc.uab.cat"
 LICENSE = "GPL-3.0-or-later"
 
-PACKAGES = find_packages(exclude='drm/')
+PACKAGES = find_packages(exclude=['test'])
 
 
 def get_long_description():
