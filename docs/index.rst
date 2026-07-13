@@ -4,6 +4,32 @@ DRM Tools Documentation
 Document Representation Model (DRM) — Python library for graph-based
 document representation using Neo4j or an in-memory NetworkX backend.
 
+About
+-----
+
+``drm-tools`` implements the **Document Representation Model**, developed as
+part of the **SUKIDI** research project (*Semantic Understanding and Knowledge
+Integration for Document Intelligence*). The project is based on the hypothesis
+that integrating **contextual knowledge** (declarative and procedural) into
+document intelligence systems significantly improves their interpretation
+capabilities, overcoming the limitations of current foundation models that work
+well with structured documents but struggle with historical, graphical, or
+diagrammatic documents.
+
+Model documents as graphs where nodes capture document objects (text regions,
+figures, pages) and edges model their semantic and hierarchical relationships.
+This enables the integration of **declarative knowledge** (semantic entities
+defined within the graph domain) and **procedural knowledge** (cascade delete
+strategies, foreign key validation) over the same structure. The package
+supports two backends: ``Neo4jGraph`` for persistent storage and
+``NetworkXGraph`` for in-memory testing, and includes tools to convert RDF/OWL
+ontologies (such as RiC-O) into Python classes, facilitating domain-specific
+knowledge integration. Additional backends are planned for future releases.
+
+Target applications include administrative document processing (RPA), historical
+archives (such as the National Census of Victims), manuscripts with rare scripts,
+and graphical languages (music scores, engineering drawings).
+
 .. toctree::
    :maxdepth: 1
    :caption: Contents:
@@ -159,8 +185,7 @@ Acknowledgements
 ----------------
 
 This work has been partially supported by the Spanish project
-PID2021-126808OB-I00, Ministerio de Ciencia e Innovación, the Departament
+PID2024-157778OB-I00 (Ministerio de Ciencia e Innovación), the Departament
 de Cultura of the Generalitat de Catalunya, and the CERCA Program /
 Generalitat de Catalunya. Adrià Molina is funded with the PRE2022-101575
-grant provided by MCIN / AEI / 10.13039 / 501100011033 and by the
-European Social Fund (FSE+).
+grant (MCIN / AEI / 10.13039 / 501100011033 and FSE+).
