@@ -5,6 +5,7 @@ matplotlib
 neo4j
 tqdm
 graphviz
+rdflib
 sphinx
 sphinx-rtd-theme
 nbsphinx
