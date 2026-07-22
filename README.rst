@@ -135,7 +135,7 @@ The pipeline maps OWL constructs to DRM:
 * ``rdfs:comment`` -- Class docstring
 
 Example Dataset Loaders (cvcdocdb.exemples)
---------------------------------------
+-------------------------------------------
 
 The package includes ready-to-run loaders for common graph domains:
 
