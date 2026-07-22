@@ -86,7 +86,7 @@ fast lookups without scanning all nodes:
 
 .. code-block:: python
 
-    from drm import NetworkXGraph, Node
+    from cvcdocdb import NetworkXGraph, Node
 
     graph = NetworkXGraph()
     alice = Node(pk={"name": "Alice"}, main_label="Author")
@@ -123,7 +123,7 @@ Example (``NetworkXGraph``):
 
 .. code-block:: python
 
-    from drm import NetworkXGraph, Node
+    from cvcdocdb import NetworkXGraph, Node
 
     graph = NetworkXGraph()
     graph.enable_vector_index("embedding", dimensions=3, space="cosine")
@@ -164,7 +164,7 @@ Example:
 
 .. code-block:: python
 
-    from drm import Neo4jGraph, Node, WeakNode
+    from cvcdocdb import Neo4jGraph, Node, WeakNode
 
     graph = Neo4jGraph(
         url="bolt://localhost:7687",
@@ -225,7 +225,7 @@ Example:
 
 .. code-block:: python
 
-    from drm import Neo4jGraph, Node, WeakNode
+    from cvcdocdb import Neo4jGraph, Node, WeakNode
 
     graph = Neo4jGraph(
         url="bolt://localhost:7687",
@@ -272,7 +272,7 @@ Example:
 
 .. code-block:: python
 
-    from drm import Neo4jGraph
+    from cvcdocdb import Neo4jGraph
 
     graph = Neo4jGraph(
         url="bolt://localhost:7687",
@@ -311,7 +311,7 @@ Quick Start
 
 .. code-block:: python
 
-    from drm import Neo4jGraph, Node, WeakNode
+    from cvcdocdb import Neo4jGraph, Node, WeakNode
 
     # Connect to Neo4j
     graph = Neo4jGraph(
@@ -337,7 +337,7 @@ For the in-memory backend:
 
 .. code-block:: python
 
-    from drm import NetworkXGraph, Node
+    from cvcdocdb import NetworkXGraph, Node
 
     graph = NetworkXGraph()
     doc = Node(pk={"doc": "DOC-001"}, main_label="Document")

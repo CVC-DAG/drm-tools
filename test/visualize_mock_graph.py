@@ -8,9 +8,9 @@ import sys
 import os
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from drm.networkx_graph import NetworkXGraph
-from drm.base import Node, Relation
-from drm.drm_entities import IndividuPadro, LlocPadro
+from cvcdocdb.networkx_graph import NetworkXGraph
+from cvcdocdb.base import Node, Relation
+from cvcdocdb.drm_entities import IndividuPadro, LlocPadro
 
 
 def separator(title: str) -> None:

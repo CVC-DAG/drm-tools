@@ -87,7 +87,7 @@ This library implements a graph-based document representation model. It supports
 - **WeakRelation**: A relation between a parent and a `WeakNode` that carries a `_propagate=True` flag, enabling **cascade delete** (deleting the parent automatically deletes the child).
 
 ### IMPORTANT: Backend Integrity
-- **DO NOT MODIFY** the core logic, functions, or internal implementation of the Neo4j backend (specifically files in `drm/` and `test/test_neo4j_real.py`) unless explicitly instructed to do so within a dedicated, isolated branch and for a specific, documented task.
+- **DO NOT MODIFY** the core logic, functions, or internal implementation of the Neo4j backend (specifically files in `cvcdocdb/` and `test/test_neo4j_real.py`) unless explicitly instructed to do so within a dedicated, isolated branch and for a specific, documented task.
 - Any structural changes to the backend must follow a formal review process.
 
 ## PyPI Publishing

@@ -1,4 +1,4 @@
-name: drm-env
+name: cvcdocdb-env
 channels:
   - conda-forge
   - defaults

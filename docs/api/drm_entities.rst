@@ -1,14 +1,14 @@
 Semantic entities
 =================
 
-The :mod:`drm.drm_entities` module contains the domain-specific node types
-built on top of :mod:`drm.base`. These classes add validation, default labels,
+The :mod:`cvcdocdb.drm_entities` module contains the domain-specific node types
+built on top of :mod:`cvcdocdb.base`. These classes add validation, default labels,
 and automatic materialisation of properties into graph structures.
 
-See also :mod:`drm.base` for the underlying primitives and :mod:`drm.exemples`
+See also :mod:`cvcdocdb.base` for the underlying primitives and :mod:`cvcdocdb.exemples`
 for ready-made dataset loaders built with these entities.
 
-.. automodule:: drm.drm_entities
+.. automodule:: cvcdocdb.drm_entities
    :members:
    :exclude-members: document_class
    :member-order: bysource

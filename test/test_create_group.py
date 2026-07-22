@@ -7,8 +7,8 @@ import time
 import unittest
 from typing import Any, Dict, List, Optional, Tuple
 
-from drm.base import Node, Relation, WeakNode, WeakRelation
-from drm.networkx_graph import NetworkXGraph
+from cvcdocdb.base import Node, Relation, WeakNode, WeakRelation
+from cvcdocdb.networkx_graph import NetworkXGraph
 
 
 # ======================================================================
@@ -273,7 +273,7 @@ class TestCreateGroupNeo4jContract(unittest.TestCase):
 
     def test_create_group_signature(self) -> None:
         """create_group exists on Neo4jGraph and has the right signature."""
-        from drm.neo4j_graph import Neo4jGraph
+        from cvcdocdb.neo4j_graph import Neo4jGraph
 
         # Just verify the method exists and is callable
         self.assertTrue(hasattr(Neo4jGraph, "create_group"))
@@ -286,7 +286,7 @@ class TestCreateGroupNeo4jContract(unittest.TestCase):
 
     def test_init_propagation_signature(self) -> None:
         """init_propagation exists on Neo4jGraph and has the right signature."""
-        from drm.neo4j_graph import Neo4jGraph
+        from cvcdocdb.neo4j_graph import Neo4jGraph
 
         self.assertTrue(hasattr(Neo4jGraph, "init_propagation"))
         import inspect
@@ -305,17 +305,17 @@ class TestGraphStoreContract(unittest.TestCase):
     """Verify that both backends implement the new abstract methods."""
 
     def test_graph_store_has_create_group(self) -> None:
-        from drm.graph_store import GraphStore
+        from cvcdocdb.graph_store import GraphStore
         self.assertTrue(hasattr(GraphStore, "create_group"))
 
     def test_graph_store_has_init_propagation(self) -> None:
-        from drm.graph_store import GraphStore
+        from cvcdocdb.graph_store import GraphStore
         self.assertTrue(hasattr(GraphStore, "init_propagation"))
 
     def test_networkx_implements_create_group(self) -> None:
         """NetworkXGraph.create_group is not the ABC stub."""
         import tempfile
-        from drm.networkx_graph import NetworkXGraph
+        from cvcdocdb.networkx_graph import NetworkXGraph
         path = tempfile.mktemp(suffix=".pkl")
         graph = NetworkXGraph(persistence_path=path)
         try:
@@ -331,7 +331,7 @@ class TestGraphStoreContract(unittest.TestCase):
     def test_networkx_implements_init_propagation(self) -> None:
         """NetworkXGraph.init_propagation is not the ABC stub."""
         import tempfile
-        from drm.networkx_graph import NetworkXGraph
+        from cvcdocdb.networkx_graph import NetworkXGraph
         path = tempfile.mktemp(suffix=".pkl")
         graph = NetworkXGraph(persistence_path=path)
         try:

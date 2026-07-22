@@ -1,4 +1,4 @@
-# Document Representation Model (drm-tools)
+# Document Representation Model (cvcdocdb)
 
 Graph-based document representation library with Neo4j and an in-memory NetworkX backend.
 
@@ -20,27 +20,27 @@ Model documents as graphs where nodes represent document objects (text regions, 
 Install from PyPI:
 
 ```bash
-pip install drm-tools
+pip install cvcdocdb
 ```
 
 Or install from source in development mode:
 
 ```bash
-git clone https://github.com/CVC-DAG/drm-tools.git
-cd drm-tools
+git clone https://github.com/CVC-DAG/cvcdocdb.git
+cd cvcdocdb
 pip install -e .
 ```
 
 Register the recommended Jupyter kernel for tutorials:
 
 ```bash
-python -m ipykernel install --user --name drm-tool --display-name "Python (drm-tool)"
+python -m ipykernel install --user --name cvcdocdb-tool --display-name "Python (cvcdocdb-tool)"
 ```
 
 ## Quick Start
 
 ```python
-from drm import NetworkXGraph, Node, WeakNode
+from cvcdocdb import NetworkXGraph, Node, WeakNode
 
 # In-memory backend -- no database required
 graph = NetworkXGraph()
@@ -65,7 +65,7 @@ graph.close()
 
 Runnable Jupyter notebooks in `docs/tutorials/notebooks/`. Each notebook installs the package automatically from the latest release when run.
 
-You can also view them rendered in the [hosted documentation](https://cvc-dag.github.io/drm-tools/).
+You can also view them rendered in the [hosted documentation](https://cvc-dag.github.io/cvcdocdb/).
 
 ### Getting Started
 
@@ -94,22 +94,22 @@ You can also view them rendered in the [hosted documentation](https://cvc-dag.gi
 Generate Python entity classes from RDF/OWL ontologies in one step:
 
 ```python
-from drm.rdf_schema import download_ontology_and_convert
+from cvcdocdb.rdf_schema import download_ontology_and_convert
 
 # Downloads, converts to YAML, and generates Python classes
 output_path = download_ontology_and_convert(
     "https://raw.githubusercontent.com/ICA-EGAD/RiC-O/master/ontology/current-version/RiC-O_1-1.rdf",
     "rico",
-    output_dir="drm/"
+    output_dir="cvcdocdb/"
 )
-# Generates drm/rico_entities.py (677 classes from RiC-O)
+# Generates cvcdocdb/rico_entities.py (677 classes from RiC-O)
 ```
 
 Step by step:
 
 ```python
-from drm.rdf_schema import download_ontology, rdf_to_yaml
-from drm.schema_gen import generate_classes
+from cvcdocdb.rdf_schema import download_ontology, rdf_to_yaml
+from cvcdocdb.schema_gen import generate_classes
 
 # 1. Download ontology
 ont_path = download_ontology(url, output_dir="ontologies/")
@@ -121,7 +121,7 @@ yaml_str = rdf_to_yaml(ont_path, "my_db")
 py_source = generate_classes(yaml_str)
 
 # 4. Write file
-with open("drm/entities_my_db.py", "w") as f:
+with open("cvcdocdb/entities_my_db.py", "w") as f:
     f.write(py_source)
 ```
 
@@ -134,27 +134,27 @@ The pipeline maps OWL constructs to DRM:
 - `owl:hasKey` -- Primary key fields
 - `rdfs:comment` -- Class docstring
 
-## Example Dataset Loaders (drm.exemples)
+## Example Dataset Loaders (cvcdocdb.exemples)
 
 The package includes ready-to-run loaders for common graph domains:
 
-- `drm.exemples.networkx_karate` -- Karate Club graph (NetworkX classic)
-- `drm.exemples.networkx_bibliografia` -- Bibliographic references from OpenAlex
-- `drm.exemples.neo4j_movies` -- Movie-domain graph
-- `drm.exemples.neo4j_got` -- Game of Thrones character-house graph
+- `cvcdocdb.exemples.networkx_karate` -- Karate Club graph (NetworkX classic)
+- `cvcdocdb.exemples.networkx_bibliografia` -- Bibliographic references from OpenAlex
+- `cvcdocdb.exemples.neo4j_movies` -- Movie-domain graph
+- `cvcdocdb.exemples.neo4j_got` -- Game of Thrones character-house graph
 
 ### Command-line loader
 
 ```bash
-python -m drm.exemples --dataset karate --backend networkx
-python -m drm.exemples --dataset all --backend both --quiet
+python -m cvcdocdb.exemples --dataset karate --backend networkx
+python -m cvcdocdb.exemples --dataset all --backend both --quiet
 ```
 
 ### Programmatic usage
 
 ```python
-from drm import NetworkXGraph
-from drm.exemples import load_karate_club, load_bibliografia_openalex
+from cvcdocdb import NetworkXGraph
+from cvcdocdb.exemples import load_karate_club, load_bibliografia_openalex
 
 graph = NetworkXGraph()
 print(load_karate_club(graph))
@@ -197,7 +197,7 @@ Skip Neo4j tests: `pytest test/ -v -m "not slow"`
 
 ## Documentation
 
-- **Hosted docs**: https://cvc-dag.github.io/drm-tools/
+- **Hosted docs**: https://cvc-dag.github.io/cvcdocdb/
 - **Source docs**: `docs/` -- Sphinx documentation source
 
 Generate HTML docs with Sphinx:

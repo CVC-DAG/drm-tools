@@ -13,7 +13,7 @@ The loader:
 
 Usage::
 
-    from drm.exemples.load_ric_o_naf import load_ric_o_naf
+    from cvcdocdb.exemples.load_ric_o_naf import load_ric_o_naf
 
     stats = load_ric_o_naf(graph, limit=50, max_agents=10, max_records=3)
     print(f"Total entities: {stats['total']}")
@@ -107,7 +107,7 @@ def _list_github_dir(url: str) -> List[str]:
     Returns:
         List of filenames.
     """
-    req = urllib.request.Request(url, headers={"User-Agent": "drm-tools-rico/1.0"})
+    req = urllib.request.Request(url, headers={"User-Agent": "cvcdocdb-rico/1.0"})
     with urllib.request.urlopen(req, timeout=30) as resp:
         data = resp.read().decode("utf-8")
 
@@ -123,7 +123,7 @@ def _download_file(url: str) -> bytes:
     Returns:
         The file content as bytes.
     """
-    req = urllib.request.Request(url, headers={"User-Agent": "drm-tools-rico/1.0"})
+    req = urllib.request.Request(url, headers={"User-Agent": "cvcdocdb-rico/1.0"})
     with urllib.request.urlopen(req, timeout=60) as resp:
         return resp.read()
 

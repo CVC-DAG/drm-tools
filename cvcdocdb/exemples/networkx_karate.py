@@ -10,7 +10,7 @@ from typing import Dict
 
 import networkx as nx
 
-from drm.base import Node, Relation
+from cvcdocdb.base import Node, Relation
 
 
 def load_karate_club(graph, include_club_nodes: bool = True) -> Dict[str, int]:

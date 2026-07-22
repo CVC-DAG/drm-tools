@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Any, Dict, List, Optional
 
-from drm.base import Node, WeakNode, Relation, WeakRelation
+from cvcdocdb.base import Node, WeakNode, Relation, WeakRelation
 
 
 class AccumulationRelation(WeakNode):

@@ -6,8 +6,8 @@ and weak relation found in the schema.
 
 Example usage::
 
-    from drm.networkx_graph import NetworkXGraph
-    from drm.schema_gen import generate_classes, generate_file
+    from cvcdocdb.networkx_graph import NetworkXGraph
+    from cvcdocdb.schema_gen import generate_classes, generate_file
 
     g = NetworkXGraph(persistence_path="my_graph.pkl")
     source = generate_classes(g.schema_yaml("my_db"))
@@ -17,7 +17,7 @@ Example usage::
 
 Output structure::
 
-    from drm.base import Node, WeakNode, Relation, WeakRelation
+    from cvcdocdb.base import Node, WeakNode, Relation, WeakRelation
 
     class Character(Node):
         \"\"\"Auto-generated from schema.\"\"\"
@@ -94,7 +94,7 @@ def generate_classes(yaml_source: str) -> str:
     lines.append("")
     lines.append("from typing import Any, Dict, List, Optional")
     lines.append("")
-    lines.append("from drm.base import Node, WeakNode, Relation, WeakRelation")
+    lines.append("from cvcdocdb.base import Node, WeakNode, Relation, WeakRelation")
     lines.append("")
     lines.append("")
 

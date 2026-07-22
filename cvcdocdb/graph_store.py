@@ -6,8 +6,8 @@ without knowing the backing technology.
 
 Usage::
 
-    from drm.graph_store import GraphStore
-    from drm.networkx_graph import NetworkXGraph
+    from cvcdocdb.graph_store import GraphStore
+    from cvcdocdb.networkx_graph import NetworkXGraph
 
     def process(store: GraphStore) -> None:
         node = Node(pk={"id": 1}, main_label="Test")

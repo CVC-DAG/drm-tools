@@ -7,20 +7,20 @@ import os
 import shutil
 import sys
 
-# Add the project root to the path so Sphinx can find the drm package.
+# Add the project root to the path so Sphinx can find the cvcdocdb package.
 sys.path.insert(0, os.path.abspath(os.path.join("..")))
 
 # Check if pandoc is available (required by nbsphinx for notebooks)
 _has_pandoc = shutil.which("pandoc") is not None
 
 # -- Project information -----------------------------------------------------
-project = "DRM Tools"
+project = "cvcdocdb Tools"
 copyright = "2025, Oriol Ramos Terrades, Jialuo Chen, Adrià Molina"
 author = "Oriol Ramos Terrades, Jialuo Chen, Adrià Molina"
 
 # The full version, including alpha/beta/rc tags
 try:
-    from drm import __version__ as drm_version  # noqa: E402
+    from cvcdocdb import __version__ as drm_version  # noqa: E402
 except ImportError:
     drm_version = None
 
@@ -115,11 +115,11 @@ html_theme_options = {
 nbsphinx_execute = "never"
 
 # Notebook link settings (can be overridden in CI/local env):
-# - DRM_DOCS_GITHUB_REPO, e.g. CVC-DAG/drm-tools
+# - DRM_DOCS_GITHUB_REPO, e.g. CVC-DAG/cvcdocdb-tools
 # - DRM_DOCS_GITHUB_REF, e.g. main, dev, feature/branch
 # - DRM_DOCS_LOCAL_JUPYTER_BASE, e.g. http://127.0.0.1:8888
 # - DRM_DOCS_LOCAL_NOTEBOOK_PREFIX, e.g. docs
-docs_github_repo = os.getenv("DRM_DOCS_GITHUB_REPO", "CVC-DAG/drm-tools").strip("/")
+docs_github_repo = os.getenv("DRM_DOCS_GITHUB_REPO", "CVC-DAG/cvcdocdb-tools").strip("/")
 docs_github_ref = os.getenv("DRM_DOCS_GITHUB_REF", "main").strip()
 docs_local_jupyter_base = os.getenv("DRM_DOCS_LOCAL_JUPYTER_BASE", "http://127.0.0.1:8888").rstrip("/")
 docs_local_notebook_prefix = os.getenv("DRM_DOCS_LOCAL_NOTEBOOK_PREFIX", "docs").strip("/")
@@ -165,8 +165,8 @@ latex_elements = {}
 latex_documents = [
     (
         "index",
-        "drm-tools.tex",
-        "DRM Tools Documentation",
+        "cvcdocdb-tools.tex",
+        "cvcdocdb Tools Documentation",
         "Oriol Ramos Terrades, Jialuo Chen, Adrià Molina",
         "manual",
     ),
@@ -199,8 +199,8 @@ def setup(app):
 man_pages = [
     (
         "index",
-        "drm-tools",
-        "DRM Tools Documentation",
+        "cvcdocdb-tools",
+        "cvcdocdb Tools Documentation",
         ["Oriol Ramos Terrades, Jialuo Chen, Adrià Molina"],
         1,
     ),

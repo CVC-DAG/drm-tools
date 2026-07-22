@@ -18,8 +18,8 @@ if os.path.exists(_env_path):
     from dotenv import load_dotenv
     load_dotenv(_env_path)
 
-from drm.base import Node, Relation, WeakNode
-from drm.neo4j_graph import Neo4jGraph
+from cvcdocdb.base import Node, Relation, WeakNode
+from cvcdocdb.neo4j_graph import Neo4jGraph
 
 
 def _get_config() -> Dict[str, Optional[str]]:

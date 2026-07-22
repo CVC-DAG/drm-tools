@@ -524,7 +524,7 @@ class NetworkXGraph(GraphStore):
         self,
         filter_dict: Optional[Dict[str, Any]] = None,
     ) -> "NxQuery":
-        """Return an :class:`~drm.nx_query.NxQuery` fluent builder.
+        """Return an :class:`~cvcdocdb.nx_query.NxQuery` fluent builder.
 
         Unlike :meth:`query`, this returns a lazy, chainable query object
         instead of a list.  Call ``.where(...)``, ``.limit(...)``,
@@ -543,7 +543,7 @@ class NetworkXGraph(GraphStore):
             ...     .limit(10)
             ...     .to_list())
         """
-        from drm.nx_query import NxQuery
+        from cvcdocdb.nx_query import NxQuery
 
         items = (
             (nid, attrs)

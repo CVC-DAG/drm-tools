@@ -11,7 +11,7 @@ Aquest directori conté loaders de datasets per tutorials:
 
 ```python
 from drm import NetworkXGraph
-from drm.exemples import load_karate_club, load_bibliografia_openalex
+from cvcdocdb.exemples import load_karate_club, load_bibliografia_openalex
 
 graph = NetworkXGraph()
 print(load_karate_club(graph))

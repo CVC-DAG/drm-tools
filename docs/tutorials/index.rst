@@ -98,7 +98,7 @@ Notes
 -----
 
 - Notebook pages keep the original ``.ipynb`` download link in the rendered output.
-- Tutorials are configured to use the ``drm-tool`` Jupyter kernel by default.
+- Tutorials are configured to use the ``cvcdocdb-tool`` Jupyter kernel by default.
 - Each tutorial notebook starts with an installation cell that upgrades DRM
   from GitHub and falls back to a local editable install when needed.
 - Button links can be customized with env vars: ``DRM_DOCS_GITHUB_REPO``,

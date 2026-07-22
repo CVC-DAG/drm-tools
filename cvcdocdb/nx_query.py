@@ -7,8 +7,8 @@ Works with any NetworkX graph (``nx.DiGraph``, ``nx.MultiDiGraph``, …)
 using lazy generators and a chainable API.
 
 Usage:
-    from drm.nx_query import NxQuery
-    from drm.networkx_graph import NetworkXGraph
+    from cvcdocdb.nx_query import NxQuery
+    from cvcdocdb.networkx_graph import NetworkXGraph
 
     g = NetworkXGraph()
     # … insert nodes …
@@ -38,7 +38,7 @@ from __future__ import annotations
 
 from typing import Any, Callable, Iterator, Union
 
-from drm.networkx_graph import _match  # MongoDB-style match logic
+from cvcdocdb.networkx_graph import _match  # MongoDB-style match logic
 
 
 # ---------------------------------------------------------------------------

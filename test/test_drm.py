@@ -6,7 +6,7 @@ import sys
 import tempfile
 import unittest
 
-# Mock external dependencies before importing drm modules that depend on them
+# Mock external dependencies before importing cvcdocdb modules that depend on them
 from unittest import mock as _unittest_mock
 mock_neo4j = _unittest_mock.MagicMock  # Class, not instance — can call mock_neo4j() to create new instances
 mock_patch = _unittest_mock.patch
@@ -34,10 +34,10 @@ sys.modules["neo4j.exceptions"] = _mock_neo4j_exceptions
 sys.modules["tqdm"] = _unittest_mock.MagicMock()
 sys.modules["traitlets"] = _unittest_mock.MagicMock()
 
-from drm.neo4j_graph import Neo4jGraph
-from drm.networkx_graph import NetworkXGraph
-from drm.drm_entities import *
-from drm.base import *
+from cvcdocdb.neo4j_graph import Neo4jGraph
+from cvcdocdb.networkx_graph import NetworkXGraph
+from cvcdocdb.drm_entities import *
+from cvcdocdb.base import *
 
 
 # ---------------------------------------------------------------------------
@@ -1281,7 +1281,7 @@ class Neo4jGraphTest(unittest.TestCase):
 
     def setUp(self) -> None:
         """Patch GraphDatabase.driver so Neo4jGraph uses a mock."""
-        self.patcher = mock_patch("drm.neo4j_graph.GraphDatabase")
+        self.patcher = mock_patch("cvcdocdb.neo4j_graph.GraphDatabase")
         mock_gd = self.patcher.start()
         self.mock_driver = mock_neo4j()
         mock_gd.driver.return_value = self.mock_driver
@@ -1570,7 +1570,7 @@ class BaseTest(unittest.TestCase):
         """Node amb pk=None explícit: el backend assigna un ID com a PK."""
         node = Node(pk=None, main_label="AutoIdNode")
         self.assertIsNone(node._primary_key)
-        from drm.networkx_graph import NetworkXGraph
+        from cvcdocdb.networkx_graph import NetworkXGraph
         graph = NetworkXGraph()
         graph.insertNode(node, replace=True)
         self.assertIsNotNone(node._primary_key)

@@ -10,7 +10,7 @@ import urllib.parse
 import urllib.request
 from typing import Dict, List
 
-from drm.base import Node, Relation
+from cvcdocdb.base import Node, Relation
 
 
 OPENALEX_BASE_URL = "https://api.openalex.org/works"
@@ -43,7 +43,7 @@ def _download_openalex_works(query: str, per_page: int = 20, mailto: str | None 
     if mailto:
         params["mailto"] = mailto
     url = f"{OPENALEX_BASE_URL}?{urllib.parse.urlencode(params)}"
-    req = urllib.request.Request(url, headers={"User-Agent": "drm-tools-examples/1.0"})
+    req = urllib.request.Request(url, headers={"User-Agent": "cvcdocdb-examples/1.0"})
     try:
         with urllib.request.urlopen(req, timeout=20) as resp:
             payload = json.loads(resp.read().decode("utf-8"))

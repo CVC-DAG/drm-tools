@@ -13,8 +13,8 @@ import shutil
 import tempfile
 import unittest
 
-from drm.base import Node, Relation
-from drm.networkx_graph import NetworkXGraph
+from cvcdocdb.base import Node, Relation
+from cvcdocdb.networkx_graph import NetworkXGraph
 
 
 # ---------------------------------------------------------------------------
@@ -252,7 +252,7 @@ class QueryNodesFluentTest(unittest.TestCase):
 
     def test_query_nodes_with_chained_where(self) -> None:
         """query_nodes() returns NxQuery that supports .where().to_list()."""
-        from drm.nx_query import NxQuery
+        from cvcdocdb.nx_query import NxQuery
         q = self.graph.query_nodes()
         self.assertIsInstance(q, NxQuery)
         result = q.where({"main_label": "Person"}).to_list()
