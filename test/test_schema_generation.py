@@ -15,9 +15,9 @@ try:
 except ImportError:
     yaml = None
 
-from drm.base import Node, Relation, WeakNode
-from drm.graph_store import GraphStore
-from drm.networkx_graph import NetworkXGraph
+from cvcdocdb.base import Node, Relation, WeakNode
+from cvcdocdb.graph_store import GraphStore
+from cvcdocdb.networkx_graph import NetworkXGraph
 
 
 # ---------------------------------------------------------------------------
@@ -193,7 +193,7 @@ class Neo4jSchemaTest(unittest.TestCase):
             cls.skip_reason = "NEO4J_DEV_PASSWORD not set"
             cls.graph = None
             return
-        from drm.neo4j_graph import Neo4jGraph
+        from cvcdocdb.neo4j_graph import Neo4jGraph
         cls.graph = None
         try:
             cls.graph = Neo4jGraph(

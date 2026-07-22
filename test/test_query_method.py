@@ -15,9 +15,9 @@ import tempfile
 import unittest
 from typing import Any, Dict, List
 
-from drm.base import Node, Relation, WeakNode
-from drm.graph_store import GraphStore
-from drm.networkx_graph import NetworkXGraph
+from cvcdocdb.base import Node, Relation, WeakNode
+from cvcdocdb.graph_store import GraphStore
+from cvcdocdb.networkx_graph import NetworkXGraph
 
 
 # ---------------------------------------------------------------------------
@@ -251,7 +251,7 @@ class Neo4jQueryTest(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls) -> None:
-        from drm.neo4j_graph import Neo4jGraph
+        from cvcdocdb.neo4j_graph import Neo4jGraph
 
         cls.password = os.environ.get("NEO4J_DEV_PASSWORD", "")
         if not cls.password:

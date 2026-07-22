@@ -1,10 +1,11 @@
 traitlets
-hnswlib
 networkx
 matplotlib
+numpy
 neo4j
 tqdm
 graphviz
+rdflib
 sphinx
 sphinx-rtd-theme
 nbsphinx

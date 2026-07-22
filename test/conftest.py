@@ -1,4 +1,4 @@
-"""Pytest configuration for DRM tools.
+"""Pytest configuration for cvcdocdb tools.
 
 Organizes tests into three levels:
 

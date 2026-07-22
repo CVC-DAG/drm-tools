@@ -1,4 +1,4 @@
-"""Module entry point for `python -m drm.exemples`."""
+"""Module entry point for `python -m cvcdocdb.exemples`."""
 
 from .cli import main
 

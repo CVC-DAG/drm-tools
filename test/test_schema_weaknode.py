@@ -16,8 +16,8 @@ try:
 except ImportError:
     yaml = None
 
-from drm.base import Node, Relation, WeakNode
-from drm.networkx_graph import NetworkXGraph
+from cvcdocdb.base import Node, Relation, WeakNode
+from cvcdocdb.networkx_graph import NetworkXGraph
 
 
 # ---------------------------------------------------------------------------

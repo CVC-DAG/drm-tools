@@ -1,7 +1,7 @@
 """Convert RDF/OWL ontology to DRM YAML schema.
 
 Parses an RDF file (Turtle, RDF/XML, N-Triples, etc.) and produces a YAML
-schema compatible with ``drm.schema_gen.generate_classes()``.
+schema compatible with ``cvcdocdb.schema_gen.generate_classes()``.
 
 Ontology features mapped:
 
@@ -16,13 +16,13 @@ Ontology features mapped:
 
 Usage::
 
-    from drm.rdf_schema import download_ontology, rdf_to_yaml
+    from cvcdocdb.rdf_schema import download_ontology, rdf_to_yaml
 
     # Download and convert in one step:
     yaml_str = download_ontology_and_convert(
         "https://raw.githubusercontent.com/ICA-EGAD/RiC-O/master/ontology/current-version/RiC-O_1-1.rdf",
         "rico",
-        output_dir="drm/"
+        output_dir="cvcdocdb/"
     )
 
     # Or download first, then convert:
@@ -93,7 +93,7 @@ def download_ontology(
 
     out_path = os.path.join(output_dir, filename)
 
-    req = urllib.request.Request(url, headers={"User-Agent": "drm-tools-rdf/1.0"})
+    req = urllib.request.Request(url, headers={"User-Agent": "cvcdocdb-rdf/1.0"})
     with urllib.request.urlopen(req, timeout=60) as resp:
         data = resp.read()
 
@@ -106,7 +106,7 @@ def download_ontology(
 def download_ontology_and_convert(
     url: str,
     db_name: str,
-    output_dir: str = "drm",
+    output_dir: str = "cvcdocdb",
     filename: Optional[str] = None,
     ontology_ns: Optional[str] = None,
 ) -> str:

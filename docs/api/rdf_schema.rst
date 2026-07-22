@@ -1,7 +1,7 @@
 RDF / OWL ontology conversion
 ==============================
 
-The :mod:`drm.rdf_schema` module provides the full pipeline for converting
+The :mod:`cvcdocdb.rdf_schema` module provides the full pipeline for converting
 RDF/OWL ontologies into DRM YAML schemas and Python entity classes.
 
 Supported input formats
@@ -38,19 +38,19 @@ Usage examples
 
 Download and convert in one step::
 
-    from drm.rdf_schema import download_ontology_and_convert
+    from cvcdocdb.rdf_schema import download_ontology_and_convert
 
     output_path = download_ontology_and_convert(
         "https://raw.githubusercontent.com/ICA-EGAD/RiC-O/master/ontology/current-version/RiC-O_1-1.rdf",
         "rico",
-        output_dir="drm/"
+        output_dir="cvcdocdb/"
     )
-    # Generates drm/rico_entities.py
+    # Generates cvcdocdb/rico_entities.py
 
 Step by step::
 
-    from drm.rdf_schema import download_ontology, rdf_to_yaml
-    from drm.schema_gen import generate_classes
+    from cvcdocdb.rdf_schema import download_ontology, rdf_to_yaml
+    from cvcdocdb.schema_gen import generate_classes
 
     # 1. Download
     ont_path = download_ontology(url, output_dir="ontologies/")
@@ -62,10 +62,10 @@ Step by step::
     py_source = generate_classes(yaml_str)
 
     # 4. Write file
-    with open("drm/entities_my_db.py", "w") as f:
+    with open("cvcdocdb/entities_my_db.py", "w") as f:
         f.write(py_source)
 
-.. automodule:: drm.rdf_schema
+.. automodule:: cvcdocdb.rdf_schema
    :members:
    :member-order: bysource
    :show-inheritance:

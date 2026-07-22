@@ -9,7 +9,7 @@ Usage:
 
 import unittest
 
-from drm.base import Node
+from cvcdocdb.base import Node
 
 
 class NodeTest(unittest.TestCase):

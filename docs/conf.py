@@ -7,20 +7,20 @@ import os
 import shutil
 import sys
 
-# Add the project root to the path so Sphinx can find the drm package.
+# Add the project root to the path so Sphinx can find the cvcdocdb package.
 sys.path.insert(0, os.path.abspath(os.path.join("..")))
 
 # Check if pandoc is available (required by nbsphinx for notebooks)
 _has_pandoc = shutil.which("pandoc") is not None
 
 # -- Project information -----------------------------------------------------
-project = "DRM Tools"
+project = "cvcdocdb Tools"
 copyright = "2025, Oriol Ramos Terrades, Jialuo Chen, Adrià Molina"
 author = "Oriol Ramos Terrades, Jialuo Chen, Adrià Molina"
 
 # The full version, including alpha/beta/rc tags
 try:
-    from drm import __version__ as drm_version  # noqa: E402
+    from cvcdocdb import __version__ as drm_version  # noqa: E402
 except ImportError:
     drm_version = None
 
@@ -37,12 +37,11 @@ extensions = [
     # "sphinx_autodoc_typehints" — disabled: crashes on dict-inherited descriptors
 ]
 
-# nbsphinx requires pandoc; skip it in CI environments without pandoc
+# nbsphinx requires pandoc; skip it if not available
 if _has_pandoc:
     extensions.append("nbsphinx")
 else:
     nbsphinx_enabled = False
-    # Warn but continue — notebooks will not be rendered
     import warnings
     warnings.warn(
         "nbsphinx disabled: pandoc not found. "
@@ -82,6 +81,9 @@ autodoc_default_options = {
 autodoc_typehints = "description"  # Show types in descriptions, not signatures
 autodoc_typehints_description_target = "all"
 
+# Mock optional dependencies so autodoc doesn't fail on missing neo4j/rdflib
+autodoc_mock_imports = ["neo4j", "rdflib"]
+
 # Intersphinx mapping
 intersphinx_mapping = {
     "python": ("https://docs.python.org/3", None),
@@ -115,22 +117,44 @@ html_theme_options = {
 nbsphinx_execute = "never"
 
 # Notebook link settings (can be overridden in CI/local env):
-# - DRM_DOCS_GITHUB_REPO, e.g. CVC-DAG/drm-tools
+# - DRM_DOCS_GITHUB_REPO, e.g. CVC-DAG/cvcdocdb-tools
 # - DRM_DOCS_GITHUB_REF, e.g. main, dev, feature/branch
 # - DRM_DOCS_LOCAL_JUPYTER_BASE, e.g. http://127.0.0.1:8888
 # - DRM_DOCS_LOCAL_NOTEBOOK_PREFIX, e.g. docs
-docs_github_repo = os.getenv("DRM_DOCS_GITHUB_REPO", "CVC-DAG/drm-tools").strip("/")
+docs_github_repo = os.getenv("DRM_DOCS_GITHUB_REPO", "CVC-DAG/cvcdocdb-tools").strip("/")
 docs_github_ref = os.getenv("DRM_DOCS_GITHUB_REF", "main").strip()
-docs_local_jupyter_base = os.getenv("DRM_DOCS_LOCAL_JUPYTER_BASE", "http://127.0.0.1:8888").rstrip("/")
-docs_local_notebook_prefix = os.getenv("DRM_DOCS_LOCAL_NOTEBOOK_PREFIX", "docs").strip("/")
 
-if docs_local_notebook_prefix:
-    local_notebook_href = (
-        f"{docs_local_jupyter_base}/notebooks/"
-        f"{docs_local_notebook_prefix}/{{{{ env.docname }}}}.ipynb"
+# Local Jupyter base URL — must be set via env var; no default.
+# Examples:
+#   DRM_DOCS_LOCAL_JUPYTER_BASE=http://localhost:8888
+#   DRM_DOCS_LOCAL_JUPYTER_BASE=https://dcc-docencia.uab.cat/user/jupyter-user
+#   DRM_DOCS_LOCAL_JUPYTER_BASE=http://127.0.0.1:8889
+docs_local_jupyter_base = os.getenv("DRM_DOCS_LOCAL_JUPYTER_BASE", "").rstrip("/")
+
+# Notebook path prefix relative to the Jupyter server root.
+# For Jupyter running at repo root: leave empty.
+docs_local_notebook_prefix = os.getenv(
+    "DRM_DOCS_LOCAL_NOTEBOOK_PREFIX", ""
+).strip("/")
+
+if docs_local_jupyter_base:
+    if docs_local_notebook_prefix:
+        local_notebook_href = (
+            f"{docs_local_jupyter_base}/notebooks/"
+            f"{docs_local_notebook_prefix}/{{{{ env.docname }}}}.ipynb"
+        )
+    else:
+        local_notebook_href = f"{docs_local_jupyter_base}/notebooks/{{{{ env.docname }}}}.ipynb"
+    local_notebook_link = (
+        f'      <a href="{local_notebook_href}" target="_blank" '
+        f'rel="noopener noreferrer" '
+        f'style="font-size: 0.9rem; padding: 0.3rem 0.6rem; border: 1px solid #888; '
+        f'border-radius: 4px; text-decoration: none;">'
+        f'Open in Local Jupyter'
+        f'</a>'
     )
 else:
-    local_notebook_href = f"{docs_local_jupyter_base}/notebooks/{{{{ env.docname }}}}.ipynb"
+    local_notebook_link = ""
 
 colab_href = (
     f"https://colab.research.google.com/github/{docs_github_repo}/"
@@ -154,9 +178,7 @@ nbsphinx_prolog = f"""
       <a href="{kaggle_href}" target="_blank" rel="noopener noreferrer">
         <img alt="Open in Kaggle" src="https://kaggle.com/static/images/open-in-kaggle.svg" />
       </a>
-      <a href="{local_notebook_href}" target="_blank" rel="noopener noreferrer" style="font-size: 0.9rem; padding: 0.3rem 0.6rem; border: 1px solid #888; border-radius: 4px; text-decoration: none;">
-        Open in Local Jupyter
-      </a>
+{local_notebook_link}
     </div>
 """
 
@@ -165,8 +187,8 @@ latex_elements = {}
 latex_documents = [
     (
         "index",
-        "drm-tools.tex",
-        "DRM Tools Documentation",
+        "cvcdocdb-tools.tex",
+        "cvcdocdb Tools Documentation",
         "Oriol Ramos Terrades, Jialuo Chen, Adrià Molina",
         "manual",
     ),
@@ -202,8 +224,8 @@ def setup(app):
 man_pages = [
     (
         "index",
-        "drm-tools",
-        "DRM Tools Documentation",
+        "cvcdocdb-tools",
+        "cvcdocdb Tools Documentation",
         ["Oriol Ramos Terrades, Jialuo Chen, Adrià Molina"],
         1,
     ),

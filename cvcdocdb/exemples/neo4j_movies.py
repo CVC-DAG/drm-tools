@@ -11,7 +11,7 @@ import json
 import urllib.request
 from typing import Dict, List
 
-from drm.base import Node, Relation
+from cvcdocdb.base import Node, Relation
 
 
 SAMPLE_MOVIES_URL = "https://api.sampleapis.com/movies/animation"
@@ -24,7 +24,7 @@ FALLBACK_MOVIES = [
 
 
 def _download_movies(limit: int = 40) -> List[dict]:
-    req = urllib.request.Request(SAMPLE_MOVIES_URL, headers={"User-Agent": "drm-tools-examples/1.0"})
+    req = urllib.request.Request(SAMPLE_MOVIES_URL, headers={"User-Agent": "cvcdocdb-examples/1.0"})
     try:
         with urllib.request.urlopen(req, timeout=20) as resp:
             data = json.loads(resp.read().decode("utf-8"))

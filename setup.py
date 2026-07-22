@@ -1,15 +1,15 @@
 from setuptools import setup, find_packages
 import os
 
-NAME = "drm-tools"
-VERSION = "1.1.0rc1"
+NAME = "cvcdocdb"
+VERSION = "1.0.0"
 DESCR = "Graph-based document representation library with Neo4j and NetworkX backends"
-URL = "https://github.com/CVC-DAG/drm-tools"
+URL = "https://github.com/CVC-DAG/cvcdocdb"
 AUTHOR = "Oriol Ramos Terrades"
 EMAIL = "oriolrt@cvc.uab.cat"
-LICENSE = "GPL-3.0-or-later"
+LICENSE = "MIT"
 
-PACKAGES = find_packages(exclude='drm/')
+PACKAGES = find_packages(exclude="cvcdocdb/")
 
 
 def get_long_description():
@@ -50,7 +50,7 @@ setup(
     classifiers=[
         "Development Status :: 4 - Beta",
         "Intended Audience :: Developers",
-        "License :: OSI Approved :: GNU General Public License v3 or later (GPLv3+)",
+        "License :: OSI Approved :: MIT License",
         "Programming Language :: Python :: 3",
         "Programming Language :: Python :: 3.9",
         "Programming Language :: Python :: 3.10",
@@ -59,8 +59,8 @@ setup(
         "Operating System :: OS Independent",
     ],
     project_urls={
-        "Documentation": "https://cvc-dag.github.io/drm-tools/",
-        "Source": "https://github.com/CVC-DAG/drm-tools",
-        "Tracker": "https://github.com/CVC-DAG/drm-tools/issues",
+        "Documentation": "https://cvc-dag.github.io/cvcdocdb/",
+        "Source": "https://github.com/CVC-DAG/cvcdocdb",
+        "Tracker": "https://github.com/CVC-DAG/cvcdocdb/issues",
     },
 )

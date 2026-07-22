@@ -11,7 +11,7 @@ import json
 import os
 from typing import Any, Callable, Dict
 
-from drm import Neo4jGraph, NetworkXGraph
+from cvcdocdb import Neo4jGraph, NetworkXGraph
 
 from .networkx_karate import load_karate_club
 from .networkx_bibliografia import load_bibliografia_openalex
@@ -57,7 +57,7 @@ def neo4j_config(default_target: str = "DEV") -> Dict[str, str]:
 
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
-        prog="python -m drm.exemples",
+        prog="python -m cvcdocdb.exemples",
         description="Load tutorial/example datasets into NetworkX or Neo4j.",
     )
     parser.add_argument(
