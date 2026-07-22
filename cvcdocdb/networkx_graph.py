@@ -1342,7 +1342,14 @@ class NetworkXGraph(GraphStore):
         tmp_path = f"{self._persistence_path}.tmp"
         with open(tmp_path, "wb") as fh:
             pickle.dump(state, fh, protocol=pickle.HIGHEST_PROTOCOL)
-        os.replace(tmp_path, self._persistence_path)
+        # os.replace can fail on Windows if the destination is locked.
+        # Fall back to a non-atomic overwrite in that case.
+        try:
+            os.replace(tmp_path, self._persistence_path)
+        except OSError:
+            if os.path.exists(self._persistence_path):
+                os.remove(self._persistence_path)
+            os.rename(tmp_path, self._persistence_path)
 
     def _load_state(self) -> None:
         """Load graph store state from disk if present."""

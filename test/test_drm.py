@@ -34,6 +34,12 @@ sys.modules["neo4j.exceptions"] = _mock_neo4j_exceptions
 sys.modules["tqdm"] = _unittest_mock.MagicMock()
 sys.modules["traitlets"] = _unittest_mock.MagicMock()
 
+# Import hnswlib for skipIf decorators — may not be installed
+try:
+    import hnswlib  # noqa: F401
+except ImportError:
+    hnswlib = None  # type: ignore[assignment,name-defined]
+
 from cvcdocdb.neo4j_graph import Neo4jGraph
 from cvcdocdb.networkx_graph import NetworkXGraph
 from cvcdocdb.drm_entities import *
@@ -199,6 +205,7 @@ class NetworkXGraphTest(unittest.TestCase):
         self.assertIsNotNone(by_pk)
         reloaded.close()
 
+    @unittest.skipIf(hnswlib is None, "hnswlib not available")
     def test_nx_graph_vector_index_query(self) -> None:
         """Test ANN query sobre una propietat vectorial indexada."""
         n1 = Node(pk={"id": 1}, main_label="Doc", embedding=[1.0, 0.0, 0.0])
@@ -217,6 +224,7 @@ class NetworkXGraphTest(unittest.TestCase):
         self.assertEqual(results[0][0], id1)
         graph.close()
 
+    @unittest.skipIf(hnswlib is None, "hnswlib not available")
     def test_nx_graph_vector_index_tracks_new_nodes(self) -> None:
         """Test que l'índex vectorial s'actualitza quan arriben nodes nous."""
         graph = self._make_graph()
@@ -230,6 +238,7 @@ class NetworkXGraphTest(unittest.TestCase):
         self.assertEqual(results[0][0], node_id)
         graph.close()
 
+    @unittest.skipIf(hnswlib is None, "hnswlib not available")
     def test_nx_graph_vector_index_persists_after_reload(self) -> None:
         """Test que l'índex vectorial es guarda i funciona després de recarregar."""
         graph = self._make_graph()
