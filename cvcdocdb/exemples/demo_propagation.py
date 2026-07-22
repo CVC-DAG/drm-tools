@@ -7,13 +7,13 @@ properties on existing nodes/edges, and runs sample queries.
 Usage::
 
     # Run against local Neo4j DEV
-    python -m drm.exemples.demo_propagation
+    python -m cvcdocdb.exemples.demo_propagation
 
     # Or with explicit connection parameters via env vars:
     NEO4J_DEV_URL=bolt://dev.example.com:7687 \\
     NEO4J_DEV_USER=neo4j \\
     NEO4J_DEV_PASSWORD=devpass \\
-    python -m drm.exemples.demo_propagation
+    python -m cvcdocdb.exemples.demo_propagation
 """
 
 from __future__ import annotations
@@ -25,11 +25,11 @@ import textwrap
 from pathlib import Path
 from typing import Any, Dict
 
-from drm import Neo4jGraph, NetworkXGraph
-from drm.exemples import load_got_characters
-from drm.graph_store import GraphStore
-from drm.schema_gen import generate_classes
-from drm.rdf_schema import convert_rdf_to_yaml
+from cvcdocdb import Neo4jGraph, NetworkXGraph
+from cvcdocdb.exemples import load_got_characters
+from cvcdocdb.graph_store import GraphStore
+from cvcdocdb.schema_gen import generate_classes
+from cvcdocdb.rdf_schema import convert_rdf_to_yaml
 
 
 # ======================================================================
@@ -279,7 +279,7 @@ def step6_create_group(graph: Neo4jGraph) -> None:
     """
     section("Step 6: Transactional group creation")
 
-    from drm.base import Node, WeakNode
+    from cvcdocdb.base import Node, WeakNode
 
     # Create a Document with sections and pages
     doc = Node(

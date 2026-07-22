@@ -24,8 +24,8 @@ import tempfile
 import unittest
 from typing import TYPE_CHECKING, Dict, List, Optional, Tuple
 
-from drm.base import Node, Relation, WeakNode
-from drm.graph_store import GraphStore
+from cvcdocdb.base import Node, Relation, WeakNode
+from cvcdocdb.graph_store import GraphStore
 
 if TYPE_CHECKING:
     pass  # Avoid circular imports at runtime
@@ -80,7 +80,7 @@ class TestNetworkXGraph(unittest.TestCase):
             os.remove(self._persistence_path)
 
     def _make_graph(self) -> GraphStore:
-        from drm.networkx_graph import NetworkXGraph
+        from cvcdocdb.networkx_graph import NetworkXGraph
         return NetworkXGraph(persistence_path=self._persistence_path)
 
     # -- ON DELETE RESTRICT --
@@ -523,7 +523,7 @@ class TestNeo4jGraph(unittest.TestCase):
         config = cls._load_config()
         if config is not None:
             cls._has_db = True
-            from drm.neo4j_graph import Neo4jGraph
+            from cvcdocdb.neo4j_graph import Neo4jGraph
             cls._graph = Neo4jGraph(
                 url=config["url"],
                 user=config["user"],

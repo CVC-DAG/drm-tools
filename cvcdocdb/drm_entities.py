@@ -1,13 +1,13 @@
 """Semantic entity definitions for the DRM graph model.
 
-This module defines domain-specific node types such as ``Individu``, ``Lloc``
-and ``DocumentCultural``. These classes build on :mod:`drm.base` to provide
+rThis module defines domain-specific node types such as ``Individu``, ``Lloc``
+and ``DocumentCultural``. These classes build on :mod:`cvcdocdb.base` to provide
 validation, default labels, and automatic relationship materialisation.
 
 Conceptually, the module is organised around two families of entities:
 
-- root entities, which inherit from :class:`~drm.base.Node`
-- hierarchical child entities, which inherit from :class:`~drm.base.WeakNode`
+- root entities, which inherit from :class:`~cvcdocdb.base.Node`
+- hierarchical child entities, which inherit from :class:`~cvcdocdb.base.WeakNode`
 
 The concrete classes model people, places, cultural documents, layouts and
 other semantic concepts used throughout the tutorials and examples.
@@ -283,6 +283,10 @@ class DocumentCultural(Node):
     This class should not be instantiated directly. Subclasses
     override ``document_class`` to set the appropriate label.
     Automatically appends "DocumentCultural" to alternative labels.
+
+    Attributes:
+        document_class: The Cypher label for this document type.
+            Defaults to "abstract_class".
     """
 
     document_class = "abstract_class"

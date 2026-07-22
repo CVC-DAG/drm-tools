@@ -13,9 +13,9 @@ try:
 except ImportError:
     yaml = None
 
-from drm.base import Node, Relation, WeakNode, WeakRelation
-from drm.networkx_graph import NetworkXGraph
-from drm.schema_gen import generate_classes, generate_file
+from cvcdocdb.base import Node, Relation, WeakNode, WeakRelation
+from cvcdocdb.networkx_graph import NetworkXGraph
+from cvcdocdb.schema_gen import generate_classes, generate_file
 
 
 # ---------------------------------------------------------------------------
@@ -115,7 +115,7 @@ class GenerateClassesTest(unittest.TestCase):
     def test_imports_base_classes(self) -> None:
         """Generated source imports Node, WeakNode, Relation, WeakRelation."""
         source = generate_classes(self._yaml())
-        self.assertIn("from drm.base import Node, WeakNode, Relation, WeakRelation", source)
+        self.assertIn("from cvcdocdb.base import Node, WeakNode, Relation, WeakRelation", source)
 
     def test_node_has_pk_and_properties(self) -> None:
         """Node class has pk parameter and property attributes."""
@@ -154,7 +154,7 @@ class GenerateClassesTest(unittest.TestCase):
         """Generated source can be imported (no syntax errors)."""
         source = generate_classes(self._yaml())
         # At minimum, check it has the expected structure
-        self.assertIn("from drm.base import", source)
+        self.assertIn("from cvcdocdb.base import", source)
         self.assertIn("class", source)
 
 

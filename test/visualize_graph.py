@@ -18,9 +18,9 @@ import math
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from PIL import Image, ImageDraw, ImageFont
-from drm.networkx_graph import NetworkXGraph
-from drm.drm_entities import IndividuPadro, LlocPadro, Atribut
-from drm.base import Node, Relation, WeakNode
+from cvcdocdb.networkx_graph import NetworkXGraph
+from cvcdocdb.drm_entities import IndividuPadro, LlocPadro, Atribut
+from cvcdocdb.base import Node, Relation, WeakNode
 
 
 OUTPUT_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "output")

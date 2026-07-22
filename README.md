@@ -1,44 +1,51 @@
-# Document Representation Model (drm-tools)
+# Document Representation Model (cvcdocdb)
 
 Graph-based document representation library with Neo4j and an in-memory NetworkX backend.
 
-`drm-tools` implements the **Document Representation Model**, developed as part of the **SUKIDI** research project (*Semantic Understanding and Knowledge Integration for Document Intelligence*). The project is based on the hypothesis that integrating **contextual knowledge** (declarative and procedural) into document intelligence systems significantly improves their interpretation capabilities, overcoming the limitations of current foundation models that work well with structured documents but struggle with historical, graphical, or diagrammatic documents.
-
-Model documents as graphs where nodes capture document objects (text regions, figures, pages) and edges model their semantic and hierarchical relationships. This enables the integration of **declarative knowledge** (semantic entities defined within the graph domain) and **procedural knowledge** (cascade delete strategies, foreign key validation) over the same structure. The package supports two backends: `Neo4jGraph` for persistent storage and `NetworkXGraph` for in-memory testing, and includes tools to convert RDF/OWL ontologies (such as RiC-O) into Python classes, facilitating domain-specific knowledge integration. Additional backends are planned for future releases.
-
-Target applications include administrative document processing (RPA), historical archives (such as the National Census of Victims), manuscripts with rare scripts, and graphical languages (music scores, engineering drawings).
+Model documents as graphs where nodes represent document objects (text regions, figures, pages) and edges capture their relationships. The library supports semantic entity definitions, weak nodes with cascade delete, foreign key validation, vector search, and reusable example datasets for tutorials.
 
 ## Features
 
-- **Two backends**: Full Neo4j integration (`Neo4jGraph`) or in-memory NetworkX (`NetworkXGraph`)
-- **WeakNode hierarchy**: Child entities with composite primary keys and automatic cascade delete
-- **ON DELETE strategies**: CASCADE, RESTRICT, SET NULL
-- **Transactional group creation**: `create_group()` inserts a strong node with its WeakNodes atomically
-- **Fluent query builder**: `NxQuery` chainable API over NetworkX graphs with lazy generators
-- **Vector search (NetworkX only)**: HNSW-based ANN indexing with `cosine`, `l2`, and `ip` distance spaces
-- **RDF/OWL ontology conversion**: Generate Python entity classes from RDF/OWL ontologies
+- **Two backends**: Full Neo4j integration (`Neo4jGraph`) or in-memory NetworkX (`NetworkXGraph`) for testing and tutorials
+- **WeakNode hierarchy**: Child entities with composite primary keys and automatic cascade delete through parent-child edges
+- **ON DELETE strategies**: CASCADE, RESTRICT, SET NULL -- choose the deletion semantics that fit your use case
+- **Semantic entities**: Domain-specific node types such as `IndividuPadro`, `LlocPadro`, and `Fotografia`
+- **FK validation**: Foreign key constraints on relations prevent dangling references
+- **Query and filtering**: Secondary index on scalar properties, multi-filter search with intersection/union, debug snapshots
+- **Vector search (NetworkX only)**: HNSW-based ANN indexing on node properties with `cosine`, `l2`, and `ip` distance spaces
+- **RDF/OWL ontology conversion**: Generate Python entity classes from RDF/OWL ontologies (RiC-O, etc.)
 
 ## Installation
 
+Install from PyPI:
+
 ```bash
-pip install drm-tools
+pip install cvcdocdb
 ```
 
-Or from source:
+Or install from source in development mode:
 
 ```bash
-git clone https://github.com/CVC-DAG/drm-tools.git
-cd drm-tools
+git clone https://github.com/CVC-DAG/cvcdocdb.git
+cd cvcdocdb
 pip install -e .
+```
+
+Register the recommended Jupyter kernel for tutorials:
+
+```bash
+python -m ipykernel install --user --name cvcdocdb-tool --display-name "Python (cvcdocdb-tool)"
 ```
 
 ## Quick Start
 
 ```python
-from drm import NetworkXGraph, Node, WeakNode
+from cvcdocdb import NetworkXGraph, Node, WeakNode
 
+# In-memory backend -- no database required
 graph = NetworkXGraph()
 
+# Create a document hierarchy
 doc = Node(pk={"doc": "DOC-001"}, main_label="Document")
 graph.insertNode(doc)
 
@@ -48,51 +55,164 @@ graph.insertNode(section, insert_parent=True)
 page = WeakNode(parent=section, pk={"page": 1}, main_label="Page")
 graph.insertNode(page, insert_parent=True)
 
+# Query the graph
 print("Nodes:", graph.get_node_ids())
 print("Edges:", graph.get_edges())
 graph.close()
 ```
 
-## Tutorials
+## Tutorial Notebooks
 
-Runnable Jupyter notebooks in [`docs/tutorials/notebooks/`](docs/tutorials/notebooks/). Hosted documentation at [cvc-dag.github.io/drm-tools](https://cvc-dag.github.io/drm-tools/).
+Runnable Jupyter notebooks in `docs/tutorials/notebooks/`. Each notebook installs the package automatically from the latest release when run.
 
-- **Getting started**: basics, querying, filtering
-- **Demos**: vector search, delete strategies, RiC-O loader, propagation demo
-- **Datasets**: Karate Club, Movies, Game of Thrones, OpenAlex bibliography
-- **Ontologies**: generating Python classes from RDF/OWL
+You can also view them rendered in the [hosted documentation](https://cvc-dag.github.io/cvcdocdb/).
+
+### Getting Started
+
+- `intro_basics` -- Minimal end-to-end workflow: insert nodes, create WeakNode hierarchies
+- `querying_and_filtering` -- Query operations: `get_node()`, `find_nodes()`, property filtering
+
+### Interactive Demos
+
+- `weaknodes_interactive` -- Build hierarchies with an interactive widget panel
+- `vector_search` -- HNSW vector indexing and nearest-neighbor search
+- `delete_strategies` -- Compare CASCADE, RESTRICT, SET NULL strategies
+
+### Datasets
+
+- `karate_club` -- Zachary Karate Club (34 members)
+- `movies` -- Movie-domain graph (actors, genres, films)
+- `game_of_thrones` -- Character-house graph
+- `bibliography_openalex` -- OpenAlex bibliographic references with citations
+
+### Ontologies
+
+- `generating_classes_from_owl` -- Generate Python entity classes from RDF/OWL ontologies
+
+## RDF/OWL Ontology Conversion
+
+Generate Python entity classes from RDF/OWL ontologies in one step:
+
+```python
+from cvcdocdb.rdf_schema import download_ontology_and_convert
+
+# Downloads, converts to YAML, and generates Python classes
+output_path = download_ontology_and_convert(
+    "https://raw.githubusercontent.com/ICA-EGAD/RiC-O/master/ontology/current-version/RiC-O_1-1.rdf",
+    "rico",
+    output_dir="cvcdocdb/"
+)
+# Generates cvcdocdb/rico_entities.py (677 classes from RiC-O)
+```
+
+Step by step:
+
+```python
+from cvcdocdb.rdf_schema import download_ontology, rdf_to_yaml
+from cvcdocdb.schema_gen import generate_classes
+
+# 1. Download ontology
+ont_path = download_ontology(url, output_dir="ontologies/")
+
+# 2. Convert RDF to YAML DRM
+yaml_str = rdf_to_yaml(ont_path, "my_db")
+
+# 3. Generate Python classes
+py_source = generate_classes(yaml_str)
+
+# 4. Write file
+with open("cvcdocdb/entities_my_db.py", "w") as f:
+    f.write(py_source)
+```
+
+The pipeline maps OWL constructs to DRM:
+
+- `owl:Class` -- Node label
+- `rdfs:subClassOf` -- `WeakNode` hierarchy (parent)
+- `owl:DatatypeProperty` -- Node properties
+- `owl:ObjectProperty` -- Relationships
+- `owl:hasKey` -- Primary key fields
+- `rdfs:comment` -- Class docstring
+
+## Example Dataset Loaders (cvcdocdb.exemples)
+
+The package includes ready-to-run loaders for common graph domains:
+
+- `cvcdocdb.exemples.networkx_karate` -- Karate Club graph (NetworkX classic)
+- `cvcdocdb.exemples.networkx_bibliografia` -- Bibliographic references from OpenAlex
+- `cvcdocdb.exemples.neo4j_movies` -- Movie-domain graph
+- `cvcdocdb.exemples.neo4j_got` -- Game of Thrones character-house graph
+
+### Command-line loader
+
+```bash
+python -m cvcdocdb.exemples --dataset karate --backend networkx
+python -m cvcdocdb.exemples --dataset all --backend both --quiet
+```
+
+### Programmatic usage
+
+```python
+from cvcdocdb import NetworkXGraph
+from cvcdocdb.exemples import load_karate_club, load_bibliografia_openalex
+
+graph = NetworkXGraph()
+print(load_karate_club(graph))
+print(load_bibliografia_openalex(graph, query="graph database", per_page=15))
+graph.close()
+```
 
 ## Configuration
 
-DRM uses environment variables for Neo4j connections. See [`.env.example`](.env.example) for a complete template.
+DRM uses environment variables for Neo4j connections. Multiple targets are supported via the `NEO4J_TARGET` selector:
 
 ```bash
-export NEO4J_DEV_URL=bolt://localhost:7687
+# Default target
+export NEO4J_DEV_URL=bolt://dev-host:7687
 export NEO4J_DEV_USER=neo4j
-export NEO4J_DEV_PASSWORD=default
+export NEO4J_DEV_PASSWORD=your_dev_password
 export NEO4J_DEV_DATABASE=neo4j
+
+# Custom target
+export NEO4J_TARGET=LOCAL
+export NEO4J_LOCAL_URL=bolt://localhost:7687
+export NEO4J_LOCAL_USER=neo4j
+export NEO4J_LOCAL_PASSWORD=your_password
+export NEO4J_LOCAL_DATABASE=neo4j
 ```
 
-## Tests
+## Running Tests
 
 ```bash
 python -m pytest test/ -v
 ```
 
-Three levels: **Unit** (`-m unit`), **Integration** (`-m integration`, NetworkX), **Neo4j** (`-m slow`). See [`test/README.md`](test/README.md) for details.
+Three test levels:
+
+- **Unit** (`-m unit`) -- 43 tests, ~2s, fast, no graph store
+- **Integration** (`-m integration`) -- 215 tests, ~3s, NetworkXGraph (in-memory)
+- **Neo4j** (`-m slow`) -- 44 tests, ~10s, Neo4j (requires real DB)
+
+Skip Neo4j tests: `pytest test/ -v -m "not slow"`
 
 ## Documentation
 
-- **Hosted**: https://cvc-dag.github.io/drm-tools/
-- **Source**: [`docs/`](docs/) -- `sphinx-build -b html docs/ docs/_build/html/`
-- **Example loaders**: `python -m drm.exemples --dataset all --backend both`
+- **Hosted docs**: https://cvc-dag.github.io/cvcdocdb/
+- **Source docs**: `docs/` -- Sphinx documentation source
 
-## Authors
+Generate HTML docs with Sphinx:
 
-- Oriol Ramos Terrades — oriolrt@cvc.uab.cat
-- Jialuo Chen — jchen@cvc.uab.cat
-- Adrià Molina — amolina@cvc.uab.cat
+```bash
+cd docs
+sphinx-build -b html . _build/html
+```
+
+## Authors and Contributors
+
+- Oriol Ramos Terrades
+- Jialuo Chen
+- Adrià Molina
 
 ## Acknowledgements
 
-Partially supported by the Spanish project PID2024-157778OB-I00 (Ministerio de Ciencia e Innovación), the Departament de Cultura of the Generalitat de Catalunya, and the CERCA Program / Generalitat de Catalunya. Adrià Molina is funded with the PRE2022-101575 grant (MCIN / AEI / 10.13039 / 501100011033 and FSE+).
+This work has been partially supported by the Spanish project PID2021-126808OB-I00, Ministerio de Ciencia e Innovación, the Departament de Cultura of the Generalitat de Catalunya, and the CERCA Program / Generalitat de Catalunya. Adrià Molina is funded with the PRE2022-101575 grant provided by MCIN / AEI / 10.13039 / 501100011033 and by the European Social Fund (FSE+).

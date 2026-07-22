@@ -50,9 +50,9 @@ if os.path.exists(_env_path):
 # Add parent directory to path
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from drm.neo4j_graph import Neo4jGraph
-from drm.drm_entities import *
-from drm.base import *
+from cvcdocdb.neo4j_graph import Neo4jGraph
+from cvcdocdb.drm_entities import *
+from cvcdocdb.base import *
 
 
 def _load_config() -> Optional[Dict[str, Optional[str]]]:

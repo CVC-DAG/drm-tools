@@ -1,7 +1,7 @@
 traitlets
-hnswlib
 networkx
 matplotlib
+numpy
 neo4j
 tqdm
 graphviz

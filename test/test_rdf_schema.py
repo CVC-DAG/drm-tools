@@ -1,4 +1,4 @@
-"""Tests for RDF ontology → DRM YAML schema conversion."""
+"""Tests for RDF ontology → cvcdocdb YAML schema conversion."""
 
 from __future__ import annotations
 
@@ -12,7 +12,7 @@ try:
 except ImportError:
     yaml = None
 
-from drm.rdf_schema import rdf_to_yaml, generate_classes
+from cvcdocdb.rdf_schema import rdf_to_yaml, generate_classes
 
 
 # ---------------------------------------------------------------------------
@@ -65,7 +65,7 @@ ex:knows a owl:ObjectProperty ;
 
 
 class RDFSchemaTest(unittest.TestCase):
-    """Tests for converting RDF ontology to DRM YAML schema."""
+    """Tests for converting RDF ontology to cvcdocdb YAML schema."""
 
     def setUp(self) -> None:
         self.tmpdir = tempfile.mkdtemp()
@@ -294,7 +294,7 @@ class GenerateClassesFromRDFTest(unittest.TestCase):
         """Generated source imports Node, WeakNode, Relation, WeakRelation."""
         yaml_str = rdf_to_yaml(self.ontology_path, "test", ontology_ns="http://example.org/")
         source = generate_classes(yaml_str)
-        self.assertIn("from drm.base import Node, WeakNode, Relation, WeakRelation", source)
+        self.assertIn("from cvcdocdb.base import Node, WeakNode, Relation, WeakRelation", source)
 
     def test_node_has_properties(self) -> None:
         """Node class has property attributes."""
